@@ -131,11 +131,18 @@ Changes can take a few minutes to take effect.
 
 ## Things that go wrong
 
-**"invalid_client" or "The Client ID is not valid for this address"**
-The address you are using is not in the authorized origins list. Check for a
-trailing slash or a path — it must be exactly `http://localhost:8000`, not
-`http://localhost:8000/` or `http://127.0.0.1:8000`. `localhost` and `127.0.0.1`
-are different origins to Google.
+**"origin_mismatch" / "Not a valid origin for the client"**
+The address you are loading the app from is not in the authorized origins list.
+Check for a trailing slash or a path — it must be exactly `http://localhost:8000`,
+not `http://localhost:8000/` or `http://127.0.0.1:8000`. `localhost` and
+`127.0.0.1` are different origins to Google. This is also what you get if you
+added the origin less than a few minutes ago; propagation is not instant.
+
+**"invalid_client" / "The OAuth client was not found"**
+A different fault, and worth not confusing with the one above: the Client ID
+itself is wrong, belongs to another project, or the client has been deleted.
+Check the ID in Settings against the one in Cloud Console before you go looking
+at the origins list.
 
 **"Access blocked: this app has not completed verification"**
 You are not on the test users list. Go back to the OAuth consent screen and add
