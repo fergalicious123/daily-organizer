@@ -4,7 +4,7 @@
  * the caller's job (app.js owns the route), so these stay dumb and testable.
  */
 
-import { el, isMobile } from '../ui.js';
+import { el, icon, isMobile } from '../ui.js';
 import {
   monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
@@ -99,12 +99,21 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // without first drilling into that day.
   makeDropTarget(cell, dayKey, null);
 
-  // Dots carry the signal on phones, where chips are unreadable.
-  const dots = items.slice(0, 4).map(() => el('span.mini-dot'));
+  // A number, not a row of dots. Dots capped at four and said nothing about
+  // how many there actually were — the one question a month grid is asked.
+  const open = items.filter((i) => !i.done).length;
+  const allDone = items.length > 0 && open === 0;
 
   cell.appendChild(el('div.month-day-num',
-    el('span', String(fromKey(dayKey).getDate())),
-    items.length ? el('span.dot-row', dots) : null,
+    el('span.month-day-date', String(fromKey(dayKey).getDate())),
+    items.length
+      ? el('span.month-count', {
+        class: allDone ? 'is-clear' : '',
+        title: allDone
+          ? `${items.length} item${items.length === 1 ? '' : 's'}, all done`
+          : `${open} still to do of ${items.length}`,
+      }, allDone ? icon('check', 'icon') : String(open))
+      : null,
   ));
 
   // Chips live in their own clipped box whose height is an exact multiple of
@@ -225,9 +234,16 @@ export function weekView(anchorKey, { onSelectDay }) {
       el('div.week-col-dow', DAY_ABBR[d.getDay()]),
       el('div.week-col-date',
         String(d.getDate()),
-        prog.total > 0
-          ? el('span.week-col-meta', `${prog.done}/${prog.total}`)
-          : null,
+        // Same language as the month grid: how many are still to do, not a
+        // done/total fraction that has to be worked out.
+        (() => {
+          const open = items.filter((i) => !i.done).length;
+          if (!items.length) return null;
+          if (open === 0) return el('span.month-count.is-clear', icon('check', 'icon'));
+          return el('span.month-count', {
+            title: `${open} still to do of ${items.length}`,
+          }, String(open));
+        })(),
       ),
     ));
 

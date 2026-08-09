@@ -713,17 +713,43 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 4px;
   flex-shrink: 0;
 }
 .month-day.is-today .month-day-num { color: var(--accent); }
-.month-day-num .dot-row { display: flex; gap: 2px; }
-.month-day-num .mini-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .8; }
+.month-day-date { font-size: 12.5px; }
+.month-day.is-today .month-day-date { font-weight: 700; }
+
+/* How many are still to do. A count answers the question a row of dots only
+   gestured at, and it does not cap out at four. */
+.month-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 20px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+.month-count.is-clear {
+  background: transparent;
+  color: var(--success);
+}
+.month-count.is-clear .icon { width: 13px; height: 13px; }
 
 /* Chip height is fixed and the container clips on an exact multiple of it, so
    the clip edge can only ever fall BETWEEN chips. Previously the cell itself
    clipped at an arbitrary pixel and sliced the last chip through the middle of
    its letters, which looks like a broken renderer rather than truncation. */
-:root { --month-chip-h: 17px; --month-chip-gap: 2px; }
+/* 18px, not 20. Measured against a six-row month (94px cells): at 20px only
+   ONE chip fits beside the day number and the "+N more" label, at 18px two do.
+   The text is 11.5px semi-bold either way, so 18px is still more legible than
+   the 11px/17px this started at — two readable titles beats one roomy one. */
+:root { --month-chip-h: 18px; --month-chip-gap: 2px; }
 
 /* flex-shrink MUST be 0. With shrink allowed, a tight cell squeezes this box
    to a fractional chip height (28.3px = 1.67 chips in a six-row month) and the
@@ -741,23 +767,38 @@ button {
 }
 
 .month-chip {
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   height: var(--month-chip-h);
-  line-height: calc(var(--month-chip-h) - 4px);
-  padding: 2px 5px;
-  border-radius: 3px;
+  line-height: calc(var(--month-chip-h) - 5px);
+  padding: 2px 6px;
+  border-radius: 4px;
   background: var(--accent-soft);
   color: var(--accent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
-  border-left: 2px solid var(--accent);
+  border-left: 3px solid var(--accent);
   box-sizing: border-box;
 }
-.month-chip.is-done { opacity: .5; text-decoration: line-through; }
-.month-chip.is-event { background: var(--surface-sunk); color: var(--text-muted); border-left-color: var(--text-faint); }
-.month-more { font-size: 10px; color: var(--text-faint); padding-left: 3px; flex-shrink: 0; }
+.month-chip.is-done {
+  opacity: .55;
+  text-decoration: line-through;
+  border-left-color: var(--success);
+}
+.month-chip.is-event {
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+  border-left-color: var(--text-faint);
+}
+.month-more {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  padding-left: 4px;
+  flex-shrink: 0;
+}
 
 /* ------------------------------------------------------------------ */
 /* Week view                                                           */
@@ -1105,6 +1146,8 @@ button {
 .chip.is-today { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .chip.is-list { background: transparent; padding-left: 0; }
 .chip.is-recur { background: var(--success-soft); color: var(--success); }
+.chip.is-rolled { background: var(--warning-soft); color: var(--warning); font-weight: 600; }
+.chip.is-rolled .icon { width: 11px; height: 11px; }
 .chip.is-remind { background: var(--warning-soft); color: var(--warning); }
 
 .task-actions {
@@ -1844,8 +1887,21 @@ button {
   .week-num .wk-label { display: none; }
   .week-num .wk-value { font-size: 11px; }
   .month-day { padding: 4px 3px; }
-  .month-day-num { font-size: 11px; justify-content: center; }
-  /* Chips do not fit in a phone month cell; dots carry the signal instead. */
+  /* A month cell is ~45px wide here, so a chip's text is unreadable no matter
+     how it is styled. The count becomes the whole signal and is centred and
+     enlarged to carry that weight; tap through to the day for the detail. */
+  .month-day-num {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+  }
+  .month-day-date { font-size: 12px; }
+  .month-count {
+    min-width: 19px;
+    height: 19px;
+    font-size: 11px;
+  }
   .month-chip { display: none; }
   .month-more { display: none; }
 
@@ -1879,6 +1935,23 @@ button {
   z-index: 44;
 }
 .scrim[hidden] { display: none; }
+
+/* ---- group-by control ---- */
+
+.group-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 6px;
+}
+.group-bar-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+@media (max-width: 760px) {
+  .group-bar { overflow-x: auto; padding-bottom: 2px; }
+  .group-bar .segmented { flex-shrink: 0; }
+}
 
 /* ---- day strip (drop a task onto a day) ---- */
 

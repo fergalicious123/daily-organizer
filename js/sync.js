@@ -290,6 +290,7 @@ class SyncEngine extends EventTarget {
             // later title edit does not rewrite it in ours.
             tz: mapped.tz,
             remoteTiming: mapped.remoteTiming,
+            seriesId: mapped.seriesId,
             createdAt: event.created || new Date().toISOString(),
             updatedAt: mapped.updatedAt,
             deleted: false,
@@ -313,6 +314,7 @@ class SyncEngine extends EventTarget {
             // local edit compares against the current remote timing.
             tz: mapped.tz,
             remoteTiming: mapped.remoteTiming,
+            seriesId: mapped.seriesId,
             updatedAt: mapped.updatedAt,
           });
         }, { undoable: false, silent: true });

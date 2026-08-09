@@ -86,6 +86,10 @@ function defaultState() {
       // Keep the access token across reloads. Off means re-authorising every
       // time the page loads, which is safer but tiresome.
       staySignedIn: true,
+      // Move unfinished tasks forward a day, then to Unscheduled.
+      rollover: true,
+      lastRolloverOn: '',
+      groupBy: 'none',       // none | list | priority | due
       driveFileId: '',
       lastSyncAt: '',
     },
@@ -394,7 +398,14 @@ export function updateItem(id, patch, opts = {}) {
   return store.mutate((s) => {
     const item = s.items.find((i) => i.id === id);
     if (!item) return null;
+    // Deliberately giving something a date is you taking charge of it, so the
+    // rollover counter starts again — otherwise a task you just rescheduled
+    // would be flung into Unscheduled on the next run for a decision you made
+    // days ago.
+    const setsDate = Object.prototype.hasOwnProperty.call(patch, 'date')
+      && patch.date && patch.date !== item.date;
     Object.assign(item, patch, { updatedAt: nowISO() });
+    if (setsDate) { item.rollCount = 0; item.rolledFrom = null; }
     return item;
   }, { label: 'edit', ...opts });
 }
@@ -417,6 +428,9 @@ export function toggleDone(id) {
     item.done = !item.done;
     item.doneAt = item.done ? nowISO() : null;
     item.updatedAt = nowISO();
+    // Finishing it clears its rollover history — if it ever comes back, it
+    // starts with a clean slate rather than one chase from being banished.
+    if (item.done) { item.rollCount = 0; item.rolledFrom = null; }
     // A completed recurring task spawns its next occurrence rather than
     // vanishing, so the series survives being ticked off.
     if (item.done && item.recur) {
@@ -529,6 +543,10 @@ export function urgencyScore(item, today = todayKey()) {
     }
   } else {
     score += 15;                                 // undated: a quiet backlog
+    // Something that fell out of the calendar after being ignored twice sits
+    // at the top of that backlog. It has already been passed over more than
+    // anything else there.
+    if ((item.rollCount || 0) >= 2) score += 45;
   }
 
   score += (item.priority || 0) * 14;
@@ -538,6 +556,65 @@ export function urgencyScore(item, today = todayKey()) {
     if (open === 0) score += 8;                  // all steps done, just needs ticking
   }
   return score;
+}
+
+/**
+ * Carry unfinished work forward: overdue → today → Unscheduled.
+ *
+ * A task you did not get to yesterday appears on today. If you still do not
+ * action it, the next run drops it out of the calendar entirely and parks it at
+ * the top of Unscheduled — because a task you have now ignored twice is not
+ * really scheduled, and leaving it to rot on a past date just makes the
+ * calendar lie.
+ *
+ * This rewrites dates, and dated items sync to the real Google Calendar, so it
+ * is deliberately narrow about what it will touch. It skips:
+ *   - events — you do not reschedule a shift or an appointment by not doing it
+ *   - anything with a repeat rule of its own
+ *   - one occurrence of a repeating Google series (`seriesId`), where moving a
+ *     single instance would corrupt a genuinely recurring entry
+ *   - anything already done
+ *
+ * Returns what it changed so the caller can say so out loud. Silent mutation of
+ * someone's calendar is not acceptable, even when they asked for it.
+ */
+export function rollOverdueTasks({ today = todayKey() } = {}) {
+  const moved = [];
+  const unscheduled = [];
+
+  store.mutate((s) => {
+    for (const item of s.items) {
+      if (item.deleted || item.done) continue;
+      if (item.kind !== 'task') continue;
+      if (item.recur || item.seriesId) continue;
+      if (!item.date || item.date >= today) continue;
+
+      const rolls = item.rollCount || 0;
+      if (rolls === 0) {
+        // Record where it came from BEFORE overwriting the date.
+        item.rolledFrom = item.rolledFrom || item.date;
+        item.date = today;
+        item.rollCount = 1;
+        moved.push(item.title || 'Untitled');
+      } else {
+        // Chased once already and still untouched: stop pretending it has a day.
+        item.date = null;
+        item.time = null;
+        item.rollCount = 2;
+        unscheduled.push(item.title || 'Untitled');
+      }
+      item.updatedAt = nowISO();
+    }
+    s.settings.lastRolloverOn = today;
+  }, { label: 'rollover' });
+
+  return { moved, unscheduled, total: moved.length + unscheduled.length };
+}
+
+/** Has today's rollover already run? */
+export function rolloverDue(today = todayKey()) {
+  const cfg = settings();
+  return cfg.rollover !== false && cfg.lastRolloverOn !== today;
 }
 
 /** Sort a copy most-urgent first. */

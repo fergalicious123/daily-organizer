@@ -429,6 +429,10 @@ export function eventToItem(event) {
     // events we did not create — see the note in sync.js's push loop.
     tz: event.start?.timeZone || null,
     remoteTiming: { date, time, durationMin },
+    // Set when this is one occurrence of a repeating Google event. Rollover
+    // uses it as a hard stop: shifting a single instance of a recurring series
+    // would rewrite a real calendar entry that is meant to repeat.
+    seriesId: event.recurringEventId || null,
     done,
     doneAt: done ? (event.updated || new Date().toISOString()) : null,
     remindMin: reminder ? reminder.minutes : null,

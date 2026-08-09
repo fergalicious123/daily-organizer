@@ -13,6 +13,7 @@ import {
   todayKey, formatRelativeDay, formatTime, addDays, DAY_ABBR,
 } from '../dates.js';
 
+
 /* ------------------------------------------------------------------ */
 /* Checkbox                                                            */
 /* ------------------------------------------------------------------ */
@@ -46,6 +47,16 @@ function metaChips(item, { showDate = true, showList = true } = {}) {
       item.time ? formatTime(item.time, settings().hour12) : formatRelativeDay(item.date),
       item.time && item.date !== today ? ` · ${formatRelativeDay(item.date)}` : '',
     ));
+  }
+
+  // Say why something moved. A task that silently relocates itself overnight
+  // is indistinguishable from a bug.
+  if (item.rollCount >= 2) {
+    chips.push(el('span.chip.is-rolled', { title: 'Carried over twice, so it left the calendar' },
+      icon('undo', 'icon'), 'unactioned'));
+  } else if (item.rollCount === 1 && item.rolledFrom) {
+    chips.push(el('span.chip.is-rolled', { title: `Moved from ${formatRelativeDay(item.rolledFrom)}` },
+      icon('undo', 'icon'), 'carried over'));
   }
 
   if (item.recur) {
@@ -181,6 +192,8 @@ export function taskList(items, {
   // meaningful order — the day view is chronological, and shuffling a
   // timetable by urgency would make it unreadable.
   urgencyOrder = true,
+  // 'none' | 'list' | 'priority' | 'due'
+  groupBy = 'none',
   ...rowOpts
 } = {}) {
   const frag = document.createDocumentFragment();
@@ -209,6 +222,26 @@ export function taskList(items, {
   byUrgency(open, today).forEach((item, i) => ranked.set(item.id, i + 1));
   const withRank = (item) => ({ ...rowOpts, urgency: ranked.get(item.id) || 0 });
 
+  // Grouping replaces the default overdue/rest split — under "group by due"
+  // an Overdue heading would appear twice, and under the others the split
+  // fights the grouping the user actually asked for.
+  if (groupBy && groupBy !== 'none') {
+    const groups = groupItems(urgencyOrder ? byUrgency(open, today) : open, groupBy, today);
+    for (const [label, members] of groups) {
+      if (!members.length) continue;
+      frag.appendChild(el('div.task-group-label',
+        { class: label === 'Overdue' ? 'is-overdue' : '' },
+        label === 'Overdue' ? icon('warning', 'icon') : null,
+        `${label} · ${members.length}`));
+      for (const item of members) frag.appendChild(taskRow(item, withRank(item)));
+    }
+    if (groupDone && done.length) {
+      frag.appendChild(el('div.task-group-label', `Completed · ${done.length}`));
+      for (const item of done) frag.appendChild(taskRow(item, rowOpts));
+    }
+    return frag;
+  }
+
   const orderedOverdue = urgencyOrder ? byUrgency(overdue, today) : overdue;
   const orderedRest = urgencyOrder ? byUrgency(rest, today) : rest;
 
@@ -226,6 +259,53 @@ export function taskList(items, {
   }
 
   return frag;
+}
+
+/**
+ * Bucket items under headings.
+ *
+ * Returns an array of [label, items] rather than an object, because the order
+ * of the headings is itself meaningful — Overdue before Today before Later,
+ * High before Low — and object key order would not survive numeric-looking
+ * labels.
+ */
+function groupItems(items, groupBy, today) {
+  const buckets = new Map();
+  const put = (label, item) => {
+    if (!buckets.has(label)) buckets.set(label, []);
+    buckets.get(label).push(item);
+  };
+
+  if (groupBy === 'list') {
+    // Follow the sidebar's order so the two readings of "my lists" agree.
+    for (const list of store.state.lists) buckets.set(list.name, []);
+    for (const item of items) put(getList(item.listId)?.name || 'No list', item);
+    return [...buckets.entries()];
+  }
+
+  if (groupBy === 'priority') {
+    const order = ['High', 'Medium', 'Low', 'No priority'];
+    for (const label of order) buckets.set(label, []);
+    for (const item of items) {
+      put(['No priority', 'Low', 'Medium', 'High'][item.priority || 0], item);
+    }
+    return order.map((label) => [label, buckets.get(label) || []]);
+  }
+
+  // groupBy === 'due'
+  const order = ['Overdue', 'Today', 'Tomorrow', 'This week', 'Later', 'No date'];
+  for (const label of order) buckets.set(label, []);
+  const tomorrow = addDays(today, 1);
+  const weekOut = addDays(today, 7);
+  for (const item of items) {
+    if (!item.date) put('No date', item);
+    else if (item.date < today) put('Overdue', item);
+    else if (item.date === today) put('Today', item);
+    else if (item.date === tomorrow) put('Tomorrow', item);
+    else if (item.date <= weekOut) put('This week', item);
+    else put('Later', item);
+  }
+  return order.map((label) => [label, buckets.get(label) || []]);
 }
 
 /* ------------------------------------------------------------------ */

@@ -11,7 +11,7 @@ import {
   store, settings, updateSettings, addList, removeList, renameList,
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
-  completedItems,
+  completedItems, rollOverdueTasks, rolloverDue,
 } from './state.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
@@ -464,9 +464,25 @@ function tasksView() {
     onSelectDay: (dayKey) => navigate({ view: 'day', anchor: dayKey }),
   }));
 
+  // Group-by control. Only worth showing once there is enough here for
+  // grouping to organise anything.
+  if (items.length > 2) {
+    root.appendChild(el('div.group-bar',
+      el('span.group-bar-label', 'Group'),
+      el('div.segmented',
+        ...[['none', 'None'], ['due', 'Due'], ['priority', 'Priority'], ['list', 'List']]
+          .map(([value, label]) => el('button', {
+            class: (settings().groupBy || 'none') === value ? 'is-active' : '',
+            onclick: () => { updateSettings({ groupBy: value }); render(); },
+          }, label)),
+      ),
+    ));
+  }
+
   root.appendChild(taskList(items, {
     emptyMessage,
-    emptyHint: route.listId === 'overdue' ? '' : 'Type above, or use the microphone.',
+    emptyHint: route.listId === 'overdue' ? '' : 'Type above, or drag one onto a day.',
+    groupBy: settings().groupBy || 'none',
   }));
 
   return root;
@@ -831,6 +847,31 @@ function openSettings(focusSection = null) {
         staySwitch,
       ));
 
+      /* --- carry unfinished work forward --- */
+      const rollSwitch = el('div.switch', {
+        class: cfg.rollover !== false ? 'is-on' : '',
+        role: 'switch',
+        tabIndex: 0,
+        'aria-checked': String(cfg.rollover !== false),
+        onclick: (e) => {
+          const on = !e.currentTarget.classList.contains('is-on');
+          e.currentTarget.classList.toggle('is-on', on);
+          e.currentTarget.setAttribute('aria-checked', String(on));
+          updateSettings({ rollover: on });
+          toast(on ? 'Unfinished tasks will carry forward' : 'Tasks will stay on their date');
+        },
+      });
+      fields.push(el('div.switch-row',
+        el('div',
+          el('div.switch-label', 'Carry unfinished tasks forward'),
+          el('div.switch-desc',
+            'An overdue task moves to today. If it is still not done, it leaves the '
+            + 'calendar and goes to the top of Unscheduled. Events, repeating items and '
+            + 'occurrences of a recurring Google entry are never moved.'),
+        ),
+        rollSwitch,
+      ));
+
       /* --- Notifications --- */
       fields.push(el('div.section-label', { style: { padding: '0' } }, 'Notifications'));
       const notifStatus = el('p.field-hint', notifications.statusText());
@@ -1138,6 +1179,8 @@ function boot() {
     if (existing) existing.replaceWith(syncStatusButton());
   });
 
+  runRollover();
+
   installKeyboard();
   installSwipe();
   mountClockWidget();
@@ -1145,8 +1188,10 @@ function boot() {
 
   window.addEventListener('resize', debounceRender());
 
-  // Keep "today" honest if the app is left open across midnight.
+  // Keep "today" honest if the app is left open across midnight — and run the
+  // carry-over then too, rather than waiting for the next reload.
   setInterval(() => {
+    runRollover();
     if (route.view === 'day' && route.anchor !== todayKey()) return;
     render();
   }, 60_000);
@@ -1158,6 +1203,28 @@ function boot() {
 
   notifications.init();
   registerServiceWorker();
+}
+
+/**
+ * Carry unfinished work forward, once per day, and say what moved.
+ *
+ * Announced rather than silent: this shifts dates that sync to a real
+ * calendar, so it has to be visible and undoable in one click.
+ */
+function runRollover() {
+  if (!rolloverDue()) return;
+  const { moved, unscheduled, total } = rollOverdueTasks();
+  if (!total) return;
+
+  const parts = [];
+  if (moved.length) parts.push(`${moved.length} moved to today`);
+  if (unscheduled.length) parts.push(`${unscheduled.length} sent to Unscheduled`);
+
+  toast(`Carried over: ${parts.join(', ')}`, {
+    action: 'Undo',
+    onAction: () => { store.undo(); render(); },
+    duration: 9000,
+  });
 }
 
 function debounceRender() {
