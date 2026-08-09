@@ -11,7 +11,7 @@ You are creating a personal OAuth client so **your** copy of the app can talk to
 ## Before you start
 
 Have your GitHub Pages address ready if you have already deployed (it looks like
-`https://yourname.github.io`). If you have not deployed yet, do this setup with
+`https://fergalicious123.github.io`). If you have not deployed yet, do this setup with
 just the localhost origin and come back to add the live one later — step 5
 explains where.
 
@@ -65,13 +65,14 @@ what that means day to day.
    http://localhost:8000
    ```
    ```
-   https://YOURNAME.github.io
+   https://fergalicious123.github.io
    ```
 
-   Replace `YOURNAME` with your GitHub username. **Origins are scheme + host +
-   port only** — no path, no trailing slash. Even though your app lives at
-   `https://yourname.github.io/daily-organizer/`, the origin you register is
-   just `https://yourname.github.io`.
+   **Origins are scheme + host + port only** — no path, no trailing slash.
+   Even though the app lives at
+   `https://fergalicious123.github.io/daily-organizer/`, the origin you register
+   is just `https://fergalicious123.github.io`. Getting this wrong is the single
+   most common reason sign-in fails with "invalid_client".
 
 5. Leave **Authorized redirect URIs** empty. The app uses the token flow, which
    does not use redirects.
@@ -122,7 +123,7 @@ see the rest of your Drive.
 
 If you set this up before deploying, come back after:
 **Credentials** → click your OAuth client → **Add URI** under Authorized
-JavaScript origins → `https://YOURNAME.github.io` → **Save**.
+JavaScript origins → `https://fergalicious123.github.io` → **Save**.
 
 Changes can take a few minutes to take effect.
 

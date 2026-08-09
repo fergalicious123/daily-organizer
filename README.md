@@ -51,7 +51,7 @@ Create an empty repo on GitHub named `daily-organizer` (no README, no
 .gitignore), then:
 
 ```bash
-git remote add origin https://github.com/YOURNAME/daily-organizer.git
+git remote add origin https://github.com/fergalicious123/daily-organizer.git
 ```
 ```bash
 git push -u origin main
@@ -59,9 +59,9 @@ git push -u origin main
 
 On GitHub: **Settings** → **Pages** → Source: *Deploy from a branch* → Branch:
 `main`, folder `/ (root)` → **Save**. After a minute your app is live at
-`https://YOURNAME.github.io/daily-organizer/`.
+`https://fergalicious123.github.io/daily-organizer/`.
 
-Add `https://YOURNAME.github.io` to your OAuth client's authorized origins
+Add `https://fergalicious123.github.io` to your OAuth client's authorized origins
 (see SETUP-GOOGLE.md step 5).
 
 ### Install on Android
