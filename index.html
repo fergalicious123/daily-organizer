@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Daily organizer — calendar, todo lists, voice capture and Google Calendar sync.">
+<meta name="theme-color" content="#3d5ccc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14171c" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Organizer">
+<title>Daily Organizer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- Sidebar: navigation, mini month, progress. Becomes a drawer on phones. -->
+  <aside class="sidebar" id="sidebar" aria-label="Navigation"></aside>
+
+  <main class="main">
+    <header class="main-header" id="mainHeader"></header>
+    <div class="view-body" id="viewBody"></div>
+  </main>
+
+  <!-- Right rail: the todo list for whatever is currently selected. -->
+  <aside class="rail" id="rail" aria-label="Tasks"></aside>
+</div>
+
+<!-- Backdrop for the mobile drawers. -->
+<div class="scrim" id="scrim" hidden></div>
+
+<!-- Bottom tab bar, phones only. -->
+<nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
+
+<!-- Voice capture is switched off for now. To restore it, put back the mic
+     FAB and the voice panel here, and re-wire them in js/app.js — see the
+     note at the top of js/voice.js. -->
+
+
+<noscript>
+  <p style="padding:24px;font-family:system-ui">
+    This organizer needs JavaScript enabled.
+  </p>
+</noscript>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

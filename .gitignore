@@ -1,0 +1,12 @@
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+
+# Nothing else to ignore: this app has no build step and no dependencies.
+# Everything here is source, and every file is meant to be served.
