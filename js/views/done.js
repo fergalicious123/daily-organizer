@@ -11,7 +11,7 @@
 
 import { el, icon, toast, openModal } from '../ui.js';
 import {
-  store, completedItems, updateItem, toggleDone, getList, settings,
+  store, completedItems, updateItem, toggleDone, getList, settings, eventColorSlot,
 } from '../state.js';
 import { todayKey, addDays, formatDayLong, formatRelativeDay, formatTime } from '../dates.js';
 import { makeTouchDraggable } from '../dragdrop.js';
@@ -72,6 +72,11 @@ function doneRow(item, { onNavigate }) {
   const list = getList(item.listId);
 
   const row = el('div.done-row', {
+    // Keeps its true kind colour rather than going green like a finished row
+    // elsewhere. On this screen everything is finished, so a green dot on every
+    // line would say nothing; the colour that still carries information is the
+    // one that groups the fortnight's night shifts together.
+    class: `ev-${eventColorSlot(item.title) + 1}`,
     draggable: 'true',
     dataset: { id: item.id },
     ondragstart: (e) => {
@@ -119,7 +124,7 @@ function doneRow(item, { onNavigate }) {
     }, icon('check')),
 
     el('div.done-main',
-      el('div.done-row-title', item.title || 'Untitled'),
+      el('div.done-row-title', el('span.chip-dot.row-dot'), item.title || 'Untitled'),
       el('div.done-meta',
         item.doneAt
           ? el('span.chip', `done ${formatRelativeDay(item.doneAt.slice(0, 10))}`)

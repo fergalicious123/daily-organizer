@@ -443,7 +443,11 @@ export function dayView(dayKey, { onOpenItem } = {}) {
     allDay.appendChild(el('span.day-allday-label', 'All day'));
     for (const item of untimed) {
       allDay.appendChild(el('div.day-event', {
-        class: [item.done ? 'is-done' : '', item.kind === 'event' ? 'is-event' : ''].filter(Boolean).join(' '),
+        class: [
+          item.done ? 'is-done' : '',
+          item.kind === 'event' ? 'is-event' : '',
+          `ev-${eventColorSlot(item.title) + 1}`,
+        ].filter(Boolean).join(' '),
         draggable: 'true',
         onclick: () => (onOpenItem ? onOpenItem(item.id) : openItemEditor(item.id)),
         ondragstart: (e) => {

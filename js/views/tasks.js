@@ -107,11 +107,18 @@ export function taskRow(item, {
   showDate = true, showList = true, draggable = true, urgency = 0,
 } = {}) {
   const row = el('div.task', {
+    // Two colour channels, deliberately kept on different parts of the row.
+    //
     // `u-N` drives the left edge stripe: an ordinal ramp, darkest/brightest at
     // rank 1. Only unfinished tasks carry it — a finished row wants no shout.
+    //
+    // `ev-N` is the kind colour, the same slot the calendar uses, so a row and
+    // its chip on the month grid are recognisably the same thing. It sits on
+    // the row so both the dot and the background wash read from one `--ev`.
     class: [
       item.done ? 'is-done' : '',
       (!item.done && item.kind === 'task' && urgency) ? `u-${Math.min(urgency, 5)}` : '',
+      `ev-${eventColorSlot(item.title) + 1}`,
     ].filter(Boolean).join(' '),
     dataset: { id: item.id },
     draggable: draggable ? 'true' : null,
@@ -139,11 +146,11 @@ export function taskRow(item, {
     }),
     el('div.task-main',
       el('div.task-title',
-        // Only events carry the kind-colour dot. A task already has the
-        // urgency stripe, and two colour languages on one row read as noise.
-        item.kind === 'event'
-          ? el('span.chip-dot.row-dot', { class: `ev-${eventColorSlot(item.title) + 1}` })
-          : null,
+        // Every row carries the dot, task or event. Gating it on `kind` looked
+        // principled and was wrong in practice: imported shifts arrive as
+        // tasks, so the one thing that most needed a shared colour was the one
+        // thing that never got one.
+        el('span.chip-dot.row-dot'),
         item.title || 'Untitled'),
       (() => {
         const chips = metaChips(item, { showDate, showList });

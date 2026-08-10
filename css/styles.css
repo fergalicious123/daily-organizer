@@ -679,7 +679,6 @@ button {
    Clipped at the week boundary, with the cut end squared off so it reads as
    continuing rather than as a separate event. */
 .span-bar {
-  --ev: var(--accent);
   grid-row: 1;
   align-self: start;
   z-index: 3;
@@ -688,7 +687,7 @@ button {
   min-width: 0;
   padding: 0 8px;
   border-radius: 4px;
-  background: var(--ev);
+  background: var(--ev, var(--accent));
   color: #fff;
   font-size: 11.5px;
   font-weight: 600;
@@ -824,7 +823,6 @@ button {
    an orange or teal title on a white cell fails contrast, and the dot already
    carries the identity. */
 .month-chip {
-  --ev: var(--accent);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -833,7 +831,7 @@ button {
   height: var(--month-chip-h);
   padding: 2px 5px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--ev) 12%, transparent);
+  background: color-mix(in srgb, var(--ev, var(--accent)) 12%, transparent);
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -842,7 +840,8 @@ button {
 }
 .chip-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ev);
+  background: var(--ev, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--dot-ring, transparent);
   flex-shrink: 0;
 }
 .chip-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -851,7 +850,13 @@ button {
 .month-chip.is-done .chip-text { text-decoration: line-through; }
 .month-chip.is-done .chip-dot { background: var(--success); }
 
-/* One class per slot, set from the persisted title -> slot map. */
+/* One class per slot, set from the persisted title -> slot map.
+ *
+ * Nothing that consumes `--ev` may declare its own `--ev` default: a component
+ * selector like `.day-event` has the same specificity as `.ev-4`, so whichever
+ * sits later in this file wins. That silently painted the week view, the day
+ * grid and the Home card entirely in the accent colour for a while. Consumers
+ * write `var(--ev, var(--accent))` instead, which cannot collide. */
 .ev-1 { --ev: var(--ev-1); }
 .ev-2 { --ev: var(--ev-2); }
 .ev-3 { --ev: var(--ev-3); }
@@ -939,14 +944,13 @@ button {
 }
 
 .week-item {
-  --ev: var(--accent);
   display: flex;
   align-items: flex-start;
   gap: 6px;
   padding: 5px 7px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--ev) 13%, transparent);
-  border-left: 3px solid var(--ev);
+  background: color-mix(in srgb, var(--ev, var(--accent)) 13%, transparent);
+  border-left: 3px solid var(--ev, var(--accent));
   font-size: 12px;
   line-height: 1.35;
   cursor: pointer;
@@ -1094,9 +1098,8 @@ button {
 }
 
 .day-event {
-  --ev: var(--accent);
-  background: color-mix(in srgb, var(--ev) 15%, transparent);
-  border-left: 3px solid var(--ev);
+  background: color-mix(in srgb, var(--ev, var(--accent)) 15%, transparent);
+  border-left: 3px solid var(--ev, var(--accent));
   border-radius: 4px;
   padding: 5px 9px;
   font-size: 12.5px;
@@ -1188,6 +1191,13 @@ button {
   --ev-6: #c2185b;  /* pink    */
   --ev-7: #00639c;  /* blue    */
   --ev-8: #7b1fa2;  /* purple  */
+  /* Seven of the light hues clear 4.4:1 as a dot against the row they sit on;
+     orange manages only 2.65:1, and would still miss 3:1 on bare white, so the
+     wash is not what costs it — that orange is simply light. Rimming the disc
+     rather than darkening the hue fixes the one failure without disturbing a
+     palette whose slot order was chosen for colour-blind separation: the rim
+     reads 4.2:1 against the row, so the dot always has a defined edge. */
+  --dot-ring: rgb(0 0 0 / .25);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -1195,11 +1205,15 @@ button {
        as filled chips, where legibility beats band conformance. All clear 5.8:1. */
     --ev-1: #f07fa8; --ev-2: #e5993f; --ev-3: #7f8ff0; --ev-4: #5cb6e0;
     --ev-5: #e3796e; --ev-6: #93b84c; --ev-7: #4bbf9a; --ev-8: #c48fdd;
+    /* Light discs on a dark row already clear 5.9:1; a rim here would only
+       muddy a 7px dot. */
+    --dot-ring: transparent;
   }
 }
 :root[data-theme="dark"] {
   --ev-1: #f07fa8; --ev-2: #e5993f; --ev-3: #7f8ff0; --ev-4: #5cb6e0;
   --ev-5: #e3796e; --ev-6: #93b84c; --ev-7: #4bbf9a; --ev-8: #c48fdd;
+  --dot-ring: transparent;
 }
 
 /* Urgency ramp — an ORDINAL scale, so one hue with monotone lightness steps
@@ -1224,6 +1238,13 @@ button {
   --u1: #ff9b8c; --u2: #f4796a; --u3: #e05a4c; --u4: #c04739; --u5: #9c3a2f;
 }
 
+/* A row reads with the same two cues as a month chip: a dot in the kind
+   colour, and a wash of that same hue behind it. The wash is far lighter than
+   the chip's 12% because a chip is a label and a row is a whole band — at chip
+   strength a list of eight hues turns into stripes of wallpaper.
+
+   The left edge stays urgency's. Edge answers *when*, fill answers *what*, and
+   keeping them on separate parts of the row is what lets both be read at once. */
 .task {
   display: flex;
   align-items: flex-start;
@@ -1231,6 +1252,7 @@ button {
   padding: 8px 9px 8px 12px;
   border-radius: var(--radius-sm);
   border-left: 3px solid transparent;
+  background: color-mix(in srgb, var(--ev, var(--accent)) 7%, transparent);
   transition: background .1s var(--ease), border-color .15s var(--ease);
   position: relative;
   cursor: grab;
@@ -1251,10 +1273,16 @@ button {
   border-left-width: 4px;
 }
 .task.u-1:hover { background: color-mix(in srgb, var(--u1) 11%, transparent); }
-.task:hover { background: var(--surface-sunk); }
+/* Hover deepens the row's own hue rather than replacing it with a grey, so the
+   thing under the cursor does not change identity as you point at it. */
+.task:hover { background: color-mix(in srgb, var(--ev, var(--accent)) 12%, var(--surface-sunk)); }
 .task:hover .task-actions { opacity: 1; }
 .task.is-dragging { opacity: .4; cursor: grabbing; }
 .task.is-done .task-title { text-decoration: line-through; color: var(--text-faint); }
+/* Finished rows drop the wash and turn the dot green — the same swap the month
+   chips make, so "done" looks identical wherever you meet it. */
+.task.is-done { --ev: transparent; }
+.task.is-done .row-dot { background: var(--success); opacity: .65; }
 
 .checkbox {
   width: 17px; height: 17px;
@@ -1278,8 +1306,13 @@ button {
   font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere;
   display: flex; align-items: baseline; gap: 7px;
 }
-/* The kind-colour dot on an event row, matched to the calendar chips. */
+/* The kind-colour dot, matched to the calendar chips. */
 .row-dot { position: relative; top: -1px; }
+/* The list dot is a label's ornament, not the row's colour mark. Left at its
+   sidebar size it out-weighed the identity dot, and a row with two equal dots
+   meaning different things is a row you have to decode. */
+.task-meta .list-dot,
+.done-meta .list-dot { width: 6px; height: 6px; box-shadow: none; }
 .task-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px;
 }
@@ -1679,13 +1712,13 @@ button {
 }
 .home-focus:hover { border-color: var(--border-strong); }
 .home-focus:active { transform: translateY(1px); }
-.home-focus { --ev: var(--accent); border-left: 4px solid var(--ev); }
+.home-focus { border-left: 4px solid var(--ev, var(--accent)); }
 .home-focus.is-now {
-  border-color: var(--ev);
+  border-color: var(--ev, var(--accent));
   border-left-width: 4px;
-  background: color-mix(in srgb, var(--ev) 10%, transparent);
+  background: color-mix(in srgb, var(--ev, var(--accent)) 10%, transparent);
 }
-.home-focus.is-now .home-focus-caption { color: var(--ev); }
+.home-focus.is-now .home-focus-caption { color: var(--ev, var(--accent)); }
 .home-focus.is-clear { cursor: default; background: var(--surface-2); }
 .home-focus.is-clear:hover { border-color: var(--border); }
 
@@ -1766,10 +1799,11 @@ button {
   padding: 10px 11px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
+  background: color-mix(in srgb, var(--ev, var(--accent)) 6%, transparent);
   cursor: grab;
   transition: background .1s var(--ease), border-color .1s var(--ease);
 }
-.done-row:hover { background: var(--surface-sunk); border-color: var(--border); }
+.done-row:hover { background: color-mix(in srgb, var(--ev, var(--accent)) 12%, var(--surface-sunk)); border-color: var(--border); }
 .done-row:hover .done-actions { opacity: 1; }
 .done-row.is-dragging { opacity: .4; cursor: grabbing; }
 
@@ -1789,6 +1823,7 @@ button {
   color: var(--text-muted);
   text-decoration: line-through;
   overflow-wrap: anywhere;
+  display: flex; align-items: baseline; gap: 7px;
 }
 .done-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 
