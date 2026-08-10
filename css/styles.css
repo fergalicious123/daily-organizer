@@ -1808,6 +1808,115 @@ button {
 /* Completed view                                                      */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Diary                                                               */
+/* ------------------------------------------------------------------ */
+
+.journal-view { padding: 20px 24px 28px; max-width: 780px; }
+.journal-head { margin-bottom: 14px; }
+.journal-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.journal-sub { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); }
+
+.journal-entry {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+/* Today leads and is the only one open for writing, so it earns the accent. */
+.journal-entry.is-today { border-color: var(--accent); }
+
+.journal-entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 9px;
+  text-align: left;
+  color: var(--text);
+}
+button.journal-entry-head { cursor: pointer; }
+button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
+.journal-entry-day {
+  display: block;
+  font-size: 14px; font-weight: 650;
+  transition: color .12s var(--ease);
+}
+.journal-entry-date {
+  display: block;
+  font-size: 11.5px; color: var(--text-faint);
+  font-family: var(--font-num);
+}
+.journal-entry-text {
+  margin: 0;
+  font-size: 13.5px; line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.journal-entry-empty {
+  margin: 0;
+  font-size: 12.5px; color: var(--text-faint); font-style: italic;
+}
+
+.journal-text {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunk);
+  color: var(--text);
+}
+.journal-text:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.journal-tools {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 7px;
+  font-size: 11.5px; color: var(--text-faint);
+}
+.journal-mic .icon { width: 14px; height: 14px; }
+/* Recording is a state you must not be able to miss — leaving a phone
+   listening by accident is worse than any styling concern. */
+.journal-mic.is-live {
+  background: var(--danger-soft);
+  color: var(--danger);
+  animation: journal-pulse 1.4s ease-in-out infinite;
+}
+@keyframes journal-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) {
+  .journal-mic.is-live { animation: none; }
+}
+.journal-status { color: var(--danger); font-weight: 600; }
+.journal-saved { margin-left: auto; font-family: var(--font-num); }
+
+.journal-done { margin-top: 11px; }
+.journal-done-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--success);
+  margin-bottom: 5px;
+}
+.journal-done-head .icon { width: 13px; height: 13px; }
+.journal-done-list {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.journal-done-list li {
+  display: flex; gap: 7px;
+  font-size: 12.5px; color: var(--text-muted);
+}
+.journal-done-time {
+  font-family: var(--font-num); font-size: 11px; color: var(--text-faint);
+  flex-shrink: 0; min-width: 42px;
+}
+
+.day-journal { margin-top: 14px; }
+
 .done-view { padding: 20px 24px 28px; max-width: 780px; }
 .done-head { margin-bottom: 6px; }
 .done-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }

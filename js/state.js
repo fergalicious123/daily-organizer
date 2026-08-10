@@ -73,6 +73,10 @@ function defaultState() {
     items: [],
     // normalised event title -> colour slot. See eventColorSlot().
     eventColors: {},
+    // dateKey -> { text, updatedAt }. One entry a day, written after the fact.
+    // Keyed by day rather than held as a list so a phone and a laptop editing
+    // different days never collide, and the same day merges last-write-wins.
+    journal: {},
     lists: DEFAULT_LISTS.map((l) => ({ ...l, updatedAt: nowISO() })),
     settings: {
       theme: 'auto',
@@ -822,6 +826,47 @@ export function completionHistory(days = 7) {
     out.push({ date: key, count });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Journal                                                             */
+/* ------------------------------------------------------------------ */
+
+/** What was written for a day, or null. */
+export function journalFor(dateKey) {
+  const entry = store.state.journal?.[dateKey];
+  return entry && entry.text ? entry : null;
+}
+
+/**
+ * Write (or clear) a day's entry.
+ *
+ * Empty text deletes the key rather than storing a blank, so an entry the user
+ * emptied stops appearing in the diary and stops travelling to Drive.
+ */
+export function setJournal(dateKey, text) {
+  const clean = String(text ?? '').trim();
+  return store.mutate((s) => {
+    if (!s.journal) s.journal = {};
+    if (clean) s.journal[dateKey] = { text: clean, updatedAt: nowISO() };
+    else delete s.journal[dateKey];
+  }, { label: 'journal' });
+}
+
+/** Every written day, newest first. */
+export function journalEntries() {
+  const journal = store.state.journal || {};
+  return Object.entries(journal)
+    .filter(([, e]) => e && e.text)
+    .map(([date, e]) => ({ date, ...e }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/** What was ticked off on a given day — the diary's other half. */
+export function completedOn(dateKey) {
+  return liveItems()
+    .filter((i) => i.doneAt && i.doneAt.slice(0, 10) === dateKey)
+    .sort((a, b) => (a.doneAt || '').localeCompare(b.doneAt || ''));
 }
 
 /** Consecutive days up to today with at least one completed task. */

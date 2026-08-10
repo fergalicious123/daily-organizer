@@ -108,6 +108,7 @@ const ICONS = {
   drag: '<circle cx="9.25" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="18" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="18" r="1.35" fill="currentColor" stroke="none"/>',
   warning: '<path d="M10.6 4.1 2.85 17.6A1.6 1.6 0 0 0 4.24 20h15.52a1.6 1.6 0 0 0 1.39-2.4L13.4 4.1a1.6 1.6 0 0 0-2.8 0Z"/><path d="M12 9.5v4.25M12 17.35h.01"/>',
   mic: '<rect x="9.25" y="2.75" width="5.5" height="11" rx="2.75"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v3.75M8.75 21.25h6.5"/>',
+  book: '<path d="M4.25 4.5a1.5 1.5 0 0 1 1.5-1.5H17.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 0-1.5-1.5H5.75a1.5 1.5 0 0 1-1.5-1.5Z"/><path d="M19 18v3H5.75a1.5 1.5 0 0 1-1.5-1.5"/><path d="M8 7.5h7M8 11h7"/>',
 };
 
 export function icon(name, cls = 'icon') {

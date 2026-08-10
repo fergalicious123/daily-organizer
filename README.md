@@ -170,6 +170,59 @@ they appear here on the next sync (on app focus, or within five minutes).
 Ask for things like *"put a dentist appointment in my calendar for Tuesday at
 2pm"* and it lands in the organizer too.
 
+### Sending something to Unscheduled
+
+Not everything has a day. Anything on the calendar tagged **`#unscheduled`**
+arrives here as an undated task in Unscheduled, rather than pinning itself to
+whichever day it happened to be written on.
+
+The tag is read from the event's **title or its description**, so every route
+in works:
+
+| From | What to do |
+|---|---|
+| Claude chat | *"add 'book the MOT' to my unscheduled"* — Claude writes the tag for you |
+| Google Calendar app | Put `#unscheduled` anywhere in the title or description |
+| Google Assistant | *"Hey Google, create an event called book the MOT hashtag unscheduled"* |
+
+The tag is stripped, so the task is named *Book the MOT*, not *Book the MOT
+#unscheduled*. Anything else you wrote in the description becomes the task's
+notes.
+
+While it sits in Unscheduled the app never writes back to that calendar entry.
+Drag it onto a day and it becomes a normal two-way item — and the push clears
+the tag from Google, so it cannot bounce back to Unscheduled afterwards.
+
+`#unscheduledmaintenance` and the like are left alone; the tag has to be a
+whole word.
+
+---
+
+## The diary
+
+**Diary** in the sidebar. One entry a day, in your own words, next to the list
+of what you actually finished that day — the written note without the list
+forgets what happened, and the list without the note is just a tally.
+
+- Write it in the Diary, or in **Notes on this day** in any day view. Both
+  edit the same entry.
+- **Dictate** speaks it instead of typing. Dictation keeps listening through
+  pauses and appends to whatever is already there, so you can talk through a
+  day in pieces.
+- Entries save when you click away, sync through Drive like everything else,
+  and merge per day — writing tonight's entry on your phone never collides
+  with an older one edited on the laptop.
+
+Days you wrote nothing but finished something still appear, because those are
+the ones worth writing up.
+
+**On summarising a transcript with AI:** that has to happen in the Claude chat,
+not in the app. This is a static site with no server, so an API key placed in
+it would be readable by anyone who opened the page. Claude can already read
+your `organizer-data.json` from Drive, so ask it to read a stretch of diary
+entries and summarise or draw out patterns; paste its reply back into the day's
+entry if you want to keep it.
+
 ---
 
 ## How your data is stored

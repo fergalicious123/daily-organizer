@@ -22,6 +22,7 @@ import {
   monthView, weekView, dayView, fitMonthChips, makeDropTarget, dayStrip,
 } from './views/calendar.js';
 import { doneView } from './views/done.js';
+import { journalView } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { homeView } from './views/home.js';
 import { taskList, quickAdd, openItemEditor, confirmDeleteList } from './views/tasks.js';
@@ -39,7 +40,7 @@ import { notifications } from './notify.js';
 /* ------------------------------------------------------------------ */
 
 const route = {
-  view: 'home',         // home | month | week | day | tasks | stats
+  view: 'home',         // home | month | week | day | tasks | done | journal | stats
   anchor: todayKey(),   // the date the view is centred on
   listId: null,         // when view === 'tasks'
 };
@@ -115,6 +116,8 @@ function renderSidebar() {
       () => navigate({ view: 'tasks', listId: 'overdue' }), true) : null,
     navItem('check', 'Completed', completedItems().length, route.view === 'done',
       () => navigate({ view: 'done' })),
+    navItem('book', 'Diary', null, route.view === 'journal',
+      () => navigate({ view: 'journal' })),
     navItem('chart', 'Progress', null, route.view === 'stats',
       () => navigate({ view: 'stats' })),
   ));
@@ -346,6 +349,11 @@ function breadcrumb() {
     return crumbs;
   }
 
+  if (route.view === 'journal') {
+    crumbs.appendChild(el('span.crumb.is-current', 'Diary'));
+    return crumbs;
+  }
+
   if (route.view === 'stats') {
     crumbs.appendChild(el('span.crumb.is-current', 'Progress'));
     return crumbs;
@@ -423,6 +431,8 @@ function renderBody() {
     bodyEl.appendChild(tasksView());
   } else if (route.view === 'done') {
     bodyEl.appendChild(doneView({ onNavigate: navigate }));
+  } else if (route.view === 'journal') {
+    bodyEl.appendChild(journalView({ onNavigate: navigate }));
   } else if (route.view === 'stats') {
     bodyEl.appendChild(statsView());
   }

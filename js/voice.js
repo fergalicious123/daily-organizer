@@ -47,7 +47,13 @@ class VoiceCapture {
     this.listening = false;
   }
 
-  start({ onInterim, onFinal, onError, onEnd }) {
+  /**
+   * `continuous` keeps listening through pauses. Off for commands, where one
+   * sentence is the whole input and stopping at the pause is the cue that it
+   * was heard. On for dictating a day's reflection, which is full of pauses
+   * and would otherwise cut off mid-thought.
+   */
+  start({ onInterim, onFinal, onError, onEnd, continuous = false }) {
     if (!SpeechRecognition) {
       onError?.('This browser cannot listen. Type it instead — the parsing is identical.');
       return false;
@@ -57,7 +63,7 @@ class VoiceCapture {
     const rec = new SpeechRecognition();
     rec.lang = navigator.language || 'en-GB';
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = continuous;
     rec.maxAlternatives = 1;
 
     let finalText = '';

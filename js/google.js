@@ -440,14 +440,32 @@ export function eventToItem(event) {
     }
   }
 
-  const rawTitle = event.summary || 'Untitled';
+  let rawTitle = event.summary || 'Untitled';
+
+  // The chat inbox. Anything on the calendar tagged #unscheduled is not really
+  // a calendar entry — it is a note-to-self that needed somewhere to land, so
+  // it arrives here as an undated task instead of pinning itself to whatever
+  // day it was dictated on.
+  //
+  // Read from the title as well as the description because that is the only
+  // field a voice assistant can reliably set, and stripped from the title so
+  // the tag does not become part of the task's name.
+  const inbox = INBOX_TAG.test(rawTitle) || INBOX_TAG.test(event.description || '');
+  if (inbox) {
+    rawTitle = rawTitle.replace(INBOX_TAG, ' ').replace(/\s+/g, ' ').trim() || 'Untitled';
+    date = null;
+    endDate = null;
+    time = null;
+    durationMin = null;
+  }
+
   const done = rawTitle.startsWith('✓ ');
 
   const reminder = event.reminders?.overrides?.find((r) => r.method === 'popup');
 
   return {
     title: done ? rawTitle.slice(2) : rawTitle,
-    notes: stripMarker(event.description || ''),
+    notes: stripMarker(event.description || '').replace(INBOX_TAG, ' ').replace(/[ \t]+/g, ' ').trim(),
     date,
     endDate,
     time,
@@ -465,7 +483,8 @@ export function eventToItem(event) {
     doneAt: done ? (event.updated || new Date().toISOString()) : null,
     remindMin: reminder ? reminder.minutes : null,
     gcalId: event.id,
-    kind: inferKind(event),
+    // An undated event is a contradiction; anything from the inbox is a task.
+    kind: inbox ? 'task' : inferKind(event),
     deleted: event.status === 'cancelled',
     updatedAt: event.updated || new Date().toISOString(),
   };
@@ -473,6 +492,17 @@ export function eventToItem(event) {
 
 /** Events this app wrote carry a marker, so we can tell ours from theirs. */
 const MARKER = '\n\n[daily-organizer]';
+
+/**
+ * The tag that turns a calendar entry into an undated task — the way to get
+ * something into Unscheduled from outside the app, whether that is Claude
+ * writing to the calendar, the Google Calendar app, or a voice assistant.
+ *
+ * Word-boundaried so a task genuinely about "#unscheduledmaintenance" is left
+ * alone, and case-insensitive because nothing dictating this will capitalise
+ * consistently.
+ */
+const INBOX_TAG = /#unscheduled\b/i;
 
 function buildDescription(item) {
   const parts = [];

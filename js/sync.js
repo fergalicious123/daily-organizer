@@ -525,10 +525,31 @@ export function mergeDocuments(local, remote) {
     if (!theirs || newer(list.updatedAt, theirs.updatedAt)) lists.set(list.id, list);
   }
 
+  // Journal entries, keyed by day, newest write wins. Spreading `...local`
+  // below would otherwise hand the local object straight back and quietly
+  // strand every entry written on the other device.
+  const journal = { ...(remote.journal || {}) };
+  for (const [day, mine] of Object.entries(local.journal || {})) {
+    const theirs = journal[day];
+    if (!theirs || newer(mine.updatedAt, theirs.updatedAt)) {
+      journal[day] = mine;
+      if (theirs || !remote.journal) changedRemote = true;
+    } else {
+      changedLocal = true;
+    }
+  }
+  for (const day of Object.keys(remote.journal || {})) {
+    if (!(day in (local.journal || {}))) changedLocal = true;
+  }
+  for (const day of Object.keys(local.journal || {})) {
+    if (!(day in (remote.journal || {}))) changedRemote = true;
+  }
+
   return {
     document: {
       ...local,
       items: [...merged.values()],
+      journal,
       lists: [...lists.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       inboxListId: local.inboxListId || remote.inboxListId,
       // A Drive copy written before lists had stable ids still holds the old

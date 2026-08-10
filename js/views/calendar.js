@@ -16,6 +16,7 @@ import {
 } from '../state.js';
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
+import { journalEditor } from './journal.js';
 import { registerDropZone, makeTouchDraggable } from '../dragdrop.js';
 import { progressRing } from '../chart.js';
 import { parseCommand } from '../voice.js';
@@ -588,6 +589,14 @@ export function dayView(dayKey, { onOpenItem } = {}) {
         }),
       );
     })(),
+
+    // The day's entry, written where the day already is. The Diary view
+    // collects these; this is where they get written, because reflecting on a
+    // day means having that day's list in front of you.
+    el('div.day-journal',
+      el('div.task-group-label', 'Notes on this day'),
+      journalEditor(dayKey, { compact: true }),
+    ),
   );
   root.appendChild(side);
 
