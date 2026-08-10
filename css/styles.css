@@ -940,53 +940,90 @@ button {
 }
 .day-allday:empty { display: none; }
 
-.hour-row {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  border-bottom: 1px solid var(--border);
-  min-height: 52px;
+/* Time grid. Events are absolutely positioned by start minute and sized by
+   duration, so an hour of screen is an hour of day. */
+.day-grid {
   position: relative;
+  margin: 0;
 }
-.hour-row:last-child { border-bottom: none; }
+
+.hour-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 1px solid var(--border);
+  padding-left: 58px;
+  transition: background .1s var(--ease);
+}
+.hour-line.is-past { background: color-mix(in srgb, var(--surface-sunk) 40%, transparent); }
+.hour-line.is-drop-target {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
 .hour-label {
+  position: absolute;
+  left: 0; top: -7px;
+  width: 50px;
+  text-align: right;
   font-family: var(--font-num);
   font-size: 10.5px;
   color: var(--text-faint);
-  text-align: right;
-  padding: 5px 9px 0 0;
-  border-right: 1px solid var(--border);
   user-select: none;
+  background: var(--surface);
+  padding-right: 2px;
 }
-.hour-slot {
-  padding: 3px 8px 3px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  transition: background .1s var(--ease);
-}
-.hour-row.is-past .hour-label { opacity: .5; }
-.hour-row.is-past .hour-slot { background: color-mix(in srgb, var(--surface-sunk) 45%, transparent); }
-.hour-slot.is-drop-target { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
-.hour-slot:hover .hour-add { opacity: 1; }
+.hour-line:first-child .hour-label { top: 1px; }
 .hour-add {
+  position: absolute;
+  right: 6px; top: 4px;
   opacity: 0;
-  font-size: 11px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
   color: var(--text-faint);
-  text-align: left;
-  padding: 3px 6px;
-  border-radius: 4px;
+  font-size: 15px;
+  line-height: 1;
+  display: grid; place-items: center;
   transition: opacity .12s var(--ease), background .12s var(--ease);
-  align-self: flex-start;
 }
-.hour-add:hover { background: var(--surface-sunk); color: var(--accent); }
+.hour-line:hover .hour-add { opacity: 1; }
+.hour-add:hover { background: var(--accent); color: var(--accent-text); }
+
+/* A positioned block rather than a row in a list. */
+.day-block {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  border-radius: 5px;
+  padding: 4px 7px;
+  box-shadow: 0 1px 2px rgba(16, 20, 28, .08);
+}
+.day-block .day-event-title {
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.day-block .day-event-meta { font-size: 10.5px; }
+/* Under 45 minutes there is only room for one line. */
+.day-block.is-compact {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 7px;
+}
+.day-block.is-compact .day-event-title { -webkit-line-clamp: 1; }
 
 /* The "you are here" line. */
 .now-line {
   position: absolute;
-  left: 56px; right: 0;
+  left: 52px; right: 0;
   height: 0;
   border-top: 2px solid var(--danger);
-  z-index: 2;
+  z-index: 5;
   pointer-events: none;
 }
 .now-line::before {
@@ -1177,7 +1214,12 @@ button {
 .checkbox.p-1 { border-color: var(--p-low); }
 
 .task-main { flex: 1; min-width: 0; }
-.task-title { font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.task-title {
+  font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere;
+  display: flex; align-items: baseline; gap: 7px;
+}
+/* The kind-colour dot on an event row, matched to the calendar chips. */
+.row-dot { position: relative; top: -1px; }
 .task-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px;
 }
@@ -1577,7 +1619,13 @@ button {
 }
 .home-focus:hover { border-color: var(--border-strong); }
 .home-focus:active { transform: translateY(1px); }
-.home-focus.is-now { border-color: var(--accent); background: var(--accent-soft); }
+.home-focus { --ev: var(--accent); border-left: 4px solid var(--ev); }
+.home-focus.is-now {
+  border-color: var(--ev);
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--ev) 10%, transparent);
+}
+.home-focus.is-now .home-focus-caption { color: var(--ev); }
 .home-focus.is-clear { cursor: default; background: var(--surface-2); }
 .home-focus.is-clear:hover { border-color: var(--border); }
 

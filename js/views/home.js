@@ -11,7 +11,7 @@
 import { el, icon } from '../ui.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
-  currentStreak, completionHistory, settings,
+  currentStreak, completionHistory, settings, eventColorSlot,
 } from '../state.js';
 import {
   todayKey, formatDayLong, formatTime, timeToMinutes, addDays, formatRelativeDay,
@@ -84,7 +84,9 @@ export function homeView({ onNavigate }) {
       : state === 'next' ? 'Up next'
       : `Tomorrow · ${formatRelativeDay(item.date)}`;
     root.appendChild(el('button.home-focus', {
-      class: state === 'now' ? 'is-now' : '',
+      // Tinted with the event's own colour, so the thing you are about to do
+      // is recognisable here by the same cue as on the calendar.
+      class: [state === 'now' ? 'is-now' : '', `ev-${eventColorSlot(item.title) + 1}`].filter(Boolean).join(' '),
       onclick: () => onNavigate({ view: 'day', anchor: item.date }),
     },
       el('span.home-focus-caption', icon('clock', 'icon'), caption),

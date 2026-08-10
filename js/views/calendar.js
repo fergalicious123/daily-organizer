@@ -28,6 +28,55 @@ import { parseCommand } from '../voice.js';
  * assumes, a chip disappears cleanly instead of being cut in half. */
 const MAX_CHIPS = 2;
 
+/** Pixels per hour in the day grid. Sets how tall an hour reads. */
+const HOUR_H = 54;
+
+/**
+ * Place timed events into side-by-side lanes so overlaps stay readable.
+ *
+ * Events are grouped into clusters of mutually-overlapping items, and within a
+ * cluster each takes the first lane whose previous occupant has already
+ * finished. The lane count is per cluster, not per day — so one busy hour does
+ * not squeeze every other event on the day into a narrow column.
+ */
+export function layoutDayEvents(items, defaultDurationMin = 60) {
+  const events = items
+    .filter((i) => i.time)
+    .map((item) => {
+      const start = timeToMinutes(item.time);
+      const length = Math.max(item.durationMin || defaultDurationMin, 15);
+      return { item, start, end: start + length, lane: 0, lanes: 1 };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  let cluster = [];
+  let clusterEnd = -1;
+
+  const closeCluster = () => {
+    if (!cluster.length) return;
+    const laneEnds = [];
+    for (const e of cluster) {
+      let lane = laneEnds.findIndex((end) => end <= e.start);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(e.end); }
+      else laneEnds[lane] = e.end;
+      e.lane = lane;
+    }
+    for (const e of cluster) e.lanes = laneEnds.length;
+    cluster = [];
+    clusterEnd = -1;
+  };
+
+  for (const e of events) {
+    // A gap with nothing spanning it ends the cluster.
+    if (cluster.length && e.start >= clusterEnd) closeCluster();
+    cluster.push(e);
+    clusterEnd = Math.max(clusterEnd, e.end);
+  }
+  closeCluster();
+
+  return events;
+}
+
 /* ------------------------------------------------------------------ */
 /* Month                                                               */
 /* ------------------------------------------------------------------ */
@@ -330,47 +379,60 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   }
   gridWrap.appendChild(allDay);
 
-  // Hour rows.
+  /* A real time grid: events are positioned by their start minute and sized by
+     their duration, the way a calendar is supposed to read. Previously
+     everything sat inside its start hour at a uniform height, so three
+     90-minute events crowded the 9pm band while 10pm looked free. */
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const gridStart = first * 60;
+  const gridMinutes = (last - first + 1) * 60;
+  const grid = el('div.day-grid', {
+    style: { height: `${(gridMinutes / 60) * HOUR_H}px` },
+  });
+
+  // Hour lines and per-hour drop targets, behind the events.
   for (let h = first; h <= last; h++) {
-    const row = el('div.hour-row', {
-      class: (isToday(dayKey) && h * 60 + 59 < nowMinutes) ? 'is-past' : '',
-    });
-    row.appendChild(el('div.hour-label', formatHourLabel(h, cfg.hour12)));
-
-    const slot = el('div.hour-slot');
     const time = `${String(h).padStart(2, '0')}:00`;
-    makeDropTarget(slot, dayKey, time);
-
-    for (const item of timed.filter((i) => Math.floor(timeToMinutes(i.time) / 60) === h)) {
-      slot.appendChild(dayEventNode(item, onOpenItem));
-    }
-
-    slot.appendChild(el('button.hour-add', {
-      'aria-label': `Add something at ${formatHourLabel(h, cfg.hour12)}`,
-      onclick: () => openItemEditor(null, { date: dayKey, time }),
-    }, '+ add'));
-
-    row.appendChild(slot);
-    gridWrap.appendChild(row);
+    const line = el('div.hour-line', {
+      class: (isToday(dayKey) && h * 60 + 59 < nowMinutes) ? 'is-past' : '',
+      style: { top: `${((h * 60 - gridStart) / 60) * HOUR_H}px`, height: `${HOUR_H}px` },
+    },
+      el('span.hour-label', formatHourLabel(h, cfg.hour12)),
+      el('button.hour-add', {
+        'aria-label': `Add something at ${formatHourLabel(h, cfg.hour12)}`,
+        onclick: () => openItemEditor(null, { date: dayKey, time }),
+      }, '+'),
+    );
+    makeDropTarget(line, dayKey, time);
+    grid.appendChild(line);
   }
 
-  // "You are here" line, positioned within its hour row.
-  if (isToday(dayKey)) {
-    const nowHour = Math.floor(nowMinutes / 60);
-    if (nowHour >= first && nowHour <= last) {
-      const rows = gridWrap.querySelectorAll('.hour-row');
-      const target = rows[nowHour - first];
-      if (target) {
-        target.style.position = 'relative';
-        const pct = (nowMinutes % 60) / 60 * 100;
-        target.appendChild(el('div.now-line', {
-          style: { top: `${pct}%`, left: '56px' },
-          'aria-hidden': 'true',
-        }));
-      }
-    }
+  // Events, laid out in lanes so overlaps sit side by side rather than on top
+  // of one another.
+  const laid = layoutDayEvents(timed, cfg.defaultDurationMin);
+  for (const slot of laid) {
+    const node = dayEventNode(slot.item, onOpenItem);
+    const width = 100 / slot.lanes;
+    node.classList.add('day-block');
+    Object.assign(node.style, {
+      top: `${((slot.start - gridStart) / 60) * HOUR_H}px`,
+      height: `${Math.max((slot.end - slot.start) / 60 * HOUR_H - 2, 20)}px`,
+      left: `calc(${slot.lane * width}% + 2px)`,
+      width: `calc(${width}% - 4px)`,
+    });
+    // Very short blocks cannot fit two lines of text.
+    if ((slot.end - slot.start) < 45) node.classList.add('is-compact');
+    grid.appendChild(node);
   }
+
+  if (isToday(dayKey) && nowMinutes >= gridStart && nowMinutes <= gridStart + gridMinutes) {
+    grid.appendChild(el('div.now-line', {
+      style: { top: `${((nowMinutes - gridStart) / 60) * HOUR_H}px` },
+      'aria-hidden': 'true',
+    }));
+  }
+
+  gridWrap.appendChild(grid);
 
   root.appendChild(gridWrap);
 

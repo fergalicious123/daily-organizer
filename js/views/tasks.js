@@ -7,7 +7,7 @@ import { makeTouchDraggable } from '../dragdrop.js';
 import {
   store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
   toggleDone, toggleSubtask, addSubtask, removeSubtask, settings, liveItems,
-  byUrgency,
+  byUrgency, eventColorSlot,
 } from '../state.js';
 import {
   todayKey, formatRelativeDay, formatTime, addDays, DAY_ABBR,
@@ -138,7 +138,13 @@ export function taskRow(item, {
       if (!item.done) haptic();
     }),
     el('div.task-main',
-      el('div.task-title', item.title || 'Untitled'),
+      el('div.task-title',
+        // Only events carry the kind-colour dot. A task already has the
+        // urgency stripe, and two colour languages on one row read as noise.
+        item.kind === 'event'
+          ? el('span.chip-dot.row-dot', { class: `ev-${eventColorSlot(item.title) + 1}` })
+          : null,
+        item.title || 'Untitled'),
       (() => {
         const chips = metaChips(item, { showDate, showList });
         return chips.length ? el('div.task-meta', chips) : null;
