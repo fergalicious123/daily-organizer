@@ -850,6 +850,10 @@ button {
 .month-chip.is-done .chip-text { text-decoration: line-through; }
 .month-chip.is-done .chip-dot { background: var(--success); }
 
+/* Phone-only stand-in for the chips; the media query turns it on. */
+.month-dots { display: none; }
+.month-dots .chip-dot.is-done { background: var(--success); opacity: .5; }
+
 /* One class per slot, set from the persisted title -> slot map.
  *
  * Nothing that consumes `--ev` may declare its own `--ev` default: a component
@@ -2152,6 +2156,17 @@ button {
   }
   .month-chip { display: none; }
   .month-more { display: none; }
+  /* The colour the hidden chips used to carry, in the only form that fits. */
+  .month-dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-start;
+    gap: 3px;
+    padding: 0 2px;
+    margin-top: 2px;
+    overflow: hidden;
+  }
 
   /* Week becomes a vertical stack of day cards — columns are unreadable here. */
   .week {

@@ -28,6 +28,10 @@ import { parseCommand } from '../voice.js';
  * assumes, a chip disappears cleanly instead of being cut in half. */
 const MAX_CHIPS = 2;
 
+/** Colour dots per cell on a phone. Two rows of four is all a 45px cell holds
+ *  before the dots shrink past the point of telling colours apart. */
+const MAX_DOTS = 8;
+
 /** Pixels per hour in the day grid. Sets how tall an hour reads. */
 const HOUR_H = 54;
 
@@ -263,6 +267,26 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
 
   if (items.length > MAX_CHIPS) {
     cell.appendChild(el('div.month-more', `+${items.length - MAX_CHIPS} more`));
+  }
+
+  // A phone hides the chips — a 45px cell cannot show a legible label — which
+  // also took away every trace of colour. These dots put the colour back
+  // without pretending to be readable text. They do NOT bring back the old
+  // dots-instead-of-a-count: the count still answers "how many", and these
+  // answer "what kind", which is the question the chips used to answer.
+  // Hidden on desktop, where the chips say it better. Decorative, so the
+  // screen reader keeps using the cell's own label.
+  if (items.length) {
+    const dots = el('div.month-dots', { 'aria-hidden': 'true' });
+    for (const item of items.slice(0, MAX_DOTS)) {
+      dots.appendChild(el('span.chip-dot', {
+        class: [
+          `ev-${eventColorSlot(item.title) + 1}`,
+          item.done ? 'is-done' : '',
+        ].filter(Boolean).join(' '),
+      }));
+    }
+    cell.appendChild(dots);
   }
 
   return cell;
