@@ -222,6 +222,70 @@ whole word.
 
 ---
 
+## Your rota on the calendar
+
+Days you are working are coloured across the **whole month cell**, so a
+four-on block reads as a block rather than as four chips you have to decode.
+
+| Shift | Colour | Recognised from |
+|---|---|---|
+| Nights | deep indigo | `night`, `nights`, `(N)` |
+| Days | warm amber | `day`, `days`, `(D)` |
+| On call | violet | `on call`, `on-call`, `(OC)` |
+| Off | green | `off`, `rest`, `rest day` |
+| Something else | grey | anything else clearly a shift |
+
+Colour here is **semantic, not categorical** — nights cool and dark, days warm
+and bright — so it is fixed, unlike event colours which are handed out in the
+order titles first appear.
+
+**Earlies and lates come out grey, deliberately.** Folding them into "days"
+would be a guess presented as a fact. Tell me what they should count as and
+they get their own colour.
+
+### What counts as a shift
+
+An entry has to *look* like one: contain the word **shift**, or carry a
+bracketed code like **(N)**, or be nothing but the word itself (`OFF`,
+`Nights`). Without that gate a task called *"book the car in on my day off"*
+would repaint the whole day as a rest day.
+
+**Other people's shifts are ignored.** A leading `Name:` — as in
+*"Sheila: 11-7 night shift (PH)"* — means the entry belongs to someone else and
+never colours your calendar. If your own rota is written `Ben: Night Shift`,
+put your name in **Settings → your name** so those count as yours.
+
+A shift spanning several days colours every day it covers.
+
+### Who you were on with
+
+Put a line in the **event's description** and it shows in fine print along the
+bottom of the cell, and in full when you open the day:
+
+```
+With: Adamson, Reid, Okafor
+Crew - Adamson / Reid
+Team: Nowak and Reid
+```
+
+`With`, `Crew`, `Team` and `On with` all work, separated by commas, slashes,
+ampersands or "and". On a phone the fine print is hidden — two initials and an
+ellipsis is not information — but the shift colour still shows and tapping the
+day gives the names in full.
+
+### Sending a year's roster
+
+Send it in whatever form you have it and I will convert it. What I need to know:
+
+- **Which codes mean what** — especially earlies, lates, and anything like `LD`
+  or `LN`
+- **Whether the crew is per-shift or per-team** — one line per day, or a team
+  roster that repeats
+- **Where the year starts**, if the pattern is a repeating cycle rather than
+  dated entries
+
+---
+
 ## The diary
 
 **Diary** in the sidebar. One entry a day, in your own words, next to the list

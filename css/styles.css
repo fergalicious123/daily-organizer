@@ -865,7 +865,58 @@ button {
 .month-day:hover { border-color: var(--accent); background: var(--surface-2); }
 .month-day.is-outside { background: var(--surface-sunk); opacity: .6; }
 .month-day.is-weekend:not(.is-outside) { background: var(--surface-2); }
+
+/* ---- rota: the whole cell says which shift you are on ----
+   These are SEMANTIC, not categorical: nights are cool and dark, days warm and
+   bright, which is the one colour mapping nobody has to be taught. They are
+   deliberately not drawn from --ev-N, whose slots are handed out by title
+   order and would put "nights" on whatever hue happened to be free.
+
+   The tint sits behind the chips, so it stays weak enough for chip text to
+   hold its contrast. The left edge carries the weight instead — a solid bar
+   reads across a whole run of four at a glance, which is the actual question:
+   not "what is this day" but "where does this block start and end". */
+.month-day.on-night,
+.month-day.on-day,
+.month-day.on-oncall,
+.month-day.on-other,
+.month-day.on-off {
+  border-left-width: 4px;
+  border-left-color: var(--shift);
+  background: color-mix(in srgb, var(--shift) 13%, var(--surface));
+}
+.month-day.on-night:hover,
+.month-day.on-day:hover,
+.month-day.on-oncall:hover,
+.month-day.on-other:hover,
+.month-day.on-off:hover {
+  background: color-mix(in srgb, var(--shift) 20%, var(--surface));
+  border-color: var(--shift);
+}
+.on-night { --shift: var(--shift-night); }
+.on-day { --shift: var(--shift-day); }
+.on-oncall { --shift: var(--shift-oncall); }
+.on-off { --shift: var(--shift-off); }
+.on-other { --shift: var(--shift-other); }
+
+/* Today still wins the border; the shift keeps the fill. */
 .month-day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Who you were on with. Bottom of the cell, quiet, and only where it can
+   actually be read. */
+/* "Fine print" means small and quiet, not unreadable. At --text-faint this
+   measured 2.9:1 against the tinted cell, under the 4.5:1 that 10px text
+   needs; --text-muted clears it while still receding behind the chips. */
+.month-crew {
+  margin-top: auto;
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
 
 .month-day-num {
   font-family: var(--font-num);
@@ -1344,6 +1395,16 @@ button {
      palette whose slot order was chosen for colour-blind separation: the rim
      reads 4.2:1 against the row, so the dot always has a defined edge. */
   --dot-ring: rgb(0 0 0 / .25);
+
+  /* Rota colours. Semantic rather than categorical, so they are fixed here and
+     never handed out by the slot allocator: nights cool and deep, days warm,
+     on-call amber because it is neither one thing nor the other, off green
+     because it is the good one. */
+  --shift-night: #3f51b5;
+  --shift-day: #d97706;
+  --shift-oncall: #7c3aed;
+  --shift-off: #15803d;
+  --shift-other: #64748b;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -1354,12 +1415,16 @@ button {
     /* Light discs on a dark row already clear 5.9:1; a rim here would only
        muddy a 7px dot. */
     --dot-ring: transparent;
+    --shift-night: #7986cb; --shift-day: #f0a842;
+    --shift-oncall: #b18aeb; --shift-off: #4ade80; --shift-other: #94a3b8;
   }
 }
 :root[data-theme="dark"] {
   --ev-1: #f07fa8; --ev-2: #e5993f; --ev-3: #7f8ff0; --ev-4: #5cb6e0;
   --ev-5: #e3796e; --ev-6: #93b84c; --ev-7: #4bbf9a; --ev-8: #c48fdd;
   --dot-ring: transparent;
+  --shift-night: #7986cb; --shift-day: #f0a842;
+  --shift-oncall: #b18aeb; --shift-off: #4ade80; --shift-other: #94a3b8;
 }
 
 /* Urgency ramp — an ORDINAL scale, so one hue with monotone lightness steps
@@ -2042,6 +2107,24 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .day-journal { margin-top: 14px; }
 
+/* What this day IS, above everything that is on it. */
+.shift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--shift);
+  background: color-mix(in srgb, var(--shift) 14%, var(--surface));
+}
+.shift-card-kind {
+  font-size: 13.5px; font-weight: 650;
+  color: var(--text);
+}
+.shift-card-crew { font-size: 12px; color: var(--text-muted); }
+.shift-card-crew.is-empty { color: var(--text-faint); font-style: italic; }
+
 .done-view { padding: 20px 24px 28px; max-width: 780px; }
 .done-head { margin-bottom: 6px; }
 .done-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
@@ -2396,6 +2479,9 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   }
   .month-chip { display: none; }
   .month-more { display: none; }
+  /* Two initials and an ellipsis is not information. The shift colour still
+     shows, and tapping the day gives the names in full. */
+  .month-crew { display: none; }
   /* The colour the hidden chips used to carry, in the only form that fits. */
   .month-dots {
     display: flex;

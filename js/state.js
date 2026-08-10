@@ -96,6 +96,10 @@ function defaultState() {
       rollover: true,
       lastRolloverOn: '',
       groupBy: 'none',       // none | list | priority | due
+      // Your own name, as it appears prefixed on shared-calendar entries.
+      // Only needed if your rota is written "Ben: Night Shift" rather than
+      // plain "Night Shift" — it decides whose shifts colour the calendar.
+      myName: '',
       driveFileId: '',
       lastSyncAt: '',
     },
@@ -688,6 +692,115 @@ export function eventColorSlot(title) {
     store.save();
   }
   return map[key];
+}
+
+/* ------------------------------------------------------------------ */
+/* Shifts                                                              */
+/* ------------------------------------------------------------------ */
+
+export const SHIFT = {
+  NIGHT: 'night', DAY: 'day', ONCALL: 'oncall', OFF: 'off',
+  // Clearly a rota entry, but not in a code this knows yet. Coloured neutrally
+  // and labelled "on shift" rather than dropped: a working day rendered as a
+  // blank cell is a silent wrong answer, whereas an unnamed one is visible and
+  // tells you a code needs adding.
+  OTHER: 'other',
+};
+
+/**
+ * Highest first. A day carrying more than one shift entry — the tail of a run
+ * and the head of the next — takes the more disruptive of the two, because
+ * that is the one that decides what the day is actually like.
+ */
+const SHIFT_PRIORITY = [SHIFT.NIGHT, SHIFT.DAY, SHIFT.ONCALL, SHIFT.OTHER, SHIFT.OFF];
+
+/**
+ * Does this title belong to someone else?
+ *
+ * A shared calendar carries other people's rotas. "Sheila: 11-7 night shift
+ * (PH)" is a Philippine night shift belonging to somebody else, and colouring
+ * a day dark because of it would be worse than not colouring it at all — it
+ * would be confidently wrong about which nights you are working.
+ *
+ * A leading "Word:" is treated as someone else's unless it is your own name,
+ * which Settings can set. Titles with no prefix are assumed to be yours.
+ */
+export function entryOwner(title) {
+  const match = /^\s*([\p{Lu}][\p{L}'’-]*)\s*:/u.exec(String(title || ''));
+  return match ? match[1] : null;
+}
+
+function isMine(title) {
+  const owner = entryOwner(title);
+  if (!owner) return true;
+  const mine = String(settings().myName || '').trim();
+  return Boolean(mine) && owner.toLowerCase() === mine.toLowerCase();
+}
+
+/**
+ * Only claim things that actually look like rota entries.
+ *
+ * Without this gate a task called "book the car in on my day off" reads as a
+ * rest day and repaints the whole cell. A real entry says "shift", or carries
+ * a bracketed code, or is nothing but the word itself.
+ */
+const SHIFT_SHAPED = /\bshifts?\b|\((?:n|d|e|l|oc|ld|ln)\)|^\s*(?:nights?|days?|off|rest(?:\s*day)?)\s*$/i;
+
+/** Which kind of shift an item is, or null if it is not one (or not yours). */
+export function shiftKindOf(item) {
+  const title = String(item?.title || '');
+  if (!title || !isMine(title)) return null;
+  if (!SHIFT_SHAPED.test(title)) return null;
+
+  const t = title.toLowerCase();
+  if (/on[-\s]?call|\(oc\)/.test(t)) return SHIFT.ONCALL;
+  if (/\bnights?\b|\(n\)|\(ln\)/.test(t)) return SHIFT.NIGHT;
+  if (/\bdays?\b|\(d\)|\(ld\)/.test(t)) return SHIFT.DAY;
+  if (/\boff\b|\brest\b/.test(t)) return SHIFT.OFF;
+  // Earlies and lates are neither, and folding them into "days" would be a
+  // guess presented as a fact. They stay OTHER until the roster says.
+  return SHIFT.OTHER;
+}
+
+/** The shift for a whole day, across everything covering it. */
+export function shiftOnDay(dateKey) {
+  const kinds = new Set();
+  for (const item of itemsOnDay(dateKey)) {
+    const kind = shiftKindOf(item);
+    if (kind) kinds.add(kind);
+  }
+  return SHIFT_PRIORITY.find((k) => kinds.has(k)) || null;
+}
+
+/**
+ * Who you were on with.
+ *
+ * Read from the entry's own notes, because that is the one place the
+ * information can live before a roster is loaded — Google Calendar carries a
+ * description and nothing else useful. Accepts the forms people actually
+ * write: "With: Smith, Jones", "Crew - Smith/Jones", "Team: Smith & Jones".
+ */
+export function crewFor(item) {
+  const notes = String(item?.notes || '');
+  const line = /^[ \t]*(?:with|crew|team|on with)[ \t]*[:\-–][ \t]*(.+)$/im.exec(notes);
+  if (!line) return [];
+  return line[1]
+    .split(/[,/&]|\band\b|\+/i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+/** Everyone named across a day's shift entries, de-duplicated, order kept. */
+export function crewOnDay(dateKey) {
+  const seen = new Map();
+  for (const item of itemsOnDay(dateKey)) {
+    if (!shiftKindOf(item)) continue;
+    for (const name of crewFor(item)) {
+      const key = name.toLowerCase();
+      if (!seen.has(key)) seen.set(key, name);
+    }
+  }
+  return [...seen.values()];
 }
 
 /** Every distinct event kind and its colour — for a legend. */

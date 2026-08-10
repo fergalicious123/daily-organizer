@@ -13,7 +13,17 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
+  shiftOnDay, crewOnDay, SHIFT,
 } from '../state.js';
+
+/** How each shift is named wherever one is spelled out rather than coloured. */
+const SHIFT_LABEL = {
+  [SHIFT.NIGHT]: 'nights',
+  [SHIFT.DAY]: 'days',
+  [SHIFT.ONCALL]: 'on call',
+  [SHIFT.OFF]: 'off',
+  [SHIFT.OTHER]: 'shift',
+};
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
 import { journalEditor } from './journal.js';
@@ -209,16 +219,30 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // well would show the same shift twice on every day it covers.
   const items = all.filter((i) => !isSpanning(i));
   const outside = !sameMonth(dayKey, anchorKey);
+  const shift = shiftOnDay(dayKey);
+  const crew = crewOnDay(dayKey);
 
   const cell = el('div.month-day', {
     class: [
       outside ? 'is-outside' : '',
       isWeekend(dayKey) ? 'is-weekend' : '',
       isToday(dayKey) ? 'is-today' : '',
+      shift ? `on-${shift}` : '',
     ].filter(Boolean).join(' '),
     role: 'button',
     tabIndex: -1,
-    'aria-label': `${dayKey}, ${items.length} item${items.length === 1 ? '' : 's'}`,
+    'aria-label': [
+      dayKey,
+      shift ? SHIFT_LABEL[shift] : null,
+      crew.length ? `with ${crew.join(', ')}` : null,
+      `${items.length} item${items.length === 1 ? '' : 's'}`,
+    ].filter(Boolean).join(', '),
+    // The whole cell is the readable signal for a rota — at a glance you want
+    // to see the shape of the block, not read four chips to work it out.
+    title: [
+      shift ? `On ${SHIFT_LABEL[shift]}` : null,
+      crew.length ? `With ${crew.join(', ')}` : null,
+    ].filter(Boolean).join(' · ') || null,
     // fitMonthChips() needs the true total to recompute "+N more" after it
     // drops chips that will not fit whole.
     dataset: { total: String(items.length) },
@@ -277,6 +301,15 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // answer "what kind", which is the question the chips used to answer.
   // Hidden on desktop, where the chips say it better. Decorative, so the
   // screen reader keeps using the cell's own label.
+  // Who you were on with, in fine print along the bottom. Only where there is
+  // room to read it — a 43px phone cell would render two initials and a
+  // truncation mark, which is noise pretending to be information. Tapping the
+  // day still shows the full list.
+  if (crew.length) {
+    cell.appendChild(el('div.month-crew', { title: `With ${crew.join(', ')}` },
+      crew.join(', ')));
+  }
+
   if (items.length) {
     const dots = el('div.month-dots', { 'aria-hidden': 'true' });
     for (const item of items.slice(0, MAX_DOTS)) {
@@ -565,7 +598,18 @@ export function dayView(dayKey, { onOpenItem } = {}) {
 
   // Side panel: the day's tasks and its completion ring.
   const items = itemsOnDay(dayKey);
+  const dayShift = shiftOnDay(dayKey);
+  const dayCrew = crewOnDay(dayKey);
   const side = el('div.day-side',
+    // What this day IS, before what is on it. On a run of nights that is the
+    // single most useful line on the screen, and on a phone the month cell's
+    // fine print is too small to carry the names.
+    dayShift ? el('div.shift-card', { class: `on-${dayShift}` },
+      el('span.shift-card-kind', `On ${SHIFT_LABEL[dayShift]}`),
+      dayCrew.length
+        ? el('span.shift-card-crew', `With ${dayCrew.join(', ')}`)
+        : el('span.shift-card-crew.is-empty', 'No crew recorded'),
+    ) : null,
     el('div.progress-card',
       el('div.progress-card-head',
         el('span.progress-card-title', 'This day'),
