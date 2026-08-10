@@ -452,9 +452,13 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   let first = cfg.dayStart;
   let last = cfg.dayEnd;
   for (const item of timed) {
-    const h = Math.floor(timeToMinutes(item.time) / 60);
-    first = Math.min(first, h);
-    last = Math.max(last, h);
+    const startMin = timeToMinutes(item.time);
+    first = Math.min(first, Math.floor(startMin / 60));
+    // Widen for where it ENDS as well as where it starts. Widening only for
+    // the start left a 20:00 meeting running to 23:00 drawn past the bottom of
+    // a grid that stopped at 22:00.
+    const endMin = startMin + (item.durationMin || cfg.defaultDurationMin);
+    last = Math.max(last, Math.floor(startMin / 60), Math.ceil(endMin / 60) - 1);
   }
   first = Math.max(0, first);
   last = Math.min(23, Math.max(last, first + 1));
@@ -521,13 +525,24 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   // so "7am" showed through the middle of the shift sitting on top of it.
   const lanes = el('div.day-lanes');
   const laid = layoutDayEvents(timed, cfg.defaultDurationMin);
+  const gridEnd = gridStart + gridMinutes;
   for (const slot of laid) {
     const node = dayEventNode(slot.item, onOpenItem);
     const width = 100 / slot.lanes;
     node.classList.add('day-block');
+
+    // Stop the block at midnight even when the shift does not. A 16:00 start
+    // running eight hours ends at 00:00 the next day, nine hours below a grid
+    // that stops at 22:00 — and nothing clipped it, so it was drawn straight
+    // over the panel beneath, which is what "This day" landing on top of
+    // "4pm · 8h" actually was. Squared off at the cut, like the month bars, so
+    // it reads as continuing rather than as ending there.
+    const drawnEnd = Math.min(slot.end, gridEnd);
+    if (slot.end > gridEnd) node.classList.add('is-cont-after');
+
     Object.assign(node.style, {
       top: `${((slot.start - gridStart) / 60) * HOUR_H}px`,
-      height: `${Math.max((slot.end - slot.start) / 60 * HOUR_H - 2, 20)}px`,
+      height: `${Math.max((drawnEnd - slot.start) / 60 * HOUR_H - 2, 20)}px`,
       left: `calc(${slot.lane * width}% + 2px)`,
       width: `calc(${width}% - 4px)`,
     });

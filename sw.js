@@ -16,10 +16,19 @@
  * Bump CACHE_VERSION on deploy to evict the old shell.
  */
 
-// Bump on every deploy. v2: timezone-preserving push, list repair, focus
-// survival, icon sizing. Changing this evicts the previous cache wholesale,
-// so nobody keeps running last week's code.
-const CACHE_VERSION = 'organizer-v2';
+// Bump on every deploy. Changing this evicts the previous cache wholesale, so
+// nobody keeps running last week's code — and the app shows this string as its
+// build stamp, read straight out of CacheStorage, so "has my phone got the new
+// version?" is answerable by looking rather than guessing.
+//
+// v3: event colours through the lists, day-grid lanes, phone month dots,
+// diary, shortcuts panel. v2 went six deploys without being bumped, which is
+// exactly the failure this constant exists to prevent.
+const CACHE_VERSION = 'organizer-v3';
+
+// Every module the app loads. A file missing from here still works online
+// (code is network-first) but is unavailable offline, so the view that imports
+// it fails to load with no obvious cause. Several were missing.
 const SHELL = [
   './',
   './index.html',
@@ -33,8 +42,15 @@ const SHELL = [
   './js/google.js',
   './js/sync.js',
   './js/notify.js',
+  './js/dragdrop.js',
+  './js/shortcuts.js',
   './js/views/calendar.js',
   './js/views/tasks.js',
+  './js/views/home.js',
+  './js/views/done.js',
+  './js/views/journal.js',
+  './js/views/clocks.js',
+  './js/views/shortcutsPanel.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -88,8 +104,28 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+/**
+ * Ask the server, not the browser's own cache.
+ *
+ * Network-first is not enough on its own: GitHub Pages serves `max-age=600`,
+ * so a plain `fetch` inside the worker can be answered from the HTTP cache
+ * with ten-minute-old code. The worker thinks it went to the network; it did
+ * not. `no-cache` forces a revalidation, and a 304 keeps it cheap.
+ *
+ * Navigation requests cannot be reconstructed, so they fall through unchanged
+ * — which is harmless, because index.html is a stub and every module it pulls
+ * in goes through the revalidating path.
+ */
+function revalidating(request) {
+  try {
+    return new Request(request, { cache: 'no-cache' });
+  } catch {
+    return request;
+  }
+}
+
 function fetchAndCache(request) {
-  return fetch(request).then((response) => {
+  return fetch(revalidating(request)).then((response) => {
     if (response.ok) {
       const copy = response.clone();
       caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));

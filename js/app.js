@@ -1039,6 +1039,13 @@ function openSettings(focusSection = null) {
           cfg.lastSyncAt ? `Last synced ${new Date(cfg.lastSyncAt).toLocaleString()}.` : 'Not synced yet.'),
       ));
 
+      /* --- Version --- */
+      // The shortcuts panel shows this too, but that is hidden on a phone —
+      // which is the one device where "am I running the new version?" is hard
+      // to answer and easy to get wrong.
+      fields.push(el('div.section-label', { style: { padding: '0' } }, 'App version'));
+      fields.push(versionField());
+
       return fields;
     },
     footer: (close) => el('button.btn.btn-primary', { onclick: () => { close(); render(); } }, 'Done'),
@@ -1343,11 +1350,107 @@ async function registerServiceWorker() {
   // file:// has no service worker scope; the app must be served over http(s).
   if (location.protocol === 'file:') return;
   try {
-    await navigator.serviceWorker.register('sw.js');
+    const reg = await navigator.serviceWorker.register('sw.js', {
+      // Fetch sw.js from the server, never from the HTTP cache. Pages serves
+      // max-age=600 on everything including the worker itself, so without this
+      // the browser can answer the update check with the OLD worker — and a
+      // worker that never updates never runs its activate handler, never drops
+      // the stale cache, and keeps serving last week's app. This is how six
+      // deploys reached the server without reaching the phone.
+      updateViaCache: 'none',
+    });
+
+    // Check again whenever the app is brought back to the foreground. A phone
+    // keeps a PWA alive for days, so waiting for a cold start means waiting
+    // days for a fix.
+    const check = () => { reg.update().catch(() => {}); };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') check();
+    });
+
+    watchForUpdate();
   } catch (err) {
     console.warn('Service worker did not register.', err.message);
   }
 }
+
+/**
+ * The build this device is running, plus a way to force the check.
+ *
+ * The worker now updates itself on every foregrounding, so this button should
+ * never be necessary. It exists because "should never be necessary" is what
+ * was believed about the last six deploys, and having a button beats having to
+ * talk someone through clearing a phone's site data.
+ */
+function versionField() {
+  const stamp = el('span.version-stamp', 'checking…');
+  activeBuild().then((v) => {
+    stamp.textContent = v || 'no offline cache on this device';
+  });
+
+  const button = el('button.btn', {
+    onclick: async () => {
+      button.disabled = true;
+      button.textContent = 'Checking…';
+      try {
+        const reg = await navigator.serviceWorker?.getRegistration();
+        if (!reg) { toast('No service worker on this device.', { error: true }); return; }
+        await reg.update();
+        // If an update was found the worker activates and controllerchange
+        // reloads the page, so anything after this may never run.
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = 'Check for updates';
+          toast('Already on the latest version.');
+        }, 1500);
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = 'Check for updates';
+        toast(`Could not check: ${err.message}`, { error: true });
+      }
+    },
+  }, 'Check for updates');
+
+  return el('div.field',
+    el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+      button, stamp),
+    el('p.field-hint',
+      'The app checks for a new version every time you open it. If this build number ',
+      'does not match what you expect after a deploy, close the app completely and reopen it.'),
+  );
+}
+
+/** The service worker's own cache name — one source of truth for the build. */
+async function activeBuild() {
+  try {
+    const keys = await caches.keys();
+    return keys.find((k) => k.startsWith('organizer-')) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reload once when a new worker takes over.
+ *
+ * The worker calls skipWaiting(), so a new version activates as soon as it
+ * installs — but the page already running is still executing the old modules.
+ * Without this the user sees the new code only on their next manual reload,
+ * which on an installed PWA may be never.
+ *
+ * Guarded because controllerchange also fires the first time a worker claims
+ * an uncontrolled page, and reloading there would be a loop on first visit.
+ */
+function watchForUpdate() {
+  if (!navigator.serviceWorker.controller) return;   // first-ever load: nothing to replace
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+}
+
 
 boot();
 

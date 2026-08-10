@@ -521,7 +521,13 @@ button {
 .clock-summary[aria-expanded="true"] .clock-chevron { transform: rotate(90deg); }
 
 @media (max-width: 760px) {
-  :root { --clock-w: 200px; --clock-right: 10px; }
+  :root {
+    --clock-w: 200px;
+    --clock-right: 10px;
+    /* Collapsed height of the widget, measured rather than guessed. */
+    --clock-h: 65px;
+    --bottom-clearance: calc(var(--tabbar-h) + var(--clock-h) + 20px + var(--safe-b));
+  }
   .clock-widget {
     bottom: calc(var(--tabbar-h) + 10px + var(--safe-b));
   }
@@ -610,6 +616,18 @@ button {
   font-size: 12.5px; color: var(--text-muted);
 }
 .shortcut-touch .icon { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+
+.build-stamp {
+  margin: 10px 0 0;
+  font-family: var(--font-num);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.version-stamp {
+  font-family: var(--font-num);
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 /* ---- sidebar progress card ---- */
 
@@ -1193,6 +1211,21 @@ button {
   padding: 2px 7px;
 }
 .day-block.is-compact .day-event-title { -webkit-line-clamp: 1; }
+
+/* Clipped at the bottom of the grid because the event runs past it. Squared
+   off and faded out, so it reads as carrying on rather than as finishing at
+   whatever hour the grid happens to stop. */
+.day-block.is-cont-after {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+
+/* Nothing may escape the day's own box onto whatever follows it. The clamp
+   above is the real fix; this is the guard that catches the next thing that
+   forgets. */
+.day-lanes { overflow: hidden; }
 
 /* The "you are here" line. */
 .now-line {
@@ -2324,8 +2357,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
     visibility: visible;
   }
 
-  .main { grid-column: 1; padding-bottom: calc(var(--tabbar-h) + var(--safe-b)); }
-  .rail.is-open { width: 100vw; padding-bottom: calc(var(--tabbar-h) + var(--safe-b)); }
+  /* Clear the tab bar AND the floating clock above it. Allowing only for the
+     tab bar left the last ~75px of every list sitting under the clock, which
+     on a full day meant a task you could see the left half of and never
+     scroll clear of. --clock-h is the collapsed height; expanded it grows
+     upward over the content, but that is a deliberate act with a tap to
+     undo it. */
+  .main { grid-column: 1; padding-bottom: var(--bottom-clearance); }
+  .rail.is-open { width: 100vw; padding-bottom: var(--bottom-clearance); }
 
   .tabbar { display: flex; }
   .mic-fab { display: grid; }
