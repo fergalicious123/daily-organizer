@@ -674,7 +674,60 @@ button {
   box-shadow: 0 0 0 2px var(--accent);
   transform: translateY(-1px);
 }
+
+/* A multi-day event drawn as one continuous bar across the week's columns.
+   Clipped at the week boundary, with the cut end squared off so it reads as
+   continuing rather than as a separate event. */
+.span-bar {
+  --ev: var(--accent);
+  grid-row: 1;
+  align-self: start;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--ev);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(16, 20, 28, .18);
+  transition: filter .12s var(--ease);
+}
+.span-bar:hover { filter: brightness(1.08); }
+.span-bar-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Square the clipped end and notch it, so a wrapped span is obvious. */
+.span-bar.is-cont-before {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 5px;
+}
+.span-bar.is-cont-after {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.span-bar.is-done { opacity: .55; }
+.span-bar.is-done .span-bar-text { text-decoration: line-through; }
+
+@media (max-width: 760px) {
+  /* Bars survive on a phone where chips cannot: a full-width block still
+     reads even when a single cell is only ~45px across. */
+  .span-bar { font-size: 10px; padding: 0 4px; }
+}
 .week-row:hover .week-num { background: var(--accent); color: var(--accent-text); }
+
+/* Everything shares grid row 1. Without this the auto-placer pushes the day
+   cells into a second row to make way for the spanning bars, halving their
+   height and squeezing out the chips. The bars overlay the top of the cells
+   instead, and the cells carry a matching padding-top to clear them. */
+.week-row > * { grid-row: 1; }
 
 .week-num {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -807,12 +860,19 @@ button {
 .ev-6 { --ev: var(--ev-6); }
 .ev-7 { --ev: var(--ev-7); }
 .ev-8 { --ev: var(--ev-8); }
+/* One line, always. Left free to wrap it grew to 33px in a narrow cell and
+   consumed exactly the room a chip needed, so cells with a spanning bar showed
+   "+3 more" and nothing else. */
 .month-more {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--text-faint);
   padding-left: 4px;
   flex-shrink: 0;
+  height: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* ------------------------------------------------------------------ */

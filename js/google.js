@@ -415,11 +415,22 @@ export function eventToItem(event) {
   if (!startISO) return null;
 
   let date;
+  let endDate = null;
   let time = null;
   let durationMin = null;
 
   if (allDay) {
     date = event.start.date;
+    // Google's all-day end is EXCLUSIVE, so a shift block running the 11th to
+    // the 14th arrives as end.date = the 15th. Store the last day it actually
+    // covers. Without this the span is lost and a four-day shift shows on one
+    // day only.
+    if (event.end?.date) {
+      const end = new Date(`${event.end.date}T00:00:00`);
+      end.setDate(end.getDate() - 1);
+      const last = `${end.getFullYear()}-${p2(end.getMonth() + 1)}-${p2(end.getDate())}`;
+      if (last > date) endDate = last;
+    }
   } else {
     const start = new Date(startISO);
     date = `${start.getFullYear()}-${p2(start.getMonth() + 1)}-${p2(start.getDate())}`;
@@ -438,6 +449,7 @@ export function eventToItem(event) {
     title: done ? rawTitle.slice(2) : rawTitle,
     notes: stripMarker(event.description || ''),
     date,
+    endDate,
     time,
     durationMin,
     // The timezone the event was authored in, and what its timing looked like

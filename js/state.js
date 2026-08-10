@@ -372,6 +372,9 @@ export function makeItem(fields = {}) {
     done: false,
     doneAt: null,
     date: null,
+    // Last day an all-day item covers, inclusive. Null for a single day.
+    // A four-day shift is one item spanning four dates, not four items.
+    endDate: null,
     time: null,
     durationMin: null,
     priority: PRIORITY.NONE,
@@ -477,9 +480,21 @@ export function liveItems() {
   return store.state.items.filter((i) => !i.deleted);
 }
 
+/** True when `dateKey` falls anywhere inside the item's span. */
+export function coversDay(item, dateKey) {
+  if (!item.date) return false;
+  if (item.date === dateKey) return true;
+  return Boolean(item.endDate) && item.date <= dateKey && dateKey <= item.endDate;
+}
+
+/** Multi-day, so it wants a spanning bar rather than a chip. */
+export function isSpanning(item) {
+  return Boolean(item.endDate && item.endDate > item.date);
+}
+
 export function itemsOnDay(dateKey) {
   return liveItems()
-    .filter((i) => i.date === dateKey)
+    .filter((i) => coversDay(i, dateKey))
     .sort(sortByTimeThenPriority);
 }
 
@@ -493,7 +508,9 @@ export function untimedItemsOnDay(dateKey) {
 
 export function itemsInRange(startKey, endKey) {
   return liveItems()
-    .filter((i) => i.date && i.date >= startKey && i.date <= endKey)
+    // Overlap, not containment: a shift starting before the window and ending
+    // inside it still belongs to that window.
+    .filter((i) => i.date && i.date <= endKey && (i.endDate || i.date) >= startKey)
     .sort(sortByTimeThenPriority);
 }
 

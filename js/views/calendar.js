@@ -8,11 +8,11 @@ import { el, icon, isMobile } from '../ui.js';
 import {
   monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
-  todayKey, addDays, formatDayLong,
+  todayKey, addDays, formatDayLong, diffDays,
 } from '../dates.js';
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
-  updateItem, progressFor, getItem, eventColorSlot,
+  updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
 } from '../state.js';
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
@@ -30,6 +30,66 @@ const MAX_CHIPS = 2;
 
 /** Pixels per hour in the day grid. Sets how tall an hour reads. */
 const HOUR_H = 54;
+
+/** Height of a spanning bar in the month grid. */
+const SPAN_H = 18;
+
+/**
+ * Work out the spanning bars to draw across one week row.
+ *
+ * Each bar is clipped to the week — a shift running Wednesday to the following
+ * Monday draws as two bars, one per row, flagged so the cut ends read as
+ * continuations rather than as separate events. Bars are packed into lanes so
+ * two overlapping spans never sit on top of each other.
+ */
+function spanningBarsForWeek(week) {
+  const weekStartKey = week[0];
+  const weekEndKey = week[6];
+
+  const spans = liveItems()
+    .filter((i) => isSpanning(i) && i.date <= weekEndKey && i.endDate >= weekStartKey)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1
+      : (b.endDate > a.endDate ? 1 : -1)));
+
+  const lanes = [];          // lane index -> last occupied column
+  return spans.map((item) => {
+    const startCol = Math.max(0, diffDays(weekStartKey, item.date));
+    const endCol = Math.min(6, diffDays(weekStartKey, item.endDate));
+
+    let lane = lanes.findIndex((lastCol) => lastCol < startCol);
+    if (lane === -1) { lane = lanes.length; lanes.push(endCol); }
+    else lanes[lane] = endCol;
+
+    return {
+      item,
+      startCol,
+      endCol,
+      lane,
+      continuesBefore: item.date < weekStartKey,
+      continuesAfter: item.endDate > weekEndKey,
+    };
+  });
+}
+
+function spanBarNode(bar, onSelectDay) {
+  const { item, startCol, endCol, lane } = bar;
+  return el('button.span-bar', {
+    class: [
+      `ev-${eventColorSlot(item.title) + 1}`,
+      bar.continuesBefore ? 'is-cont-before' : '',
+      bar.continuesAfter ? 'is-cont-after' : '',
+      item.done ? 'is-done' : '',
+    ].filter(Boolean).join(' '),
+    style: {
+      // +2 because column 1 is the week-number gutter.
+      gridColumn: `${startCol + 2} / ${endCol + 3}`,
+      marginTop: `${6 + lane * (SPAN_H + 2)}px`,
+      height: `${SPAN_H}px`,
+    },
+    title: `${item.title} · ${item.date} to ${item.endDate}`,
+    onclick: (e) => { e.stopPropagation(); onSelectDay(item.date); },
+  }, el('span.span-bar-text', item.title || 'Untitled'));
+}
 
 /**
  * Place timed events into side-by-side lanes so overlaps stay readable.
@@ -115,8 +175,21 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
       el('span.wk-value', String(isoWeekNumber(week[0]))),
     ));
 
+    // Bars for anything spanning more than one day in this week, laid across
+    // the grid columns so a four-day shift reads as one continuous block
+    // rather than vanishing after its first day.
+    const bars = spanningBarsForWeek(week);
+    for (const bar of bars) {
+      row.appendChild(spanBarNode(bar, onSelectDay));
+    }
+
     for (const dayKey of week) {
-      row.appendChild(monthDayCell(dayKey, anchorKey, onSelectDay));
+      const cell = monthDayCell(dayKey, anchorKey, onSelectDay);
+      // Reserve room so the cell's own content starts below the bars.
+      if (bars.length) {
+        cell.style.paddingTop = `${6 + bars.length * (SPAN_H + 2)}px`;
+      }
+      row.appendChild(cell);
     }
     weeksHost.appendChild(row);
   }
@@ -126,7 +199,10 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
 }
 
 function monthDayCell(dayKey, anchorKey, onSelectDay) {
-  const items = itemsOnDay(dayKey);
+  const all = itemsOnDay(dayKey);
+  // Spanning items are drawn once as a bar across the row, so a chip here as
+  // well would show the same shift twice on every day it covers.
+  const items = all.filter((i) => !isSpanning(i));
   const outside = !sameMonth(dayKey, anchorKey);
 
   const cell = el('div.month-day', {
