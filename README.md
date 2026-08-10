@@ -125,6 +125,11 @@ header of that file has the steps to bring it back.
 
 ## Keyboard shortcuts
 
+The **`?`** button in the bottom-right corner, beside the clock, opens this
+same list in the app. It is generated from the same table the keys themselves
+run off, so it cannot fall out of date the way this file did. Hidden on phones,
+where every row of it would need a keyboard.
+
 | Key | Action |
 |---|---|
 | `H` | Home |

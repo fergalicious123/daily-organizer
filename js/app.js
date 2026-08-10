@@ -24,6 +24,8 @@ import {
 import { doneView } from './views/done.js';
 import { journalView } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
+import { mountShortcutsButton } from './views/shortcutsPanel.js';
+import { declaredKeys } from './shortcuts.js';
 import { homeView } from './views/home.js';
 import { taskList, quickAdd, openItemEditor, confirmDeleteList } from './views/tasks.js';
 import { progressRing, historyColumns, listBars, sparkline } from './chart.js';
@@ -1126,19 +1128,43 @@ function installKeyboard() {
 
     if (typing || modal) return;
 
-    switch (e.key) {
-      case 'h': navigate({ view: 'home' }); break;
-      case 'm': navigate({ view: 'month' }); break;
-      case 'w': navigate({ view: 'week' }); break;
-      case 'd': navigate({ view: 'day' }); break;
-      case 't': navigate({ view: 'day', anchor: todayKey() }); break;
-      case 'n': e.preventDefault(); openItemEditor(null, defaultsForRoute()); break;
-      case 'ArrowLeft': navigate({ anchor: stepAnchor(-1) }); break;
-      case 'ArrowRight': navigate({ anchor: stepAnchor(1) }); break;
-      case 'Escape': closeDrawers(); break;
-      default: break;
-    }
+    const action = KEY_ACTIONS[e.key];
+    if (!action) return;
+    if (e.key === 'n') e.preventDefault();
+    action();
   });
+}
+
+/**
+ * What each key does. Keyed by the literal `KeyboardEvent.key`, which is
+ * lower case for an unshifted letter — so Caps Lock genuinely does disable
+ * these, and the help panel says so.
+ */
+const KEY_ACTIONS = {
+  h: () => navigate({ view: 'home' }),
+  m: () => navigate({ view: 'month' }),
+  w: () => navigate({ view: 'week' }),
+  d: () => navigate({ view: 'day' }),
+  t: () => navigate({ view: 'day', anchor: todayKey() }),
+  n: () => openItemEditor(null, defaultsForRoute()),
+  ArrowLeft: () => navigate({ anchor: stepAnchor(-1) }),
+  ArrowRight: () => navigate({ anchor: stepAnchor(1) }),
+  Escape: () => closeDrawers(),
+};
+
+/**
+ * Catch the two tables drifting apart, which is exactly how the documented
+ * list lost `H`. Costs one pass over ten keys at startup and turns a shortcut
+ * the panel promises but nothing implements into a console warning instead of
+ * a key that silently does nothing.
+ */
+function auditShortcuts() {
+  const declared = declaredKeys();
+  const implemented = Object.keys(KEY_ACTIONS);
+  const promised = declared.filter((k) => !implemented.includes(k));
+  const undocumented = implemented.filter((k) => !declared.includes(k));
+  if (promised.length) console.warn('Shortcuts listed but not implemented: %s', promised.join(', '));
+  if (undocumented.length) console.warn('Shortcuts implemented but not listed: %s', undocumented.join(', '));
 }
 
 /* ------------------------------------------------------------------ */
@@ -1260,9 +1286,11 @@ function boot() {
   runRollover();
 
   installKeyboard();
+  auditShortcuts();
   installSwipe();
   mountClockWidget();
   startClockTicker();
+  mountShortcutsButton();
 
   window.addEventListener('resize', debounceRender());
 

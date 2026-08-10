@@ -409,12 +409,21 @@ button {
 /* Pinned to the bottom-right corner, above the mobile tab bar and clear of the
    toasts that rise from the bottom centre. Opens upward, because a panel that
    grew downward from here would go off the bottom of the window. */
+/* The corner furniture. Both values live on :root rather than on the widget,
+   because the shortcuts button is a SIBLING that parks to its left — and a
+   custom property set on .clock-widget would never reach it. One source, so
+   the two cannot drift into overlapping. */
+:root {
+  --clock-w: 232px;
+  --clock-right: 16px;
+}
+
 .clock-widget {
   position: fixed;
-  right: 16px;
+  right: var(--clock-right);
   bottom: calc(16px + var(--safe-b));
   z-index: 43;
-  width: 232px;
+  width: var(--clock-w);
   display: flex;
   flex-direction: column;      /* body is first in the DOM, so it sits above */
   border: 1px solid var(--border);
@@ -512,12 +521,95 @@ button {
 .clock-summary[aria-expanded="true"] .clock-chevron { transform: rotate(90deg); }
 
 @media (max-width: 760px) {
+  :root { --clock-w: 200px; --clock-right: 10px; }
   .clock-widget {
-    right: 10px;
     bottom: calc(var(--tabbar-h) + 10px + var(--safe-b));
-    width: 200px;
   }
 }
+
+/* ---- keyboard shortcuts ---- */
+
+/* Parks immediately left of the clock, on the same baseline, so the corner
+   reads as one cluster rather than two things that happen to be near each
+   other. */
+.shortcuts-fab {
+  position: fixed;
+  right: calc(var(--clock-right) + var(--clock-w) + 8px);
+  bottom: calc(16px + var(--safe-b));
+  z-index: 43;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-muted);
+  font-family: var(--font-num);
+  font-size: 15px; font-weight: 700;
+  line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: color .12s var(--ease), border-color .12s var(--ease), background .12s var(--ease);
+}
+.shortcuts-fab:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface-sunk);
+}
+/* Every row of the panel needs a keyboard, so a phone gets nothing but a gap
+   where the mic button already sits. Tablets keep it — many have one. */
+@media (max-width: 760px) {
+  .shortcuts-fab { display: none; }
+}
+
+.shortcut-groups { display: flex; flex-direction: column; gap: 16px; }
+.shortcut-group-title {
+  margin: 0 0 7px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint);
+}
+.shortcut-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 14px;
+  align-items: baseline;
+}
+.shortcut-keys { margin: 0; display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.shortcut-label { margin: 0; font-size: 13px; }
+.shortcut-note {
+  display: block;
+  font-size: 11.5px; color: var(--text-faint); margin-top: 2px;
+}
+
+.keycap {
+  display: inline-grid; place-items: center;
+  min-width: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-sunk);
+  font-family: var(--font-num);
+  font-size: 11.5px; font-weight: 600;
+  color: var(--text);
+}
+.keycap-plus { color: var(--text-faint); font-size: 11px; }
+
+.shortcut-caveats { margin-top: 18px; }
+.shortcut-caveats ul {
+  margin: 0; padding-left: 17px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.shortcut-caveats li { font-size: 12.5px; color: var(--text-muted); }
+
+.shortcut-touch {
+  display: flex; align-items: flex-start; gap: 7px;
+  margin: 16px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text-muted);
+}
+.shortcut-touch .icon { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
 
 /* ---- sidebar progress card ---- */
 
