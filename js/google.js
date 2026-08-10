@@ -233,10 +233,26 @@ class GoogleClient {
       maxResults: '2500',
       showDeleted: 'true',   // needed so remote deletions reach our tombstones
     });
-    const data = await this.request(
-      `${CAL_API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
-    );
-    return data.items || [];
+
+    // Follow nextPageToken. Google caps a page well below maxResults when the
+    // window contains many expanded recurrences — a rota of shifts is exactly
+    // that — so reading only the first page silently loses events, with no
+    // error to say so.
+    const all = [];
+    let pageToken = null;
+    let pages = 0;
+    do {
+      if (pageToken) params.set('pageToken', pageToken);
+      const data = await this.request(
+        `${CAL_API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      );
+      all.push(...(data.items || []));
+      pageToken = data.nextPageToken || null;
+      pages++;
+      // A guard, not a limit: without it a malformed token could spin forever.
+    } while (pageToken && pages < 20);
+
+    return all;
   }
 
   createEvent(calendarId, body) {

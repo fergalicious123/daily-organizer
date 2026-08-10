@@ -1372,6 +1372,45 @@ button {
 .pill.p-2.is-active { background: var(--p-medium); border-color: var(--p-medium); color: #fff; }
 .pill.p-1.is-active { background: var(--p-low); border-color: var(--p-low); color: #fff; }
 
+/* ---- calendar picker ---- */
+
+.cal-picker { display: flex; flex-direction: column; gap: 4px; }
+.cal-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  text-align: left;
+  font-size: 13.5px;
+  transition: border-color .12s var(--ease), background .12s var(--ease);
+}
+.cal-option:hover { border-color: var(--border-strong); }
+.cal-option.is-on { border-color: var(--accent); background: var(--accent-soft); }
+
+.cal-tick {
+  width: 18px; height: 18px; flex-shrink: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  display: grid; place-items: center;
+}
+.cal-option.is-on .cal-tick { background: var(--accent); border-color: var(--accent); }
+.cal-tick .icon { width: 11px; height: 11px; color: var(--accent-text); opacity: 0; }
+.cal-option.is-on .cal-tick .icon { opacity: 1; }
+
+.cal-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-ro {
+  font-size: 10px; font-family: var(--font-num);
+  color: var(--text-faint); background: var(--surface-sunk);
+  padding: 1px 6px; border-radius: 20px; flex-shrink: 0;
+}
+
 .switch-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 9px 0;

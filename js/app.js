@@ -777,14 +777,82 @@ function openSettings(focusSection = null) {
           calSelect.value = chosen.id;
           updateSettings({ googleCalendarId: chosen.id });
         }
+        // First run: read from everything rather than silently showing one
+        // calendar's worth and looking like half the diary vanished.
+        if (!Array.isArray(settings().syncCalendarIds) || !settings().syncCalendarIds.length) {
+          updateSettings({ syncCalendarIds: calendars.map((c) => c.id) });
+        }
+        renderReadList(calendars);
         return calendars.length;
       };
 
       fields.push(el('div.field',
-        el('label', 'Calendar'),
+        el('label', 'New items go to'),
         calSelect,
         el('p.field-hint', 'Connect to load your calendars.'),
       ));
+
+      // Which calendars to READ. Separate from the one we write to, because
+      // shifts and shared rotas usually live on a calendar you do not create
+      // things on — and reading only one is why they never showed up.
+      const readList = el('div.cal-picker');
+      const readField = el('div.field',
+        el('label', 'Show events from'),
+        readList,
+        el('p.field-hint',
+          'Tick every calendar you want to see here. Shifts and work rotas are '
+          + 'often on their own calendar — if something is missing from the app, '
+          + 'this is almost always why.'),
+      );
+      fields.push(readField);
+
+      const renderReadList = (calendars) => {
+        clear(readList);
+        const selected = new Set(
+          Array.isArray(settings().syncCalendarIds) && settings().syncCalendarIds.length
+            ? settings().syncCalendarIds
+            : [settings().googleCalendarId],
+        );
+        for (const c of calendars) {
+          const on = selected.has(c.id);
+          readList.appendChild(el('button.cal-option', {
+            class: on ? 'is-on' : '',
+            role: 'switch',
+            'aria-checked': String(on),
+            onclick: (e) => {
+              const node = e.currentTarget;
+              const nowOn = !node.classList.contains('is-on');
+              node.classList.toggle('is-on', nowOn);
+              node.setAttribute('aria-checked', String(nowOn));
+              const next = new Set(
+                Array.isArray(settings().syncCalendarIds) && settings().syncCalendarIds.length
+                  ? settings().syncCalendarIds
+                  : [settings().googleCalendarId],
+              );
+              if (nowOn) next.add(c.id); else next.delete(c.id);
+              // Never end up reading nothing — that looks identical to a
+              // broken sync.
+              if (next.size === 0) {
+                next.add(settings().googleCalendarId);
+                node.classList.add('is-on');
+                node.setAttribute('aria-checked', 'true');
+                toast('At least one calendar has to stay on.');
+              }
+              updateSettings({ syncCalendarIds: [...next] });
+            },
+          },
+            el('span.cal-tick', icon('check', 'icon')),
+            el('span.cal-name', c.primary ? `${c.name} (primary)` : c.name),
+            c.accessRole === 'reader' || c.accessRole === 'freeBusyReader'
+              ? el('span.cal-ro', 'read-only')
+              : null,
+          ));
+        }
+        if (!calendars.length) {
+          readList.appendChild(el('p.field-hint', { style: { margin: 0 } },
+            'Connect Google to see your calendars.'));
+        }
+      };
 
       // Already signed in? Populate straight away rather than making the user
       // click Connect again just to see the list.

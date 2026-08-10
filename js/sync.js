@@ -240,12 +240,31 @@ class SyncEngine extends EventTarget {
     const cfg = settings();
     const calendarId = cfg.googleCalendarId || 'primary';
 
+    // Read from EVERY selected calendar, not just the one we write to. Shifts,
+    // work rotas and shared calendars normally live somewhere other than the
+    // primary, and reading only one meant they simply never appeared — with
+    // nothing to indicate anything was missing.
+    const readIds = Array.isArray(cfg.syncCalendarIds) && cfg.syncCalendarIds.length
+      ? [...new Set(cfg.syncCalendarIds)]
+      : [calendarId];
+
     const from = addDays(todayKey(), -SYNC_WINDOW_BACK);
     const to = addDays(todayKey(), SYNC_WINDOW_FWD);
     const timeMin = new Date(`${from}T00:00:00`).toISOString();
     const timeMax = new Date(`${to}T23:59:59`).toISOString();
 
-    const remoteEvents = await google.listEvents(calendarId, timeMin, timeMax);
+    const remoteEvents = [];
+    for (const id of readIds) {
+      try {
+        const events = await google.listEvents(id, timeMin, timeMax);
+        // Remember the source: an edit has to go back to the calendar the
+        // event actually lives on, not to whichever one we write new items to.
+        for (const e of events) remoteEvents.push({ ...e, _calendarId: id });
+      } catch (err) {
+        // One unreadable calendar (unshared, deleted) must not sink the pass.
+        console.warn('Could not read calendar %s: %s', id, err.message);
+      }
+    }
     const byGcalId = new Map(remoteEvents.map((e) => [e.id, e]));
 
     /* --- pull: remote -> local --- */
@@ -286,6 +305,7 @@ class SyncEngine extends EventTarget {
             recur: null,
             remindMin: mapped.remindMin,
             gcalId: event.id,
+            gcalCalendarId: event._calendarId || calendarId,
             // Remember how Google phrased the timing, and in which zone, so a
             // later title edit does not rewrite it in ours.
             tz: mapped.tz,
@@ -326,9 +346,14 @@ class SyncEngine extends EventTarget {
 
     for (const item of pushable) {
       try {
+        // An existing event is edited on ITS OWN calendar; only brand-new
+        // items go to the default one. Patching a shift against the primary
+        // calendar would 404 rather than move it.
+        const targetCal = item.gcalCalendarId || calendarId;
+
         if (item.deleted) {
           if (item.gcalId && byGcalId.has(item.gcalId)) {
-            await google.deleteEvent(calendarId, item.gcalId);
+            await google.deleteEvent(targetCal, item.gcalId);
           }
           continue;
         }
@@ -339,14 +364,17 @@ class SyncEngine extends EventTarget {
           const created = await google.createEvent(calendarId, body);
           store.mutate((s) => {
             const target = s.items.find((i) => i.id === item.id);
-            if (target) target.gcalId = created.id;
+            if (target) {
+              target.gcalId = created.id;
+              target.gcalCalendarId = calendarId;
+            }
           }, { undoable: false, silent: true });
         } else {
           const remote = byGcalId.get(item.gcalId);
           // Only push when we are the fresher side; otherwise the pull above
           // already won and pushing would undo it.
           if (!remote || newer(item.updatedAt, remote.updated)) {
-            await google.updateEvent(calendarId, item.gcalId, body);
+            await google.updateEvent(targetCal, item.gcalId, body);
           }
         }
       } catch (err) {
@@ -400,10 +428,11 @@ class SyncEngine extends EventTarget {
         const item = store.state.items.find((i) => i.id === op.itemId);
         if (!item || !item.date) continue;      // gone: nothing to send
         const body = buildPatch(item);
+        const targetCal = item.gcalCalendarId || calendarId;
         if (item.deleted && item.gcalId) {
-          await google.deleteEvent(calendarId, item.gcalId);
+          await google.deleteEvent(targetCal, item.gcalId);
         } else if (item.gcalId) {
-          await google.updateEvent(calendarId, item.gcalId, body);
+          await google.updateEvent(targetCal, item.gcalId, body);
         } else {
           const created = await google.createEvent(calendarId, body);
           store.mutate((s) => {
