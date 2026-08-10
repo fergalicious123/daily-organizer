@@ -127,12 +127,31 @@ header of that file has the steps to bring it back.
 
 | Key | Action |
 |---|---|
-| `M` / `W` / `D` | Month / week / day view |
+| `H` | Home |
+| `M` | Month view |
+| `W` | Week view |
+| `D` | Day view — the day you are currently on |
 | `T` | Jump to today |
 | `←` `→` | Previous / next period |
 | `N` | New item |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
-| `Esc` | Close panels |
+| `Esc` | Close the modal, drawer, or field you are in |
+
+**`←` and `→` step by whatever you are looking at:** a month in month view, a
+week in week view, a day everywhere else.
+
+**`D` versus `T`:** `D` opens the day view on whatever date you are already
+looking at, so arrowing to the 14th in month view and pressing `D` opens the
+14th. `T` always jumps to today.
+
+The letter keys are lower case only — with Caps Lock or Shift held, nothing
+happens. They are also switched off while you are typing in any field and while
+a dialog is open, so writing "make the appointment" in a task box cannot throw
+you into Month view halfway through the word. `Ctrl+Z` works everywhere except
+inside a field, where it is the browser's own undo.
+
+`Esc` does the nearest thing first: closes an open dialog, otherwise closes the
+sidebar or side panel, and in a text field it just steps out of the field.
 
 On a phone, swipe left and right to move between days, weeks or months.
 
