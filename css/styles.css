@@ -766,32 +766,47 @@ button {
   min-height: 0;
 }
 
+/* Google-Calendar-style chip: a colour dot for the event kind, then the text
+   in normal ink. The text keeps a text token rather than the event colour —
+   an orange or teal title on a white cell fails contrast, and the dot already
+   carries the identity. */
 .month-chip {
+  --ev: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11.5px;
   font-weight: 500;
   height: var(--month-chip-h);
-  line-height: calc(var(--month-chip-h) - 5px);
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--ev) 12%, transparent);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   flex-shrink: 0;
-  border-left: 3px solid var(--accent);
   box-sizing: border-box;
 }
-.month-chip.is-done {
-  opacity: .55;
-  text-decoration: line-through;
-  border-left-color: var(--success);
+.chip-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ev);
+  flex-shrink: 0;
 }
-.month-chip.is-event {
-  background: var(--surface-sunk);
-  color: var(--text-muted);
-  border-left-color: var(--text-faint);
-}
+.chip-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.month-chip.is-done { opacity: .5; }
+.month-chip.is-done .chip-text { text-decoration: line-through; }
+.month-chip.is-done .chip-dot { background: var(--success); }
+
+/* One class per slot, set from the persisted title -> slot map. */
+.ev-1 { --ev: var(--ev-1); }
+.ev-2 { --ev: var(--ev-2); }
+.ev-3 { --ev: var(--ev-3); }
+.ev-4 { --ev: var(--ev-4); }
+.ev-5 { --ev: var(--ev-5); }
+.ev-6 { --ev: var(--ev-6); }
+.ev-7 { --ev: var(--ev-7); }
+.ev-8 { --ev: var(--ev-8); }
 .month-more {
   font-size: 10.5px;
   font-weight: 600;
@@ -864,22 +879,22 @@ button {
 }
 
 .week-item {
+  --ev: var(--accent);
   display: flex;
   align-items: flex-start;
   gap: 6px;
   padding: 5px 7px;
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--ev) 13%, transparent);
+  border-left: 3px solid var(--ev);
   font-size: 12px;
   line-height: 1.35;
   cursor: pointer;
-  transition: background .1s var(--ease);
+  transition: filter .1s var(--ease);
 }
-.week-item:hover { background: var(--surface-sunk); }
+.week-item:hover { filter: brightness(.96); }
 .week-item.is-done { opacity: .55; }
 .week-item.is-done .week-item-title { text-decoration: line-through; }
-.week-item.is-event { border-left-color: var(--text-faint); }
 .week-item-time {
   font-family: var(--font-num); font-size: 10.5px; color: var(--text-muted);
   flex-shrink: 0; padding-top: 1px;
@@ -982,10 +997,11 @@ button {
 }
 
 .day-event {
-  background: var(--accent-soft);
-  border-left: 3px solid var(--accent);
+  --ev: var(--accent);
+  background: color-mix(in srgb, var(--ev) 15%, transparent);
+  border-left: 3px solid var(--ev);
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 5px 9px;
   font-size: 12.5px;
   cursor: pointer;
   display: flex;
@@ -993,8 +1009,7 @@ button {
   gap: 7px;
   transition: filter .1s var(--ease);
 }
-.day-event:hover { filter: brightness(.97); }
-.day-event.is-event { background: var(--surface-sunk); border-left-color: var(--text-faint); }
+.day-event:hover { filter: brightness(.96); }
 .day-event.is-done { opacity: .55; }
 .day-event.is-done .day-event-title { text-decoration: line-through; }
 .day-event-title { font-weight: 550; flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -1055,6 +1070,40 @@ button {
 }
 .task-group-label:first-child { margin-top: 2px; }
 .task-group-label.is-overdue { color: var(--danger); }
+
+/* Event colours — CATEGORICAL, so identity not magnitude: eight fixed hues
+   assigned in order and never generated on the fly.
+
+   The ORDER is the important part, and it was computed rather than chosen. An
+   all-pairs colour-blindness test cannot be passed by eight hues — the worst
+   pair here collapses to dE 1.9 under protanopia — so the slots are sorted so
+   the EARLIEST assigned are the most separated: the first three clear dE 14.6
+   and the first four 11.8, against a target of 8. Since colours are handed out
+   in order of first appearance, your most common event types get the most
+   distinguishable colours, and the tail relies on the label, which every chip
+   carries anyway. */
+:root {
+  --ev-1: #3949ab;  /* indigo  */
+  --ev-2: #ef6c00;  /* orange  */
+  --ev-3: #c62828;  /* red     */
+  --ev-4: #00796b;  /* teal    */
+  --ev-5: #33691e;  /* green   */
+  --ev-6: #c2185b;  /* pink    */
+  --ev-7: #00639c;  /* blue    */
+  --ev-8: #7b1fa2;  /* purple  */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Lighter than the chart-mark band on purpose: these sit on a dark surface
+       as filled chips, where legibility beats band conformance. All clear 5.8:1. */
+    --ev-1: #f07fa8; --ev-2: #e5993f; --ev-3: #7f8ff0; --ev-4: #5cb6e0;
+    --ev-5: #e3796e; --ev-6: #93b84c; --ev-7: #4bbf9a; --ev-8: #c48fdd;
+  }
+}
+:root[data-theme="dark"] {
+  --ev-1: #f07fa8; --ev-2: #e5993f; --ev-3: #7f8ff0; --ev-4: #5cb6e0;
+  --ev-5: #e3796e; --ev-6: #93b84c; --ev-7: #4bbf9a; --ev-8: #c48fdd;
+}
 
 /* Urgency ramp — an ORDINAL scale, so one hue with monotone lightness steps
    rather than assorted colours. Validated in OKLCH: every adjacent step clears

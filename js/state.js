@@ -71,6 +71,8 @@ function defaultState() {
     version: 1,
     listsVersion: 2,
     items: [],
+    // normalised event title -> colour slot. See eventColorSlot().
+    eventColors: {},
     lists: DEFAULT_LISTS.map((l) => ({ ...l, updatedAt: nowISO() })),
     settings: {
       theme: 'auto',
@@ -620,6 +622,62 @@ export function rolloverDue(today = todayKey()) {
 /** Sort a copy most-urgent first. */
 export function byUrgency(items, today = todayKey()) {
   return [...items].sort((a, b) => urgencyScore(b, today) - urgencyScore(a, today));
+}
+
+/* ------------------------------------------------------------------ */
+/* Event colours                                                       */
+/* ------------------------------------------------------------------ */
+
+/** How many distinct colours exist before they start repeating. */
+export const EVENT_COLOR_SLOTS = 8;
+
+/**
+ * Reduce a title to the thing that identifies its *kind*, so every
+ * "Night Shift (N)" lands on one colour and every "Day Shift (D)" on another.
+ * Strips a leading time, punctuation and casing, but keeps the words — two
+ * genuinely different shifts must not collapse into one another.
+ */
+export function colorKeyFor(title) {
+  return String(title || '')
+    .toLowerCase()
+    .replace(/^\s*\d{1,2}([:.]\d{2})?\s*(am|pm)?\s*[-–—:]?\s*/, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The colour slot for a title, assigned on first sight and then fixed.
+ *
+ * Persisted rather than hashed, for two reasons: a hash collides, putting two
+ * unrelated event types on one colour with no way to fix it; and colour must
+ * follow the entity, so it cannot shift about as the diary fills up. Slots are
+ * handed out in order, and the palette is ordered so the earliest slots are the
+ * most distinguishable — including under colour blindness.
+ */
+export function eventColorSlot(title) {
+  const key = colorKeyFor(title);
+  if (!key) return 0;
+  const map = store.state.eventColors || (store.state.eventColors = {});
+  if (map[key] === undefined) {
+    const used = Object.keys(map).length;
+    map[key] = used % EVENT_COLOR_SLOTS;
+    // Not undoable and not a user edit: this is bookkeeping, and it must not
+    // land on the undo stack or mark the document dirty for sync.
+    store.save();
+  }
+  return map[key];
+}
+
+/** Every distinct event kind and its colour — for a legend. */
+export function eventColorLegend() {
+  const map = store.state.eventColors || {};
+  const seen = new Map();
+  for (const item of liveItems()) {
+    const key = colorKeyFor(item.title);
+    if (key && !seen.has(key)) seen.set(key, { title: item.title, slot: map[key] ?? 0 });
+  }
+  return [...seen.values()];
 }
 
 /** Incomplete, dated before today — the stuff quietly rotting. */

@@ -12,7 +12,7 @@ import {
 } from '../dates.js';
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
-  updateItem, progressFor, getItem,
+  updateItem, progressFor, getItem, eventColorSlot,
 } from '../state.js';
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
@@ -121,9 +121,18 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   const chips = el('div.month-chips');
   for (const item of items.slice(0, MAX_CHIPS)) {
     chips.appendChild(el('div.month-chip', {
-      class: [item.done ? 'is-done' : '', item.kind === 'event' ? 'is-event' : ''].filter(Boolean).join(' '),
+      class: [
+        item.done ? 'is-done' : '',
+        item.kind === 'event' ? 'is-event' : '',
+        `ev-${eventColorSlot(item.title) + 1}`,
+      ].filter(Boolean).join(' '),
       title: item.title,
-    }, item.time ? `${formatTime(item.time, settings().hour12)} ` : '', item.title || 'Untitled'));
+    },
+      el('span.chip-dot'),
+      el('span.chip-text',
+        item.time ? `${formatTime(item.time, settings().hour12)} ` : '',
+        item.title || 'Untitled'),
+    ));
   }
   if (items.length) cell.appendChild(chips);
 
@@ -252,7 +261,11 @@ export function weekView(anchorKey, { onSelectDay }) {
 
     for (const item of items) {
       const weekItem = el('div.week-item', {
-        class: [item.done ? 'is-done' : '', item.kind === 'event' ? 'is-event' : ''].filter(Boolean).join(' '),
+        class: [
+          item.done ? 'is-done' : '',
+          item.kind === 'event' ? 'is-event' : '',
+          `ev-${eventColorSlot(item.title) + 1}`,
+        ].filter(Boolean).join(' '),
         draggable: 'true',
         onclick: () => openItemEditor(item.id),
         ondragstart: (e) => {
@@ -411,7 +424,11 @@ export function dayView(dayKey, { onOpenItem } = {}) {
 function dayEventNode(item, onOpenItem) {
   const cfg = settings();
   const node = el('div.day-event', {
-    class: [item.done ? 'is-done' : '', item.kind === 'event' ? 'is-event' : ''].filter(Boolean).join(' '),
+    class: [
+      item.done ? 'is-done' : '',
+      item.kind === 'event' ? 'is-event' : '',
+      `ev-${eventColorSlot(item.title) + 1}`,
+    ].filter(Boolean).join(' '),
     draggable: 'true',
     onclick: () => (onOpenItem ? onOpenItem(item.id) : openItemEditor(item.id)),
     ondragstart: (e) => {
