@@ -21,6 +21,7 @@ const SHIFT_LABEL = {
   [SHIFT.NIGHT]: 'nights',
   [SHIFT.DAY]: 'days',
   [SHIFT.ONCALL]: 'on call',
+  [SHIFT.TRAINING]: 'a training day',
   [SHIFT.OFF]: 'off',
   [SHIFT.OTHER]: 'shift',
 };

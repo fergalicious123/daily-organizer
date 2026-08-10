@@ -699,7 +699,7 @@ export function eventColorSlot(title) {
 /* ------------------------------------------------------------------ */
 
 export const SHIFT = {
-  NIGHT: 'night', DAY: 'day', ONCALL: 'oncall', OFF: 'off',
+  NIGHT: 'night', DAY: 'day', ONCALL: 'oncall', TRAINING: 'training', OFF: 'off',
   // Clearly a rota entry, but not in a code this knows yet. Coloured neutrally
   // and labelled "on shift" rather than dropped: a working day rendered as a
   // blank cell is a silent wrong answer, whereas an unnamed one is visible and
@@ -712,7 +712,9 @@ export const SHIFT = {
  * and the head of the next — takes the more disruptive of the two, because
  * that is the one that decides what the day is actually like.
  */
-const SHIFT_PRIORITY = [SHIFT.NIGHT, SHIFT.DAY, SHIFT.ONCALL, SHIFT.OTHER, SHIFT.OFF];
+const SHIFT_PRIORITY = [
+  SHIFT.NIGHT, SHIFT.DAY, SHIFT.TRAINING, SHIFT.ONCALL, SHIFT.OTHER, SHIFT.OFF,
+];
 
 /**
  * Does this title belong to someone else?
@@ -744,7 +746,7 @@ function isMine(title) {
  * rest day and repaints the whole cell. A real entry says "shift", or carries
  * a bracketed code, or is nothing but the word itself.
  */
-const SHIFT_SHAPED = /\bshifts?\b|\((?:n|d|e|l|oc|ld|ln)\)|^\s*(?:nights?|days?|off|rest(?:\s*day)?)\s*$/i;
+const SHIFT_SHAPED = /\bshifts?\b|\((?:n|d|e|l|oc|td|ld|ln)\)|\btraining day\b|^\s*(?:nights?|days?|off|rest(?:\s*day)?)\s*$/i;
 
 /** Which kind of shift an item is, or null if it is not one (or not yours). */
 export function shiftKindOf(item) {
@@ -754,6 +756,10 @@ export function shiftKindOf(item) {
 
   const t = title.toLowerCase();
   if (/on[-\s]?call|\(oc\)/.test(t)) return SHIFT.ONCALL;
+  // Before the day test, and not optional: "Training Day (TD)" contains the
+  // word "Day", so checking days first would file every training day as a
+  // normal one — and they are worked differently.
+  if (/\btraining\b|\(td\)/.test(t)) return SHIFT.TRAINING;
   if (/\bnights?\b|\(n\)|\(ln\)/.test(t)) return SHIFT.NIGHT;
   if (/\bdays?\b|\(d\)|\(ld\)/.test(t)) return SHIFT.DAY;
   if (/\boff\b|\brest\b/.test(t)) return SHIFT.OFF;
