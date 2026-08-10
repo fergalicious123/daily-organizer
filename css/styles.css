@@ -1007,15 +1007,32 @@ button {
 /* Time grid. Events are absolutely positioned by start minute and sized by
    duration, so an hour of screen is an hour of day. */
 .day-grid {
+  /* The clock column down the left. One number, because the hour lines and the
+     event lanes both have to agree on where it ends — they did not, and the
+     events won by covering the labels. */
+  --day-gutter: 58px;
   position: relative;
   margin: 0;
 }
+
+/* The strip the event blocks live in: everything right of the clock column.
+   Transparent to the pointer so clicking an empty patch still lands on the
+   hour beneath it, which is what opens the add-at-this-time editor and what
+   accepts a dragged task. */
+.day-lanes {
+  position: absolute;
+  left: var(--day-gutter); right: 8px;
+  top: 0; bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.day-lanes > * { pointer-events: auto; }
 
 .hour-line {
   position: absolute;
   left: 0; right: 0;
   border-top: 1px solid var(--border);
-  padding-left: 58px;
+  padding-left: var(--day-gutter);
   transition: background .1s var(--ease);
 }
 .hour-line.is-past { background: color-mix(in srgb, var(--surface-sunk) 40%, transparent); }

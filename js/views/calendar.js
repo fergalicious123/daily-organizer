@@ -489,6 +489,12 @@ export function dayView(dayKey, { onOpenItem } = {}) {
 
   // Events, laid out in lanes so overlaps sit side by side rather than on top
   // of one another.
+  //
+  // They go in their own box, inset past the hour gutter. Positioned straight
+  // onto the grid, a lane's `left: 0%` is the grid's left edge, so every block
+  // ran back underneath the hour labels — and an event's fill is translucent,
+  // so "7am" showed through the middle of the shift sitting on top of it.
+  const lanes = el('div.day-lanes');
   const laid = layoutDayEvents(timed, cfg.defaultDurationMin);
   for (const slot of laid) {
     const node = dayEventNode(slot.item, onOpenItem);
@@ -502,8 +508,9 @@ export function dayView(dayKey, { onOpenItem } = {}) {
     });
     // Very short blocks cannot fit two lines of text.
     if ((slot.end - slot.start) < 45) node.classList.add('is-compact');
-    grid.appendChild(node);
+    lanes.appendChild(node);
   }
+  if (laid.length) grid.appendChild(lanes);
 
   if (isToday(dayKey) && nowMinutes >= gridStart && nowMinutes <= gridStart + gridMinutes) {
     grid.appendChild(el('div.now-line', {
