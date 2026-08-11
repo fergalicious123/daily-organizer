@@ -474,6 +474,7 @@ function tasksView() {
   // calendar in sight, so dragging one to a day had no target on screen.
   root.appendChild(dayStrip({
     onSelectDay: (dayKey) => navigate({ view: 'day', anchor: dayKey }),
+    onOpenUnscheduled: () => navigate({ view: 'tasks', listId: null }),
   }));
 
   // Group-by control. Only worth showing once there is enough here for

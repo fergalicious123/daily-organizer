@@ -15,6 +15,7 @@ import {
 } from '../state.js';
 import { todayKey, addDays, formatDayLong, formatRelativeDay, formatTime } from '../dates.js';
 import { makeTouchDraggable } from '../dragdrop.js';
+import { dayStrip } from './calendar.js';
 
 /** Bucket by completion date: Today, Yesterday, This week, Earlier. */
 function bucketFor(doneAt) {
@@ -37,9 +38,20 @@ export function doneView({ onNavigate }) {
   root.appendChild(el('header.done-head',
     el('h1.done-title', 'Completed'),
     el('p.done-sub', items.length
-      ? `${items.length} finished item${items.length === 1 ? '' : 's'} · drag one onto a day to do it again`
+      ? `${items.length} finished item${items.length === 1 ? '' : 's'} · drag one onto a day to do it again, or onto Off to reopen it without a date`
       : 'Nothing finished yet'),
   ));
+
+  // The same strip the list views use. Without it this screen had days to drop
+  // onto only via the button, and no way at all to reopen something without
+  // committing to a date — which is the case when a result changes and you do
+  // not yet know when you will get back to it.
+  if (items.length) {
+    root.appendChild(dayStrip({
+      onSelectDay: (dayKey) => onNavigate({ view: 'day', anchor: dayKey }),
+      onOpenUnscheduled: () => onNavigate({ view: 'tasks', listId: null }),
+    }));
+  }
 
   if (!items.length) {
     root.appendChild(el('div.empty-state',

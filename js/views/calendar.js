@@ -4,7 +4,7 @@
  * the caller's job (app.js owns the route), so these stay dumb and testable.
  */
 
-import { el, icon, isMobile } from '../ui.js';
+import { el, icon, isMobile, toast } from '../ui.js';
 import {
   monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
@@ -13,7 +13,7 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
-  shiftOnDay, crewOnDay, SHIFT,
+  shiftOnDay, crewOnDay, SHIFT, store,
 } from '../state.js';
 
 /** How each shift is named wherever one is spelled out rather than coloured. */
@@ -709,7 +709,7 @@ function formatDuration(min) {
  *
  * Sticky, so it stays reachable while you scroll a long backlog.
  */
-export function dayStrip({ days = 14, onSelectDay = null } = {}) {
+export function dayStrip({ days = 14, onSelectDay = null, onOpenUnscheduled = null } = {}) {
   const start = todayKey();
   const strip = el('div.day-strip', {
     role: 'group',
@@ -719,6 +719,20 @@ export function dayStrip({ days = 14, onSelectDay = null } = {}) {
   strip.appendChild(el('div.day-strip-hint', 'Drag onto a day →'));
 
   const rail = el('div.day-strip-rail');
+
+  // Unscheduled sits at the head of the rail, before Today. Dragging a task
+  // FORWARD to a day and dragging it OFF the calendar are the same gesture
+  // with the same targets, so parking something is no harder than booking it.
+  const inbox = el('button.day-strip-day.is-inbox', {
+    title: 'Drop here to take a task off the calendar',
+    onclick: () => onOpenUnscheduled?.(),
+  },
+    el('span.day-strip-dow', 'Off'),
+    el('span.day-strip-num', icon('inbox', 'icon')),
+    el('span.day-strip-count.is-empty', '·'),
+  );
+  makeUnscheduleTarget(inbox);
+  rail.appendChild(inbox);
   for (let i = 0; i < days; i++) {
     const dayKey = addDays(start, i);
     const d = fromKey(dayKey);
@@ -760,6 +774,56 @@ export function dayStrip({ days = 14, onSelectDay = null } = {}) {
  * What a drop actually does. Shared by the mouse path (HTML5 DnD) and the
  * touch path, so a finger and a cursor cannot drift apart in behaviour.
  */
+/**
+ * Send a task back to Unscheduled: strip the date, and the rollover history
+ * with it.
+ *
+ * Clearing `rollCount` matters. An overdue task has usually been carried
+ * forward twice already, and rollover moves anything at two straight back out
+ * of the calendar — so without this, a task you deliberately parked would
+ * behave as though it had rotted there, and the next thing you scheduled it
+ * for would be undone overnight. Unscheduling by hand is a decision, not a
+ * failure, so it starts the count again.
+ */
+export function applyUnschedule({ itemId }) {
+  if (!itemId) return;
+  const item = getItem(itemId);
+  if (!item) return;
+  if (!item.date && !item.done) return;      // already there
+
+  // A finished thing dragged off the calendar means "that is not settled after
+  // all" — so it reopens as well as unschedules. Dropping it on a DAY already
+  // reopens it (see reopenOnDay); this is the same decision without a date.
+  updateItem(itemId, {
+    date: null, time: null, endDate: null, durationMin: null,
+    rollCount: 0, rolledFrom: null,
+    ...(item.done ? { done: false, doneAt: null } : {}),
+  });
+  toast(
+    item.done
+      ? `“${item.title || 'Untitled'}” reopened into Unscheduled`
+      : `“${item.title || 'Untitled'}” moved to Unscheduled`,
+    { action: 'Undo', onAction: () => store.undo() },
+  );
+}
+
+function makeUnscheduleTarget(node) {
+  node.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    node.classList.add('is-drop-target');
+  });
+  node.addEventListener('dragleave', () => node.classList.remove('is-drop-target'));
+  node.addEventListener('drop', (e) => {
+    e.preventDefault();
+    node.classList.remove('is-drop-target');
+    const id = e.dataTransfer.getData('text/plain');
+    if (id) applyUnschedule({ itemId: id });
+  });
+  // Same node, touch path.
+  registerDropZone(node, {}, applyUnschedule);
+}
+
 export function applyDropOnDay({ itemId, dateKey, time }) {
   if (!itemId) return;
   // A completed item dragged onto a day means "do this again": reopen it and
