@@ -12,7 +12,18 @@ import { el, icon } from '../ui.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
   currentStreak, completionHistory, settings, eventColorSlot,
+  shiftOnDay, crewOnDay, SHIFT,
 } from '../state.js';
+
+/** Said as a statement, because this is an answer, not a label. */
+const SHIFT_LABEL = {
+  [SHIFT.NIGHT]: 'You are on NIGHTS today',
+  [SHIFT.DAY]: 'You are on DAYS today',
+  [SHIFT.ONCALL]: 'You are ON CALL today',
+  [SHIFT.TRAINING]: 'Training day today',
+  [SHIFT.OFF]: 'You are off today',
+  [SHIFT.OTHER]: 'You are on shift today',
+};
 import {
   todayKey, formatDayLong, formatTime, timeToMinutes, addDays, formatRelativeDay,
 } from '../dates.js';
@@ -76,6 +87,25 @@ export function homeView({ onNavigate }) {
     el('h1.home-greeting', greeting(new Date().getHours())),
     el('p.home-date', formatDayLong(today)),
   ));
+
+  /* ---- what shift you are on, above everything ---- */
+  // On a rota this is the first thing you want and the thing you are most
+  // likely to get wrong — four nights and four days look identical on a phone
+  // until you read one. It sits above the up-next card because "am I on
+  // nights?" outranks "what is next" when the answer changes your whole day.
+  const shift = shiftOnDay(today);
+  if (shift) {
+    const crew = crewOnDay(today);
+    root.appendChild(el('button.home-shift', {
+      class: `on-${shift}`,
+      onclick: () => onNavigate({ view: 'day', anchor: today }),
+    },
+      el('span.home-shift-kind', SHIFT_LABEL[shift] || 'On shift'),
+      crew.length
+        ? el('span.home-shift-crew', `With ${crew.join(', ')}`)
+        : null,
+    ));
+  }
 
   /* ---- what's happening ---- */
   if (focus) {

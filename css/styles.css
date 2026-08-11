@@ -2129,6 +2129,32 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .day-journal { margin-top: 14px; }
 
+/* The rota answer, at the top of Home. Loud on purpose: it is the one thing
+   on this screen you must not misread, and a four-night block looks exactly
+   like a four-day block until something says which. */
+.home-shift {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 13px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  border-left: 5px solid var(--shift, var(--accent));
+  background: color-mix(in srgb, var(--shift, var(--accent)) 18%, var(--surface));
+  cursor: pointer;
+  transition: background .12s var(--ease);
+}
+.home-shift:hover { background: color-mix(in srgb, var(--shift, var(--accent)) 26%, var(--surface)); }
+.home-shift-kind {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--text);
+}
+.home-shift-crew { font-size: 12.5px; color: var(--text-muted); }
+
 /* What this day IS, above everything that is on it. */
 .shift-card {
   display: flex;
