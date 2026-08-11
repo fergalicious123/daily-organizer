@@ -755,6 +755,13 @@ export function shiftKindOf(item) {
   if (!SHIFT_SHAPED.test(title)) return null;
 
   const t = title.toLowerCase();
+
+  // "Alternative Training Day" is the white T on the roster: a day you are NOT
+  // working, listed only so the pattern reads. It contains the word "training"
+  // and was being coloured as a training day you had to turn up for, which is
+  // the worst kind of wrong — it invents a shift.
+  if (/\balternative\b/.test(t)) return null;
+
   if (/on[-\s]?call|\(oc\)/.test(t)) return SHIFT.ONCALL;
   // Before the day test, and not optional: "Training Day (TD)" contains the
   // word "Day", so checking days first would file every training day as a

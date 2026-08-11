@@ -25,6 +25,16 @@ const SHIFT_LABEL = {
   [SHIFT.OFF]: 'off',
   [SHIFT.OTHER]: 'shift',
 };
+
+/** The word on the month cell. Short, because a cell is ~100px wide. */
+const SHIFT_BADGE = {
+  [SHIFT.NIGHT]: 'NIGHTS',
+  [SHIFT.DAY]: 'DAYS',
+  [SHIFT.ONCALL]: 'ON CALL',
+  [SHIFT.TRAINING]: 'TRAINING',
+  [SHIFT.OFF]: 'OFF',
+  [SHIFT.OTHER]: 'SHIFT',
+};
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
 import { journalEditor } from './journal.js';
@@ -270,6 +280,17 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
       }, allDone ? icon('check', 'icon') : String(open))
       : null,
   ));
+
+  // The shift, said in words, above the chips.
+  //
+  // A tinted cell was not enough and should not have been expected to be: the
+  // cell is mostly chips, the tint is behind them, and a wash you have to
+  // interpret loses to eight words of black text every time. This is the one
+  // fact on the cell that changes what the whole day is, so it gets said
+  // outright, at the top, in the shift's colour.
+  if (shift) {
+    cell.appendChild(el('div.month-shift', SHIFT_BADGE[shift] || 'SHIFT'));
+  }
 
   // Chips live in their own clipped box whose height is an exact multiple of
   // the chip height, so the clip edge always lands between chips.

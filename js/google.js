@@ -420,13 +420,19 @@ export function eventToItem(event) {
   let durationMin = null;
 
   if (allDay) {
-    date = event.start.date;
+    // Some callers hand back all-day dates with a time bolted on
+    // ("2026-08-07T00:00:00Z") rather than the bare "2026-08-07" the API
+    // documents. Left alone, the end-date maths below built
+    // `new Date("2026-08-07T00:00:00ZT00:00:00")` — an Invalid Date — so
+    // endDate silently stayed null and every four-day block collapsed to its
+    // first day. Trim to the date part before touching either end.
+    date = String(event.start.date).slice(0, 10);
     // Google's all-day end is EXCLUSIVE, so a shift block running the 11th to
     // the 14th arrives as end.date = the 15th. Store the last day it actually
     // covers. Without this the span is lost and a four-day shift shows on one
     // day only.
     if (event.end?.date) {
-      const end = new Date(`${event.end.date}T00:00:00`);
+      const end = new Date(`${String(event.end.date).slice(0, 10)}T00:00:00`);
       end.setDate(end.getDate() - 1);
       const last = `${end.getFullYear()}-${p2(end.getMonth() + 1)}-${p2(end.getDate())}`;
       if (last > date) endDate = last;
