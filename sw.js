@@ -21,6 +21,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v6: rota gate anchored to the start of a title; end dates repaired on
+// every sync rather than only when the remote is newer.
 // v5: multi-day events keep their end date through import and refresh.
 // v4: shift runs drawn as one bar across their block, month cells pinned to
 // their own columns, all-day end dates parsed in both forms.
@@ -29,7 +31,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v5';
+const CACHE_VERSION = 'organizer-v6';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports

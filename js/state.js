@@ -742,11 +742,21 @@ function isMine(title) {
 /**
  * Only claim things that actually look like rota entries.
  *
- * Without this gate a task called "book the car in on my day off" reads as a
- * rest day and repaints the whole cell. A real entry says "shift", or carries
- * a bracketed code, or is nothing but the word itself.
+ * ANCHORED to the start of the title, which is the whole trick. Matching the
+ * words anywhere caught "book the car in on my day off" and then, once
+ * training days were added, "sort out leave/training day requirements" — a
+ * task ABOUT a training day, painted as one. A rota entry leads with what it
+ * is; a task that merely mentions a shift does not.
  */
-const SHIFT_SHAPED = /\bshifts?\b|\((?:n|d|e|l|oc|td|ld|ln)\)|\btraining day\b|^\s*(?:nights?|days?|off|rest(?:\s*day)?)\s*$/i;
+const SHIFT_SHAPED = new RegExp(
+  '^\\s*(?:'
+  + 'day\\s*shift|night\\s*shift|late\\s*shift|early\\s*shift'   // "Day Shift (D)"
+  + '|training\\s*day|on[-\\s]?call'                             // "Training Day (TD)"
+  + '|\\(?(?:n|d|e|l|oc|td|ld|ln)\\)'                            // a bare code
+  + '|nights?|days?|off|rest(?:\\s*day)?'                        // the word alone
+  + ')\\b\\s*(?:\\(|$|[-–:,]|\\s)',
+  'i',
+);
 
 /** Which kind of shift an item is, or null if it is not one (or not yours). */
 export function shiftKindOf(item) {

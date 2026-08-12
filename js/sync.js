@@ -352,6 +352,20 @@ class SyncEngine extends EventTarget {
           });
         }, { undoable: false, silent: true });
       }
+
+      // How long a block runs is Google's to say — nothing in this app sets an
+      // end date — so take it down whichever side carries the fresher stamp.
+      // The branch above only fires when the remote is newer, which left every
+      // item whose local copy happened to be fresher stuck with the wrong end
+      // for ever: correcting the roster upstream could never reach it. This is
+      // the line that repairs the ones already stored wrong.
+      const after = local && store.state.items.find((i) => i.id === local.id);
+      if (after && !after.deleted && (after.endDate ?? null) !== (mapped.endDate ?? null)) {
+        store.mutate((s) => {
+          const item = s.items.find((i) => i.id === local.id);
+          if (item) item.endDate = mapped.endDate ?? null;
+        }, { undoable: false, silent: true });
+      }
     }
 
     /* --- push: local -> remote --- */
