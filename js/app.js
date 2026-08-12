@@ -1385,8 +1385,19 @@ async function registerServiceWorker() {
  */
 function versionField() {
   const stamp = el('span.version-stamp', 'checking…');
-  activeBuild().then((v) => {
-    stamp.textContent = v || 'no offline cache on this device';
+
+  // Compare what this device is RUNNING against what the server is offering.
+  // A bare version number cannot be acted on — you have nothing to compare it
+  // with — and that is exactly how a device sat one deploy behind while its
+  // stamp and the server's agreed. This says up to date, or it does not.
+  Promise.all([activeBuild(), serverBuild()]).then(([mine, theirs]) => {
+    if (!mine) { stamp.textContent = 'no offline cache on this device'; return; }
+    if (!theirs) { stamp.textContent = `${mine} (could not reach the server)`; return; }
+    const same = mine === theirs;
+    stamp.textContent = same
+      ? `${mine} · up to date`
+      : `${mine} · server has ${theirs} — tap Check for updates`;
+    stamp.classList.toggle('is-stale', !same);
   });
 
   const button = el('button.btn', {
@@ -1419,6 +1430,23 @@ function versionField() {
       'The app checks for a new version every time you open it. If this build number ',
       'does not match what you expect after a deploy, close the app completely and reopen it.'),
   );
+}
+
+/**
+ * The build the SERVER is offering, read out of sw.js itself.
+ *
+ * `no-store` because asking the cache what the server has would defeat the
+ * entire purpose of asking.
+ */
+async function serverBuild() {
+  try {
+    const res = await fetch('sw.js', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const match = /CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/.exec(await res.text());
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The service worker's own cache name — one source of truth for the build. */

@@ -628,6 +628,7 @@ button {
   font-size: 12px;
   color: var(--text-muted);
 }
+.version-stamp.is-stale { color: var(--warning); font-weight: 600; }
 
 /* ---- sidebar progress card ---- */
 

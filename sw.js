@@ -21,10 +21,14 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
-// v3: event colours through the lists, day-grid lanes, phone month dots,
-// diary, shortcuts panel. v2 went six deploys without being bumped, which is
-// exactly the failure this constant exists to prevent.
-const CACHE_VERSION = 'organizer-v3';
+// v4: shift runs drawn as one bar across their block, month cells pinned to
+// their own columns, all-day end dates parsed in both forms.
+//
+// Bump this on EVERY deploy, not just when something looks cacheable. v3
+// covered two deploys, so a device holding the first of them showed the right
+// build number while running the wrong code — the stamp said v3 and so did the
+// server, and there was no way to tell them apart by looking.
+const CACHE_VERSION = 'organizer-v4';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
