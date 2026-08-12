@@ -908,6 +908,22 @@ button {
 /* The shift, in words, at the top of the cell. Solid rather than tinted: this
    has to win against a stack of chips, and it is the only thing on the cell
    that changes what the day is. */
+/* A shift run drawn as one bar across its whole block. Solid, in the rota
+   colour, with the hours on it — this is the thing you scan the month for. */
+.span-bar.is-shift {
+  background: var(--shift, var(--accent));
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .06em;
+  justify-content: center;
+}
+.span-bar.is-shift .span-bar-text { text-align: center; }
+/* Off is the absence of a shift and must not shout like one. */
+.span-bar.is-shift.on-off {
+  background: color-mix(in srgb, var(--shift) 22%, transparent);
+  color: var(--text-muted);
+}
+
 .month-shift {
   flex-shrink: 0;
   margin-bottom: 3px;

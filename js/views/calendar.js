@@ -13,7 +13,7 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
-  shiftOnDay, crewOnDay, SHIFT, store,
+  shiftOnDay, crewOnDay, shiftKindOf, SHIFT, store,
 } from '../state.js';
 
 /** How each shift is named wherever one is spelled out rather than coloured. */
@@ -24,6 +24,16 @@ const SHIFT_LABEL = {
   [SHIFT.TRAINING]: 'a training day',
   [SHIFT.OFF]: 'off',
   [SHIFT.OTHER]: 'shift',
+};
+
+/**
+ * The hours a shift actually runs. Days are 0630-1830, twelve hours, as
+ * stated. Nights are the other half of the same clock — inferred, not given,
+ * so if the handover is not at 1830 this is the line to correct.
+ */
+const SHIFT_HOURS = {
+  [SHIFT.DAY]: '0630-1830',
+  [SHIFT.NIGHT]: '1830-0630',
 };
 
 /** The word on the month cell. Short, because a cell is ~100px wide. */
@@ -99,9 +109,16 @@ function spanningBarsForWeek(week) {
 
 function spanBarNode(bar, onSelectDay) {
   const { item, startCol, endCol, lane } = bar;
+  // A shift block is the one thing on this grid that spans on purpose, so the
+  // bar carries the rota colour and says what the run is — "DAYS · 0630-1830"
+  // across four columns beats the same word repeated in four cells.
+  const shift = shiftKindOf(item);
+  const label = shift
+    ? [SHIFT_BADGE[shift], SHIFT_HOURS[shift]].filter(Boolean).join(' · ')
+    : (item.title || 'Untitled');
   return el('button.span-bar', {
     class: [
-      `ev-${eventColorSlot(item.title) + 1}`,
+      shift ? `on-${shift} is-shift` : `ev-${eventColorSlot(item.title) + 1}`,
       bar.continuesBefore ? 'is-cont-before' : '',
       bar.continuesAfter ? 'is-cont-after' : '',
       item.done ? 'is-done' : '',
@@ -112,9 +129,13 @@ function spanBarNode(bar, onSelectDay) {
       marginTop: `${6 + lane * (SPAN_H + 2)}px`,
       height: `${SPAN_H}px`,
     },
-    title: `${item.title} · ${item.date} to ${item.endDate}`,
+    title: [
+      item.title,
+      shift && SHIFT_HOURS[shift] ? SHIFT_HOURS[shift] : null,
+      `${item.date} to ${item.endDate}`,
+    ].filter(Boolean).join(' · '),
     onclick: (e) => { e.stopPropagation(); onSelectDay(item.date); },
-  }, el('span.span-bar-text', item.title || 'Untitled'));
+  }, el('span.span-bar-text', label));
 }
 
 /**
@@ -209,14 +230,21 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
       row.appendChild(spanBarNode(bar, onSelectDay));
     }
 
-    for (const dayKey of week) {
+    week.forEach((dayKey, i) => {
       const cell = monthDayCell(dayKey, anchorKey, onSelectDay);
+      // Pin every cell to its own column. Without this the cells are
+      // auto-placed, so a bar claiming columns 4-7 pushed them along the row
+      // and the grid came apart: two 40px cells, a 191px hole where the bar
+      // was, then the rest shunted right. Both the bars and the cells are now
+      // explicitly placed, so a bar lies over its days instead of displacing
+      // them. +2 because column 1 is the week-number gutter.
+      cell.style.gridColumn = String(i + 2);
       // Reserve room so the cell's own content starts below the bars.
       if (bars.length) {
         cell.style.paddingTop = `${6 + bars.length * (SPAN_H + 2)}px`;
       }
       row.appendChild(cell);
-    }
+    });
     weeksHost.appendChild(row);
   }
 
@@ -288,7 +316,12 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // interpret loses to eight words of black text every time. This is the one
   // fact on the cell that changes what the whole day is, so it gets said
   // outright, at the top, in the shift's colour.
-  if (shift) {
+  // Only when the run is NOT already drawn as a bar across the row. A
+  // four-day block gets one continuous bar; repeating the word inside each of
+  // its cells says the same thing four times and breaks the run into four
+  // things again, which is the opposite of the point.
+  const barCoversIt = all.some((i) => isSpanning(i) && shiftKindOf(i) === shift);
+  if (shift && !barCoversIt) {
     cell.appendChild(el('div.month-shift', SHIFT_BADGE[shift] || 'SHIFT'));
   }
 
