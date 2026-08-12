@@ -298,6 +298,11 @@ class SyncEngine extends EventTarget {
             done: mapped.done,
             doneAt: mapped.doneAt,
             date: mapped.date,
+            // Never carried across on import, so EVERY multi-day event from
+            // Google has been stored as a single day since spanning bars
+            // shipped. A four-day shift arrived, kept its start, lost its end,
+            // and drew as one cell — which is exactly what it looked like.
+            endDate: mapped.endDate ?? null,
             time: mapped.time,
             durationMin: mapped.durationMin,
             priority: 0,
@@ -325,6 +330,14 @@ class SyncEngine extends EventTarget {
           Object.assign(item, {
             title: mapped.title,
             date: mapped.date,
+            // The last day a multi-day item covers. Absent from this list until
+            // now, which meant a block imported as one day stayed one day for
+            // ever: lengthening a shift from one day to four in Google updated
+            // its title and start here and silently kept the old end, so four
+            // day-shifts rendered as one. Explicitly nulled rather than left
+            // alone when the remote has no end, or shortening a block would be
+            // just as stuck.
+            endDate: mapped.endDate ?? null,
             time: mapped.time,
             durationMin: mapped.durationMin ?? item.durationMin,
             done: mapped.done,
