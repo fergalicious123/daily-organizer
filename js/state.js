@@ -809,9 +809,19 @@ export function crewFor(item) {
   if (!line) return [];
   return line[1]
     .split(/[,/&]|\band\b|\+/i)
-    .map((name) => name.trim())
+    .map((name) => name.trim().replace(RANK, '').trim())
     .filter(Boolean);
 }
+
+/**
+ * Ranks are stripped so a cell shows surnames.
+ *
+ * Google holds "Sgt Smith, Cpl Brown, LCpl Jewitt, Pte Thuku" while the roster
+ * sheet says "Smith, Brown, Jewitt, Thuku". Four ranks cost about a third of
+ * the width of a month cell and tell you nothing you do not already know about
+ * the people you work every shift with.
+ */
+const RANK = /^(?:sgt|ssgt|cpl|lcpl|pte|cfn|spr|tpr|gnr|wo[12]?|ssm|csm|rsm|2lt|lt|capt|maj|lt\s?col|col)\.?\s+/i;
 
 /** Everyone named across a day's shift entries, de-duplicated, order kept. */
 export function crewOnDay(dateKey) {

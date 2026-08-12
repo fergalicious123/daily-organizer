@@ -78,12 +78,20 @@ const SPAN_H = 18;
  * continuations rather than as separate events. Bars are packed into lanes so
  * two overlapping spans never sit on top of each other.
  */
+/**
+ * Multi-day items drawn as one bar across the row — but NOT shifts.
+ *
+ * A shift run now draws as its own block inside each day it covers, so that
+ * every day can carry its own crew. Left in here as well, the run would appear
+ * twice: once as a bar and once as four blocks under it.
+ */
 function spanningBarsForWeek(week) {
   const weekStartKey = week[0];
   const weekEndKey = week[6];
 
   const spans = liveItems()
-    .filter((i) => isSpanning(i) && i.date <= weekEndKey && i.endDate >= weekStartKey)
+    .filter((i) => isSpanning(i) && !shiftKindOf(i)
+      && i.date <= weekEndKey && i.endDate >= weekStartKey)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1
       : (b.endDate > a.endDate ? 1 : -1)));
 
@@ -256,7 +264,11 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   const all = itemsOnDay(dayKey);
   // Spanning items are drawn once as a bar across the row, so a chip here as
   // well would show the same shift twice on every day it covers.
-  const items = all.filter((i) => !isSpanning(i));
+  // Spanning items are drawn once as a bar across the row, so a chip here as
+  // well would show the same thing twice. A shift is the exception: it is
+  // drawn as a block in this cell, so its chip is dropped on every day it
+  // covers, not just the ones it spans.
+  const items = all.filter((i) => !isSpanning(i) && !shiftKindOf(i));
   const outside = !sameMonth(dayKey, anchorKey);
   const shift = shiftOnDay(dayKey);
   const crew = crewOnDay(dayKey);
@@ -280,6 +292,7 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
     // to see the shape of the block, not read four chips to work it out.
     title: [
       shift ? `On ${SHIFT_LABEL[shift]}` : null,
+      shift && SHIFT_HOURS[shift] ? SHIFT_HOURS[shift] : null,
       crew.length ? `With ${crew.join(', ')}` : null,
     ].filter(Boolean).join(' · ') || null,
     // fitMonthChips() needs the true total to recompute "+N more" after it
@@ -316,13 +329,19 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // interpret loses to eight words of black text every time. This is the one
   // fact on the cell that changes what the whole day is, so it gets said
   // outright, at the top, in the shift's colour.
-  // Only when the run is NOT already drawn as a bar across the row. A
-  // four-day block gets one continuous bar; repeating the word inside each of
-  // its cells says the same thing four times and breaks the run into four
-  // things again, which is the opposite of the point.
-  const barCoversIt = all.some((i) => isSpanning(i) && shiftKindOf(i) === shift);
-  if (shift && !barCoversIt) {
-    cell.appendChild(el('div.month-shift', SHIFT_BADGE[shift] || 'SHIFT'));
+  // The shift, as its own block inside the day. One per day of the run rather
+  // than a single bar across it, so each day can carry the crew that was
+  // actually on it — a run's crew is constant today, but the roster is not
+  // built on that promise and a changeover mid-block should be visible.
+  if (shift) {
+    // No hours line here. They are the same on all 39 day-shift cells, so
+    // repeating them costs a whole line of a 96px cell to say nothing that
+    // changes. The crew does change, so that is what the cell spends its
+    // space on; the hours live on the day view and the cell's tooltip.
+    cell.appendChild(el('div.month-shift',
+      el('span.month-shift-label', SHIFT_BADGE[shift] || 'SHIFT'),
+      crew.length ? el('span.month-shift-crew', crew.join(', ')) : null,
+    ));
   }
 
   // Chips live in their own clipped box whose height is an exact multiple of
@@ -356,15 +375,6 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
   // answer "what kind", which is the question the chips used to answer.
   // Hidden on desktop, where the chips say it better. Decorative, so the
   // screen reader keeps using the cell's own label.
-  // Who you were on with, in fine print along the bottom. Only where there is
-  // room to read it — a 43px phone cell would render two initials and a
-  // truncation mark, which is noise pretending to be information. Tapping the
-  // day still shows the full list.
-  if (crew.length) {
-    cell.appendChild(el('div.month-crew', { title: `With ${crew.join(', ')}` },
-      crew.join(', ')));
-  }
-
   if (items.length) {
     const dots = el('div.month-dots', { 'aria-hidden': 'true' });
     for (const item of items.slice(0, MAX_DOTS)) {
@@ -415,8 +425,16 @@ export function fitMonthChips(root) {
     const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
     const rowGap = parseFloat(cs.rowGap) || parseFloat(cs.gap) || 0;
 
+    // Everything above the chips claims its space first — the date, and on a
+    // working day the shift block, which is the tallest thing in the cell.
+    // Counting only the date left a shift day asking for 127px of content in a
+    // 96px cell, so the chips ran out through the bottom and were clipped
+    // mid-glyph. Measured rather than listed, so the next thing added here
+    // cannot reintroduce this.
+    const shiftEl = cell.querySelector('.month-shift');
     const base = cell.clientHeight - padY
-      - (numEl ? numEl.offsetHeight + rowGap : 0);
+      - (numEl ? numEl.offsetHeight + rowGap : 0)
+      - (shiftEl ? shiftEl.offsetHeight + rowGap : 0);
 
     /** How many whole chips fit in `space`. */
     const capacityFor = (space) =>
