@@ -27,6 +27,54 @@ const zones = new WeakMap();
  * Mark a node as able to receive drops.
  * `meta` carries whatever the drop needs to know (a date, an hour).
  */
+/* ------------------------------------------------------------------ */
+/* Edge scrolling                                                      */
+/* ------------------------------------------------------------------ */
+
+/** How close to an edge before the container starts moving, and how fast. */
+const EDGE_PX = 72;
+const EDGE_SPEED = 14;
+
+/** The nearest ancestor that can actually scroll vertically. */
+function scrollableUnder(x, y) {
+  let node = document.elementFromPoint(x, y);
+  while (node && node !== document.body) {
+    const style = getComputedStyle(node);
+    if (/(auto|scroll)/.test(style.overflowY)
+      && node.scrollHeight > node.clientHeight + 1) return node;
+    node = node.parentElement;
+  }
+  return document.scrollingElement;
+}
+
+/**
+ * Scroll the container under the pointer when the drag nears its edge.
+ *
+ * Without this, dragging out of the all-day strip onto an evening hour was
+ * impossible rather than merely awkward: the drop target is below the fold,
+ * and holding an item prevents the page scrolling — deliberately, or the drag
+ * would fight the scroll. So the only reachable hours were the ones already on
+ * screen. The drag has to move the view itself.
+ */
+function edgeScroll(x, y) {
+  const box = scrollableUnder(x, y);
+  if (!box) return;
+  const rect = box === document.scrollingElement
+    ? { top: 0, bottom: window.innerHeight }
+    : box.getBoundingClientRect();
+
+  if (y < rect.top + EDGE_PX) {
+    box.scrollBy(0, -EDGE_SPEED * (1 - (y - rect.top) / EDGE_PX));
+  } else if (y > rect.bottom - EDGE_PX) {
+    box.scrollBy(0, EDGE_SPEED * (1 - (rect.bottom - y) / EDGE_PX));
+  }
+}
+
+// The mouse path is HTML5 drag-and-drop, which never fires touchmove, so it
+// needs its own hook. `dragover` is the only event that fires continuously
+// while a drag is in flight.
+document.addEventListener('dragover', (e) => edgeScroll(e.clientX, e.clientY));
+
 export function registerDropZone(node, meta, handler) {
   node.dataset.dropZone = '1';
   zones.set(node, { meta, handler });
@@ -112,6 +160,8 @@ export function makeTouchDraggable(node, getItemId) {
       ghost.style.transform =
         `translate(${touch.clientX - startX}px, ${touch.clientY - startY}px)`;
     }
+
+    edgeScroll(touch.clientX, touch.clientY);
 
     const zone = zoneAt(touch.clientX, touch.clientY);
     if (zone?.node !== lastZone?.node) {

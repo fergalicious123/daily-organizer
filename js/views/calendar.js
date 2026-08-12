@@ -795,11 +795,13 @@ export function dayStrip({ days = 14, onSelectDay = null, onOpenUnscheduled = nu
   // Unscheduled sits at the head of the rail, before Today. Dragging a task
   // FORWARD to a day and dragging it OFF the calendar are the same gesture
   // with the same targets, so parking something is no harder than booking it.
+  // Labelled "No date", not "Off": "Off" reads as a rest day next to a row of
+  // dates, which is exactly the wrong idea on a rota where OFF means something.
   const inbox = el('button.day-strip-day.is-inbox', {
-    title: 'Drop here to take a task off the calendar',
+    title: 'Drop a task here to take it off the calendar — it moves to Unscheduled',
     onclick: () => onOpenUnscheduled?.(),
   },
-    el('span.day-strip-dow', 'Off'),
+    el('span.day-strip-dow', 'No date'),
     el('span.day-strip-num', icon('inbox', 'icon')),
     el('span.day-strip-count.is-empty', '·'),
   );
