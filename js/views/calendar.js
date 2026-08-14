@@ -13,7 +13,7 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
-  shiftOnDay, crewOnDay, shiftKindOf, SHIFT, store,
+  shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, SHIFT, store,
 } from '../state.js';
 
 /** How each shift is named wherever one is spelled out rather than coloured. */
@@ -263,15 +263,16 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
 function monthDayCell(dayKey, anchorKey, onSelectDay) {
   const all = itemsOnDay(dayKey);
   // Spanning items are drawn once as a bar across the row, so a chip here as
-  // well would show the same shift twice on every day it covers.
-  // Spanning items are drawn once as a bar across the row, so a chip here as
   // well would show the same thing twice. A shift is the exception: it is
   // drawn as a block in this cell, so its chip is dropped on every day it
   // covers, not just the ones it spans.
   const items = all.filter((i) => !isSpanning(i) && !shiftKindOf(i));
   const outside = !sameMonth(dayKey, anchorKey);
-  const shift = shiftOnDay(dayKey);
-  const crew = crewOnDay(dayKey);
+  // Derived from the items already fetched above. Calling shiftOnDay and
+  // crewOnDay here would each re-scan and re-sort the entire item list, three
+  // times per cell and 126 times over a six-week grid.
+  const shift = shiftFor(all);
+  const crew = crewFrom(all);
 
   const cell = el('div.month-day', {
     class: [

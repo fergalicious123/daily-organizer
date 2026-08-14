@@ -785,14 +785,26 @@ export function shiftKindOf(item) {
   return SHIFT.OTHER;
 }
 
-/** The shift for a whole day, across everything covering it. */
-export function shiftOnDay(dateKey) {
+/**
+ * The shift across a set of items already in hand.
+ *
+ * Separate from shiftOnDay so a caller that has just fetched a day's items —
+ * which every month cell has — does not fetch them again. Rendering a month
+ * was scanning and sorting the whole item list three times per cell, 126 times
+ * over a six-week grid, purely to re-derive what the cell already held.
+ */
+export function shiftFor(items) {
   const kinds = new Set();
-  for (const item of itemsOnDay(dateKey)) {
+  for (const item of items) {
     const kind = shiftKindOf(item);
     if (kind) kinds.add(kind);
   }
   return SHIFT_PRIORITY.find((k) => kinds.has(k)) || null;
+}
+
+/** The shift for a whole day, across everything covering it. */
+export function shiftOnDay(dateKey) {
+  return shiftFor(itemsOnDay(dateKey));
 }
 
 /**
@@ -825,8 +837,13 @@ const RANK = /^(?:sgt|ssgt|cpl|lcpl|pte|cfn|spr|tpr|gnr|wo[12]?|ssm|csm|rsm|2lt|
 
 /** Everyone named across a day's shift entries, de-duplicated, order kept. */
 export function crewOnDay(dateKey) {
+  return crewFrom(itemsOnDay(dateKey));
+}
+
+/** As crewOnDay, for items the caller already has. */
+export function crewFrom(items) {
   const seen = new Map();
-  for (const item of itemsOnDay(dateKey)) {
+  for (const item of items) {
     if (!shiftKindOf(item)) continue;
     for (const name of crewFor(item)) {
       const key = name.toLowerCase();
