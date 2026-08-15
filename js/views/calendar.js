@@ -247,6 +247,10 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
       // explicitly placed, so a bar lies over its days instead of displacing
       // them. +2 because column 1 is the week-number gutter.
       cell.style.gridColumn = String(i + 2);
+      // Column index, so a shift run can reveal across its days in order. A
+      // run has direction — it starts on one day and ends on another — and the
+      // motion says so rather than decorating.
+      cell.style.setProperty('--col', String(i));
       // Reserve room so the cell's own content starts below the bars.
       if (bars.length) {
         cell.style.paddingTop = `${6 + bars.length * (SPAN_H + 2)}px`;

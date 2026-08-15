@@ -2775,3 +2775,47 @@ body.is-touch-dragging {
   #app { grid-template-columns: 1fr; height: auto; }
   body { background: #fff; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Motion                                                              */
+/* ------------------------------------------------------------------ */
+
+/* The signature: a shift run reveals across its days, in order.
+   A run has direction — it starts on one day and ends four later — and the
+   stagger says that rather than decorating. Everything else on the grid stays
+   still, so this is the one thing that moves when a month opens. */
+@keyframes shift-in {
+  from { opacity: 0; transform: translateX(-8px) scaleX(.92); }
+  to   { opacity: 1; transform: none; }
+}
+.month-shift {
+  animation: shift-in .34s cubic-bezier(.2, .8, .3, 1) backwards;
+  animation-delay: calc(var(--col, 0) * 45ms);
+  transform-origin: left center;
+}
+
+/* Ticking something off is the most repeated action in the app, so it is the
+   one place a micro-interaction earns its keep. */
+@keyframes tick-pop {
+  50% { transform: scale(1.18); }
+}
+.checkbox.is-checked { animation: tick-pop .22s var(--ease); }
+
+/* A day you can drop onto should look ready for it, not merely highlighted. */
+.day-strip-day.is-drop-target,
+.month-day.is-drop-target { transform: translateY(-2px); }
+.day-strip-day, .month-day { transition: transform .12s var(--ease), background .12s var(--ease); }
+
+/* ---- quality floor ----
+   Every animation in this file, not the two that happened to get it. Someone
+   who has asked their system for less motion has asked once, and a blinking
+   sync dot or a pulsing mic ignores that just as loudly as a page transition. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .month-shift { animation: none; opacity: 1; transform: none; }
+}

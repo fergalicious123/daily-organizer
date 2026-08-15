@@ -21,6 +21,7 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v10: shift runs reveal across their days; reduced motion honoured globally.
 // v9: month grid derives shift and crew from items already fetched.
 // v8: the view scrolls while you drag near its edge.
 // v7: shift runs as a block per day, carrying the crew; ranks stripped.
@@ -34,7 +35,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v9';
+const CACHE_VERSION = 'organizer-v10';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
