@@ -28,6 +28,57 @@ import {
 import { quoteFor } from '../quotes.js';
 import { todayKey } from '../dates.js';
 
+/**
+ * Which quotes are showing their note.
+ *
+ * Module-level, like the day grid's collapsed hours, and for the same reason:
+ * the card is rebuilt on every render — a sync tick, a ticked step — so a
+ * panel that lived on the element would shut itself a few seconds after you
+ * opened it. Keyed by step so opening the Machiavelli note does not also open
+ * the Goggins one.
+ */
+const openNotes = new Set();
+
+/**
+ * The quote, with an optional word about what it means and where it is from.
+ *
+ * Shut by default. The quote is meant to be read in two seconds on the way out
+ * of the door; the explanation is for the mornings you have a minute and think
+ * "where is that from, actually". Putting it permanently on the card would
+ * turn a nudge into a reading exercise.
+ */
+function quoteBlock(quote, step) {
+  const open = openNotes.has(step.id);
+  const noteId = `routine-note-${step.id}`;
+
+  const toggle = el('button.routine-why', {
+    type: 'button',
+    'aria-expanded': open ? 'true' : 'false',
+    'aria-controls': noteId,
+    onclick: () => {
+      if (open) openNotes.delete(step.id);
+      else openNotes.add(step.id);
+      // A disclosure is presentation, not data — routing it through the store
+      // would write to disk and push to Drive for opening a footnote.
+      document.dispatchEvent(new CustomEvent('organizer:rerender'));
+    },
+  }, open ? 'Hide' : 'What this means');
+
+  return el('blockquote.routine-quote', { class: `tone-${quote.tone}` },
+    el('p.routine-quote-text', quote.text),
+    el('div.routine-quote-foot',
+      el('cite.routine-quote-by', quote.author),
+      toggle,
+    ),
+    open
+      ? el('div.routine-note', { id: noteId },
+          el('p.routine-note-text', quote.note),
+          el('p.routine-note-source', quote.source),
+        )
+      : null,
+  );
+}
+
 export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
   const steps = routineSteps();
   if (!steps.length) return null;
@@ -66,10 +117,7 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
       ].filter(Boolean).join(' '),
     },
       tick,
-      quote ? el('blockquote.routine-quote', { class: `tone-${quote.tone}` },
-        el('p.routine-quote-text', quote.text),
-        el('cite.routine-quote-by', quote.author),
-      ) : null,
+      quote ? quoteBlock(quote, step) : null,
       // Only worth saying when the step is standing in for something real —
       // it explains why ticking here also ticks a task further down the page.
       task ? el('span.routine-linked', task.title) : null,
