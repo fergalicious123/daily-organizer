@@ -572,11 +572,32 @@ export function mergeDocuments(local, remote) {
     if (!(day in (remote.journal || {}))) changedRemote = true;
   }
 
+  // The morning routine, merged exactly like the journal and for exactly the
+  // same reason: `...local` below would hand the local map straight back, so a
+  // step ticked on the phone would vanish the moment the laptop synced.
+  const routine = { ...(remote.routine || {}) };
+  for (const [day, mine] of Object.entries(local.routine || {})) {
+    const theirs = routine[day];
+    if (!theirs || newer(mine.updatedAt, theirs.updatedAt)) {
+      routine[day] = mine;
+      if (theirs || !remote.routine) changedRemote = true;
+    } else {
+      changedLocal = true;
+    }
+  }
+  for (const day of Object.keys(remote.routine || {})) {
+    if (!(day in (local.routine || {}))) changedLocal = true;
+  }
+  for (const day of Object.keys(local.routine || {})) {
+    if (!(day in (remote.routine || {}))) changedRemote = true;
+  }
+
   return {
     document: {
       ...local,
       items: [...merged.values()],
       journal,
+      routine,
       lists: [...lists.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       inboxListId: local.inboxListId || remote.inboxListId,
       // A Drive copy written before lists had stable ids still holds the old

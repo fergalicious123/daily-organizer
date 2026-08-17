@@ -21,7 +21,9 @@
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, settings,
   shiftOnDay, crewOnDay, shiftKindOf, SHIFT,
+  routineSteps, routineStepDone, linkedTask,
 } from './state.js';
+import { quoteFor } from './quotes.js';
 
 import { todayKey, formatDayLong, formatTime, timeToMinutes } from './dates.js';
 
@@ -63,14 +65,24 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
   const shift = shiftOnDay(dateKey);
   const crew = crewOnDay(dateKey);
 
+  // Tasks the ritual already speaks for. Without this, the course task lands
+  // under "First things" as Study English AND again under "Also today" under
+  // its own name — one job, listed twice, which is the fastest way to make a
+  // brief look untrustworthy.
+  const spokenFor = new Set(
+    routineSteps().map((step) => linkedTask(step, dateKey)?.id).filter(Boolean),
+  );
+
+  const skip = (i) => isShiftEntry(i, shift) || spokenFor.has(i.id);
+
   // Anything with a clock time, in the order it happens. Shift entries are
   // excluded — the shift already has its own line, and repeating it here as
   // "0630 Days" is noise on the one line you most want to be scannable.
   const timed = open
-    .filter((i) => i.time && !isShiftEntry(i, shift))
+    .filter((i) => i.time && !skip(i))
     .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
-  const untimed = open.filter((i) => !i.time && !isShiftEntry(i, shift));
+  const untimed = open.filter((i) => !i.time && !skip(i));
 
   const overdue = overdueTasks();
   const waiting = unscheduledTasks().filter((i) => !i.done);
@@ -87,6 +99,27 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
       shift,
       text: `${SHIFT_LINE[shift] || 'On shift'}${hours ? ` (${hours})` : ''}${withCrew}.`,
     });
+  }
+
+  // The ritual leads, ahead of anything the day imposes. That ordering is the
+  // whole point of it — a brief that opens with a 09:00 meeting has already
+  // conceded the morning to someone else's schedule.
+  const ritual = routineSteps();
+  if (ritual.length) {
+    const outstanding = ritual.filter((step) => !routineStepDone(step, dateKey));
+    if (outstanding.length) {
+      lines.push({ kind: 'label', text: 'First things' });
+      for (const step of outstanding) {
+        lines.push({ kind: 'routine', text: step.label });
+      }
+      // One quote, from the voice belonging to the first thing still to do.
+      // Two would be a poster; one is a nudge at the moment it is useful.
+      const quote = quoteFor(outstanding[0].kind, dateKey);
+      if (quote) lines.push({ kind: 'quote', text: `"${quote.text}" — ${quote.author}` });
+    } else {
+      lines.push({ kind: 'label', text: 'First things' });
+      lines.push({ kind: 'routine-done', text: 'Done — study and gym both ticked off.' });
+    }
   }
 
   if (timed.length) {
@@ -148,6 +181,11 @@ function toText(lines) {
     else if (line.kind === 'shift') out.push(`*${line.text}*`);
     else if (line.kind === 'label') out.push('', `*${line.text}*`);
     else if (line.kind === 'timed' || line.kind === 'task') out.push(`• ${line.text}`);
+    else if (line.kind === 'routine') out.push(`• ${line.text}`);
+    else if (line.kind === 'routine-done') out.push(line.text);
+    // Set apart with a blank line above it. In a WhatsApp message a quote
+    // butted against a task list reads as another task.
+    else if (line.kind === 'quote') out.push('', `_${line.text}_`);
     else if (line.kind === 'alert') out.push('', line.text);
     else out.push(line.text);
   }

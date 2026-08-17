@@ -126,6 +126,9 @@ function defaultState() {
     // Keyed by day rather than held as a list so a phone and a laptop editing
     // different days never collide, and the same day merges last-write-wins.
     journal: {},
+    // dateKey -> { steps: [stepId], updatedAt }. Same shape as `journal` on
+    // purpose: sync merges both the same way, per day, newest write wins.
+    routine: {},
     lists: DEFAULT_LISTS.map((l) => ({ ...l, updatedAt: nowISO() })),
     settings: {
       theme: 'auto',
@@ -149,6 +152,16 @@ function defaultState() {
       // Only needed if your rota is written "Ben: Night Shift" rather than
       // plain "Night Shift" — it decides whose shifts colour the calendar.
       myName: '',
+      /* The morning ritual, in order. Order is the point — Ben's rule is
+         study first, then the gym — so this is a list, not a set, and the
+         card draws it as a sequence rather than a checklist.
+         `match` links a step to a real task by title fragment, so ticking the
+         step ticks the actual course task instead of tracking a second,
+         parallel copy of the same thing. */
+      routineSteps: [
+        { id: 'study', label: 'Study English', kind: 'study', match: 'online course' },
+        { id: 'gym', label: 'Gym', kind: 'gym', match: 'gym' },
+      ],
       driveFileId: '',
       lastSyncAt: '',
     },
@@ -1087,6 +1100,76 @@ export function journalEntries() {
     .filter(([, e]) => e && e.text)
     .map(([date, e]) => ({ date, ...e }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/* ------------------------------------------------------------------ */
+/* Morning routine                                                     */
+/* ------------------------------------------------------------------ */
+
+/** The ritual, in the order it must be done. */
+export function routineSteps() {
+  const steps = settings().routineSteps;
+  return Array.isArray(steps) ? steps.filter((s) => s && s.id) : [];
+}
+
+/**
+ * The real task a step stands for, if there is one today.
+ *
+ * Without this the card would be a second place to tick "study English" while
+ * the actual course task sat untouched a few inches below it — two records of
+ * one thing, guaranteed to disagree. Matching by title fragment keeps the
+ * routine a VIEW of the day rather than a parallel copy of it.
+ *
+ * Only undone tasks are matched first so that on a day with both a finished
+ * and an unfinished match, ticking the step closes the one still outstanding.
+ */
+export function linkedTask(step, dateKey) {
+  const needle = String(step?.match || '').trim().toLowerCase();
+  if (!needle) return null;
+  const onDay = itemsOnDay(dateKey).filter(
+    (i) => i.kind === 'task' && String(i.title || '').toLowerCase().includes(needle),
+  );
+  return onDay.find((i) => !i.done) || onDay[0] || null;
+}
+
+/** Step ids ticked on a day that have no task of their own to stand in for. */
+function loggedSteps(dateKey) {
+  return new Set(store.state.routine?.[dateKey]?.steps || []);
+}
+
+/** Is this step done today — by its linked task, or by its own tick? */
+export function routineStepDone(step, dateKey) {
+  const task = linkedTask(step, dateKey);
+  if (task) return Boolean(task.done);
+  return loggedSteps(dateKey).has(step.id);
+}
+
+/**
+ * Tick or untick a step.
+ *
+ * A step backed by a real task defers to it entirely, so the two can never
+ * drift apart; only a step with nothing behind it is recorded here.
+ */
+export function toggleRoutineStep(step, dateKey) {
+  const task = linkedTask(step, dateKey);
+  if (task) return toggleDone(task.id);
+
+  return store.mutate((s) => {
+    if (!s.routine) s.routine = {};
+    const current = new Set(s.routine[dateKey]?.steps || []);
+    if (current.has(step.id)) current.delete(step.id);
+    else current.add(step.id);
+
+    if (current.size) s.routine[dateKey] = { steps: [...current], updatedAt: nowISO() };
+    else delete s.routine[dateKey];
+  }, { label: 'routine' });
+}
+
+/** How much of the ritual is behind you. */
+export function routineProgress(dateKey) {
+  const steps = routineSteps();
+  const done = steps.filter((s) => routineStepDone(s, dateKey)).length;
+  return { done, total: steps.length };
 }
 
 /** What was ticked off on a given day — the diary's other half. */

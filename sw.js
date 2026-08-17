@@ -21,6 +21,7 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v12: First things — the morning ritual, with its two voices.
 // v11: morning brief with WhatsApp send; diary box no longer redraws under
 // the caret; the rail shows the backlog instead of repeating the day.
 // v10: shift runs reveal across their days; reduced motion honoured globally.
@@ -37,7 +38,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v11';
+const CACHE_VERSION = 'organizer-v12';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
@@ -56,6 +57,7 @@ const SHELL = [
   './js/sync.js',
   './js/notify.js',
   './js/brief.js',
+  './js/quotes.js',
   './js/ai.js',
   './js/dragdrop.js',
   './js/shortcuts.js',
@@ -64,6 +66,7 @@ const SHELL = [
   './js/views/home.js',
   './js/views/done.js',
   './js/views/journal.js',
+  './js/views/routine.js',
   './js/views/clocks.js',
   './js/views/shortcutsPanel.js',
   './manifest.webmanifest',

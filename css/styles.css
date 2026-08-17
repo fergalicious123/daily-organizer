@@ -2171,6 +2171,187 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .day-journal { margin-top: 14px; }
 
+/* ------------------------------------------------------------------ */
+/* First things — the morning ritual                                   */
+/* ------------------------------------------------------------------ */
+
+/* The one place on Home allowed real presence. Everything around it is a
+   panel on the page background; this sits a step forward, because it is the
+   only card that asks you to DO something rather than to read something. */
+.routine-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px 6px;
+}
+
+.routine-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 14px;
+}
+.routine-title {
+  margin: 0;
+  font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+  color: var(--text);
+}
+/* --text-muted, not --text-faint: faint measures 3.7:1 on this surface, and
+   this is the one number on the card you are meant to watch change. */
+.routine-count {
+  font-family: var(--font-num);
+  font-size: 11.5px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.routine-steps { list-style: none; margin: 0; padding: 0; }
+
+/* ---- the spine ----
+   A vertical rule joining the nodes, drawn per step so the segment BELOW a
+   completed step can fill independently. That is what makes the line grow
+   downward as the morning goes rather than switch on all at once. */
+.routine-step {
+  position: relative;
+  padding: 0 0 18px 30px;
+}
+/* Starts just under the node — which sits at the centre of the 34px tap
+   target, so 17px + the node's 10px radius. The node is opaque and painted
+   over the line, so if a long step label ever wraps and pushes the node down,
+   it covers the line rather than leaving a gap in it. */
+.routine-step::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background .3s var(--ease);
+}
+/* Nothing to join below the last step — a line running into empty space
+   would read as an unfinished third step. */
+.routine-step.is-last::before { display: none; }
+.routine-step.is-last { padding-bottom: 12px; }
+.routine-step.is-done::before { background: var(--accent); }
+
+/* ---- the tick target ---- */
+.routine-tick {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  margin: 0 0 0 -30px;
+  padding: 2px 0 2px 30px;
+  border: none; background: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  /* The primary action on the card, and the one most often pressed with a
+     thumb before 7am. Its natural height is 26px; this is the app's 34px
+     floor for touch, applied here always rather than only under (hover: none),
+     because it is a deliberate action and not a dense list row. */
+  min-height: 34px;
+}
+.routine-tick:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.routine-node {
+  position: absolute;
+  left: 0;
+  z-index: 1;
+  display: grid; place-items: center;
+  width: 20px; height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--accent-text);
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.routine-tick:hover .routine-node { border-color: var(--accent); }
+.routine-node .icon { width: 12px; height: 12px; stroke-width: 3; }
+.is-done .routine-node { background: var(--accent); border-color: var(--accent); }
+
+.routine-label {
+  font-size: 14.5px; font-weight: 620; letter-spacing: -.005em;
+  color: var(--text);
+  transition: color .18s var(--ease);
+}
+/* Done steps recede rather than strike through — the ritual is a record of
+   the morning, and a struck-out line reads as cancelled, not completed. */
+.is-done .routine-label { color: var(--text-muted); }
+
+/* ---- the two voices ----
+   Machiavelli and Goggins get different type on purpose. They are five
+   centuries apart and they do not sound remotely alike, and setting both in
+   the same grey caption would throw away the only reason to have picked two
+   people in the first place. The Florentine gets a quiet italic serif — this
+   is counsel. Goggins gets the interface's own sans, heavier and tighter —
+   this is an instruction. Deliberately NOT all-caps: his short lines would
+   carry it and his long ones would become a wall. */
+.routine-quote { margin: 7px 0 0; }
+.routine-quote-text { margin: 0; }
+/* Attribution is not decoration — these are two named people, and the name is
+   the reason the line carries any weight. It sits on --text-muted rather than
+   --text-faint because faint measures 3.7:1 here, which is under the 4.5:1
+   floor for text this size. The step down in the hierarchy is carried by size,
+   case and tracking instead of by a colour that cannot be read. */
+.routine-quote-by {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-num);
+  font-size: 10.5px; font-style: normal; font-weight: 700;
+  letter-spacing: .11em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tone-considered .routine-quote-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.tone-blunt .routine-quote-text {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -.005em;
+  color: var(--text-muted);
+}
+
+/* The task this step stands in for, so it is obvious why ticking here also
+   ticks something further down the page. */
+.routine-linked {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.routine-done-note {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.routine-card.is-complete { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+/* One orchestrated entrance, in performance order. */
+@keyframes routine-step-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.routine-step {
+  animation: routine-step-in .32s cubic-bezier(.2, .8, .3, 1) backwards;
+  animation-delay: calc(var(--step, 0) * 70ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .routine-step { animation: none; opacity: 1; transform: none; }
+}
+
 /* ---- morning brief ----
    Quiet on purpose. The shift banner above it is the thing that must be read
    at a glance; this is the thing that gets SENT, so its job is to show the

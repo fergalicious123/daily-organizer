@@ -9,6 +9,7 @@
  */
 
 import { el, icon, toast } from '../ui.js';
+import { routineCard } from './routine.js';
 import { composeBrief, whatsappLink, sendViaCallMeBot } from '../brief.js';
 import { aiConfigured, polishBrief } from '../ai.js';
 import {
@@ -182,6 +183,12 @@ export function homeView({ onNavigate }) {
         : null,
     ));
   }
+
+  /* ---- the ritual, before anything the day imposes on you ----
+     Above the calendar and above the list on purpose. Everything below this
+     point is what the day is asking of Ben; this is the part he chose. */
+  const routine = routineCard(today);
+  if (routine) root.appendChild(routine);
 
   /* ---- the brief, and the button that sends it ---- */
   root.appendChild(briefCard());
