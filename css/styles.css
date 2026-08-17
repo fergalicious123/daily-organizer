@@ -1304,6 +1304,16 @@ button {
 }
 .day-lanes > * { pointer-events: auto; }
 
+/* While anything is being dragged, event blocks stop intercepting the pointer
+   so the hour underneath can take the drop.
+   Without this a long block owns every hour it covers: an eight-hour night
+   shift from 4pm made the whole evening undroppable, because the block sat on
+   top of every hour line and hour lines are the drop targets. Blocks still
+   need pointer-events normally — that is what makes them clickable — so this
+   is scoped to the drag and released the moment it ends. */
+body.is-mouse-dragging .day-lanes > *,
+body.is-touch-dragging .day-lanes > * { pointer-events: none; }
+
 .hour-line {
   position: absolute;
   left: 0; right: 0;

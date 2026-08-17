@@ -11,7 +11,7 @@ import {
   todayKey, addDays, formatDayLong, diffDays,
 } from '../dates.js';
 import {
-  itemsOnDay, timedItemsOnDay, untimedItemsOnDay, settings,
+  itemsOnDay, timedItemsOnDay, untimedItemsOnDay, unscheduledTasks, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
   shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, SHIFT, store,
 } from '../state.js';
@@ -930,13 +930,22 @@ export function dayView(dayKey, { onOpenItem } = {}) {
       );
     })(),
 
-    // The day's entry, written where the day already is. The Diary view
-    // collects these; this is where they get written, because reflecting on a
-    // day means having that day's list in front of you.
-    el('div.day-journal',
-      el('div.task-group-label', 'Notes on this day'),
-      journalEditor(dayKey, { compact: true }),
-    ),
+    // The backlog sits here now, under the day's own tasks, so the two lists
+    // you move things BETWEEN are in the same column. The day's notes moved
+    // across to the rail, where a write-up gets a column to itself instead of
+    // being the last thing at the bottom of a long panel.
+    (() => {
+      const waiting = unscheduledTasks().filter((i) => !i.done);
+      if (!waiting.length) return null;
+      return el('div.day-backlog',
+        el('div.task-group-label', 'Unscheduled'),
+        taskList(waiting, {
+          showDate: false,
+          groupDone: false,
+          emptyMessage: 'Nothing waiting',
+        }),
+      );
+    })(),
   );
   root.appendChild(side);
 

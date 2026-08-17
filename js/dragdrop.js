@@ -75,6 +75,32 @@ function edgeScroll(x, y) {
 // while a drag is in flight.
 document.addEventListener('dragover', (e) => edgeScroll(e.clientX, e.clientY));
 
+/*
+ * Flag the whole document while a mouse drag is in flight.
+ *
+ * The touch path already does this (`is-touch-dragging`), and the mouse path
+ * needed the same for one specific reason: a long event covers the hours
+ * underneath it. An eight-hour night shift starting at 4pm sits on top of
+ * every hour from four until midnight, and because event blocks accept pointer
+ * events — they have to, or you could not click one to open it — they swallow
+ * the drop as well. The whole evening became unreachable: you could not drag
+ * anything to 6pm because the shift was in the way.
+ *
+ * With the flag set, one CSS rule makes blocks transparent to the pointer for
+ * the duration of the drag, so the hour beneath receives it. Clicking a block
+ * when NOT dragging is unaffected.
+ */
+document.addEventListener('dragstart', () => {
+  document.body.classList.add('is-mouse-dragging');
+}, true);
+
+// Both, because a drag cancelled with Escape fires dragend but never drop.
+for (const done of ['dragend', 'drop']) {
+  document.addEventListener(done, () => {
+    document.body.classList.remove('is-mouse-dragging');
+  }, true);
+}
+
 export function registerDropZone(node, meta, handler) {
   node.dataset.dropZone = '1';
   zones.set(node, { meta, handler });

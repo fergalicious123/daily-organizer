@@ -23,7 +23,7 @@ import {
   monthView, weekView, dayView, fitMonthChips, makeDropTarget, dayStrip,
 } from './views/calendar.js';
 import { doneView } from './views/done.js';
-import { journalView } from './views/journal.js';
+import { journalView, journalEditor } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { mountShortcutsButton } from './views/shortcutsPanel.js';
 import { declaredKeys } from './shortcuts.js';
@@ -574,12 +574,11 @@ function renderRail() {
   clear(railEl);
 
   // In the day view the main panel IS this day's list, so a rail repeating it
-  // put the same tasks on screen twice — two columns, same eight rows, and no
-  // way to tell which one you were meant to act on. The day view gets the
-  // backlog instead, which turns the pair into something useful: the day on
-  // the left, everything waiting for a date on the right, drag across.
+  // put the same tasks on screen twice. The day view gets its notes here
+  // instead; the backlog sits in the day panel, directly under the tasks it
+  // gets dragged into.
   if (route.view === 'day') {
-    renderBacklogRail();
+    renderNotesRail(route.anchor);
     return;
   }
 
@@ -618,38 +617,21 @@ function renderRail() {
 }
 
 /**
- * The rail while a day is open: everything with no date on it.
+ * The rail while a day is open: that day's notes.
  *
- * Not capped, unlike the glance-sized list shown beside the calendar. This is
- * the pile you are working through, and a backlog silently cut off at twelve
- * is a backlog you stop trusting.
+ * Swapped with the backlog, which now sits in the day panel beneath the day's
+ * own tasks — the two lists you move things between belong in one column, and
+ * a write-up deserves better than being the last thing at the bottom of a long
+ * panel. Here it gets a column to itself and the full height of the window.
  */
-function renderBacklogRail() {
-  const waiting = unscheduledTasks().filter((i) => !i.done);
-
+function renderNotesRail(dayKey) {
   railEl.appendChild(el('div.rail-header',
-    el('div.rail-title',
-      el('span', 'Unscheduled'),
-      waiting.length ? el('span.rail-sub', String(waiting.length)) : null,
-    ),
-    el('div.rail-sub', 'Drag onto an hour to plan it'),
+    el('div.rail-title', el('span', 'Notes')),
+    el('div.rail-sub', formatDayLong(dayKey)),
   ));
 
   const body = el('div.rail-body');
-  // No date on the defaults, so anything typed here lands in the backlog
-  // rather than quietly on the day you happen to be looking at.
-  body.appendChild(quickAdd({
-    parser: parseCommand,
-    placeholder: 'Something to do, no date yet…',
-    focusId: 'quick-add-rail',
-  }));
-  body.appendChild(taskList(waiting, {
-    showDate: false,
-    groupDone: false,
-    emptyMessage: 'Nothing waiting',
-    emptyHint: 'Tasks with no date collect here, ready to be dropped onto a day.',
-  }));
-
+  body.appendChild(journalEditor(dayKey));
   railEl.appendChild(body);
 }
 

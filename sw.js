@@ -21,6 +21,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v17: a month of quotes per side; long events no longer block drops beneath
+// them; day view swaps notes into the rail and the backlog into the panel.
 // v16: the gym step becomes Para 10 training, counting down to 26 Sep.
 // v15: each quote can explain itself — what it means, and where it is from.
 // v14: quiet hours collapse; all-day strip folds; side panel holds only
@@ -44,7 +46,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v16';
+const CACHE_VERSION = 'organizer-v17';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
