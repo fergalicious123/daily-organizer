@@ -2427,6 +2427,29 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
    the morning, and a struck-out line reads as cancelled, not completed. */
 .is-done .routine-label { color: var(--text-muted); }
 
+/* Days to the race, pushed to the end of the row. A daily habit with no
+   horizon is easy to skip; the same habit with a number beside it is a
+   different proposition. Inside the last week it changes colour — that is the
+   point at which the count stops being context and starts being a deadline. */
+.routine-countdown {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--font-num);
+  font-size: 10.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.routine-countdown.is-urgent {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.is-done .routine-countdown { opacity: .6; }
+
 /* ---- the two voices ----
    Machiavelli and Goggins get different type on purpose. They are five
    centuries apart and they do not sound remotely alike, and setting both in

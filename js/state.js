@@ -115,6 +115,37 @@ const DEFAULT_LISTS = [
 /** The list that catches anything without one of its own. */
 const DEFAULT_LIST_ID = 'list-personal';
 
+/**
+ * Bring an already-saved routine up to the current shape.
+ *
+ * Necessary because `routineSteps` lives in settings, and settings are merged
+ * from the SAVED document — so editing the default alone changes nothing for
+ * anyone who has already run the app. Ben's saved copy still said "Gym".
+ *
+ * Guarded by `routineVersion` and tested against the saved document rather
+ * than the merged one, for the same reason the list repair is: `merged`
+ * inherits the current version from the defaults, so checking it would always
+ * look already-migrated and the fix would never run.
+ *
+ * Deliberately narrow. It only rewrites a step that still looks like the old
+ * default — if the label has been changed by hand, that edit is left alone and
+ * only the version marker moves. A migration that overwrites a deliberate
+ * change is worse than one that does nothing.
+ */
+function migrateRoutine(state, saved) {
+  if (saved?.settings?.routineVersion >= 2) return state;
+  const steps = Array.isArray(state.settings.routineSteps) ? state.settings.routineSteps : [];
+  const gym = steps.find((s) => s.id === 'gym');
+  if (gym && /^gym$/i.test(String(gym.label || '').trim())) {
+    gym.label = 'Para 10 training';
+    gym.match = '';
+    gym.target = '2026-09-26';
+    gym.targetLabel = 'Para 10';
+  }
+  state.settings.routineVersion = 2;
+  return state;
+}
+
 function defaultState() {
   return {
     version: 1,
@@ -160,8 +191,12 @@ function defaultState() {
          parallel copy of the same thing. */
       routineSteps: [
         { id: 'study', label: 'Study English', kind: 'study', match: 'online course' },
-        { id: 'gym', label: 'Gym', kind: 'gym', match: 'gym' },
+        // No `match`: there is no daily "training" task to tie this to, and
+        // matching loosely on "para" would have latched onto "Sign up for
+        // para 10" — ticking a session would have closed the sign-up.
+        { id: 'gym', label: 'Para 10 training', kind: 'gym', match: '', target: '2026-09-26', targetLabel: 'Para 10' },
       ],
+      routineVersion: 2,
       driveFileId: '',
       lastSyncAt: '',
     },
@@ -327,6 +362,7 @@ class Store {
     // left them in place permanently, because the document already claimed
     // to be repaired. Deduping is idempotent; on clean data it does nothing.
     repairLists(merged, { restructure: data.listsVersion !== 2 });
+    migrateRoutine(merged, data);
     return merged;
   }
 

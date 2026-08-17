@@ -25,7 +25,7 @@ import {
 } from './state.js';
 import { quoteFor } from './quotes.js';
 
-import { todayKey, formatDayLong, formatTime, timeToMinutes } from './dates.js';
+import { todayKey, formatDayLong, formatTime, timeToMinutes, diffDays } from './dates.js';
 
 /** Said the way you would say it out loud, not as a label. */
 const SHIFT_LINE = {
@@ -42,6 +42,21 @@ const SHIFT_HOURS = {
   [SHIFT.DAY]: '0630-1830',
   [SHIFT.NIGHT]: '1830-0630',
 };
+
+/**
+ * "12 days", "tomorrow", "today" — or nothing once the date is behind us.
+ *
+ * Kept here rather than imported from the routine view so the brief does not
+ * depend on a view module; both read the same `target` field on the step.
+ */
+function daysUntil(step, dateKey) {
+  if (!step?.target) return null;
+  const days = diffDays(dateKey, step.target);
+  if (days < 0) return null;
+  if (days === 0) return `${step.targetLabel || 'race'} TODAY`;
+  if (days === 1) return 'tomorrow';
+  return `${days} days`;
+}
 
 function greeting(hour) {
   if (hour < 5) return 'Still up';
@@ -110,7 +125,15 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
     if (outstanding.length) {
       lines.push({ kind: 'label', text: 'First things' });
       for (const step of outstanding) {
-        lines.push({ kind: 'routine', text: step.label });
+        // The countdown rides along with the step, because the brief is the
+        // part that reaches his phone — "Para 10 training (12 days)" is a
+        // different sentence from "Para 10 training", and the difference is
+        // the whole reason for training today rather than tomorrow.
+        const left = daysUntil(step, dateKey);
+        lines.push({
+          kind: 'routine',
+          text: left == null ? step.label : `${step.label} (${left})`,
+        });
       }
       // One quote, from the voice belonging to the first thing still to do.
       // Two would be a poster; one is a nudge at the moment it is useful.

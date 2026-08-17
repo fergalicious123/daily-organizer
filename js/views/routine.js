@@ -26,7 +26,7 @@ import {
   routineSteps, routineStepDone, routineProgress, toggleRoutineStep, linkedTask,
 } from '../state.js';
 import { quoteFor } from '../quotes.js';
-import { todayKey } from '../dates.js';
+import { todayKey, diffDays } from '../dates.js';
 
 /**
  * Which quotes are showing their note.
@@ -38,6 +38,23 @@ import { todayKey } from '../dates.js';
  * the Goggins one.
  */
 const openNotes = new Set();
+
+/**
+ * How long until the thing a step is training for.
+ *
+ * A daily habit with no horizon is easy to skip; the same habit with "40 days"
+ * next to it is a different proposition. Returns null once the date is past,
+ * so a finished race quietly stops counting rather than sitting there reading
+ * "-12 days" until someone notices.
+ */
+export function countdownFor(step, dateKey) {
+  if (!step?.target) return null;
+  const days = diffDays(dateKey, step.target);
+  if (days < 0) return null;
+  if (days === 0) return { days, text: `${step.targetLabel || 'Race'} today`, urgent: true };
+  if (days === 1) return { days, text: 'Tomorrow', urgent: true };
+  return { days, text: `${days} days`, urgent: days <= 7 };
+}
 
 /**
  * The quote, with an optional word about what it means and where it is from.
@@ -92,6 +109,7 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
     const done = routineStepDone(step, dateKey);
     const quote = quoteFor(step.kind, dateKey);
     const task = linkedTask(step, dateKey);
+    const countdown = countdownFor(step, dateKey);
 
     const tick = el('button.routine-tick', {
       type: 'button',
@@ -108,6 +126,9 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
     },
       el('span.routine-node', { 'aria-hidden': 'true' }, done ? icon('check', 'icon') : null),
       el('span.routine-label', step.label),
+      countdown
+        ? el('span.routine-countdown', { class: countdown.urgent ? 'is-urgent' : '' }, countdown.text)
+        : null,
     );
 
     const row = el('li.routine-step', {
