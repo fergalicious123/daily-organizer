@@ -34,7 +34,7 @@ const BULLET = '• ';
 let liveEditor = null;
 
 const commitLive = () => {
-  if (liveEditor?.area.isConnected) liveEditor.commit(true);
+  if (liveEditor?.area.isConnected) liveEditor.commit({ quiet: true });
 };
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') commitLive();
@@ -107,8 +107,16 @@ function continueBullet(e, area, onChange) {
  * like slow syncing and was actually no syncing. Blur, backgrounding and page
  * dismissal all commit immediately as well, so text cannot be stranded.
  *
- * Every save re-renders, which is why `focusId` exists — the caret and the
- * half-typed value are restored afterwards.
+ * Saves made while you are still typing do NOT redraw the app. They used to,
+ * and the redraw rebuilt this textarea from scratch every 700ms: the caret was
+ * put back but the box's own scroll position was not, so from the eighth line
+ * on, the view snapped to the top while the cursor stayed at the bottom. You
+ * were typing into a box showing something else. The box also grows to its
+ * content now, so short entries never scroll internally at all.
+ *
+ * A redraw can still land here from elsewhere — a sync arriving mid-sentence —
+ * which is what `focusId` is for: the caret, the half-typed value and both
+ * scroll positions are restored afterwards. See captureFocus in app.js.
  */
 export function journalEditor(dateKey, { compact = false } = {}) {
   const entry = journalFor(dateKey);
@@ -118,24 +126,48 @@ export function journalEditor(dateKey, { compact = false } = {}) {
   let saveTimer = null;
   let lastSaved = entry?.text || '';
 
-  const commit = (quiet = false) => {
+  /**
+   * Grow the box to its content.
+   *
+   * It used to be a fixed 170px with the overflow scrolling inside it, which
+   * is the worst shape for this: a day's write-up runs past seven lines almost
+   * immediately, and from then on you are typing into a letterbox. Growing
+   * instead means the words stay put where you wrote them.
+   *
+   * Capped at just over half the window so a very long entry still leaves the
+   * page navigable, and the cap is read live rather than stored so rotating a
+   * phone re-measures against the new height.
+   */
+  const fit = () => {
+    const max = Math.max(220, Math.round(window.innerHeight * 0.55));
+    area.style.height = 'auto';
+    area.style.height = `${Math.min(area.scrollHeight + 2, max)}px`;
+  };
+
+  /**
+   * @param live  true while the box is still being typed in — keeps the app
+   *              from redrawing underneath the caret. See setJournal.
+   * @param quiet suppress the "Saved" flash, for saves the user did not ask
+   *              for (backgrounding the app).
+   */
+  const commit = ({ live = false, quiet = false } = {}) => {
     clearTimeout(saveTimer);
     const value = normalise(area.value);
     if (value === lastSaved) return;
     lastSaved = value;
-    setJournal(dateKey, value);
+    setJournal(dateKey, value, { live });
     if (!quiet) {
       status.textContent = 'Saved';
       setTimeout(() => { if (status.textContent === 'Saved') status.textContent = ''; }, 1600);
     }
   };
 
-  // Long enough not to re-render on every keystroke, short enough that putting
+  // Long enough not to write on every keystroke, short enough that putting
   // the phone down mid-sentence still saves before you look away.
   const scheduleSave = () => {
     clearTimeout(saveTimer);
     status.textContent = 'Saving…';
-    saveTimer = setTimeout(() => commit(), 700);
+    saveTimer = setTimeout(() => commit({ live: true }), 700);
   };
 
   const area = el('textarea.journal-text', {
@@ -145,7 +177,10 @@ export function journalEditor(dateKey, { compact = false } = {}) {
     value: entry?.text || '',
     rows: compact ? 8 : 14,
     dataset: { focusId: `journal-${dateKey}` },
-    oninput: scheduleSave,
+    oninput: () => { fit(); scheduleSave(); },
+    // Fired by the renderer after it restores a half-typed value into a
+    // rebuilt box, which needs measuring again before anyone reads its height.
+    onrefit: fit,
     onfocus: () => {
       // Start the first bullet for them, so writing a list is the default
       // rather than something you have to set up.
@@ -159,10 +194,17 @@ export function journalEditor(dateKey, { compact = false } = {}) {
       // typing "w" here would jump to the week view mid-sentence.
       e.stopPropagation();
       if (e.key === 'Escape') { commit(); e.target.blur(); return; }
-      continueBullet(e, area, scheduleSave);
+      continueBullet(e, area, () => { fit(); scheduleSave(); });
     },
+    // Leaving the box is the moment a redraw is free, so this save is not
+    // live: the rest of the app catches up with what was written, once.
     onblur: () => commit(),
   });
+
+  // scrollHeight is 0 until the element is in the document, so the first fit
+  // has to wait for mount. A timeout rather than rAF, for the same reason the
+  // renderer uses one: rAF never fires in a backgrounded tab.
+  setTimeout(fit, 0);
 
   // Hand this editor to the module-level leave handler. Registering listeners
   // here instead would add a pair on every render — and this view re-renders
@@ -190,10 +232,12 @@ export function journalEditor(dateKey, { compact = false } = {}) {
         continuous: true,
         onInterim: (final, interim) => {
           area.value = before + final + interim;
+          fit();
           area.scrollTop = area.scrollHeight;
         },
         onFinal: (text) => {
           area.value = before + text;
+          fit();
           commit();
           toast('Entry saved');
         },

@@ -2105,20 +2105,27 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .journal-text {
   width: 100%;
-  resize: vertical;
+  /* The box grows to its content in JS, so a drag handle would only fight the
+     next keystroke. Nothing to resize when it is already the right size. */
+  resize: none;
+  /* Auto, not hidden: while the box is growing there is nothing to scroll and
+     no bar appears, but a very long entry hits the cap and must stay readable. */
+  overflow-y: auto;
   font: inherit;
   font-size: 14.5px;
   line-height: 1.65;
-  /* A day's write-up is a page, not a caption. Tall enough that a week of
-     nights fits without scrolling inside the box, and still draggable taller. */
-  min-height: 240px;
+  /* A floor, not a size. It used to be a fixed 240px with the overflow
+     scrolling inside, which meant every entry longer than the box was written
+     through a letterbox — and any redraw sent that letterbox back to line one
+     while the caret stayed at the bottom. */
+  min-height: 200px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface-sunk);
   color: var(--text);
 }
-.journal-editor.is-compact .journal-text { min-height: 170px; }
+.journal-editor.is-compact .journal-text { min-height: 120px; }
 .journal-text:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 .journal-tools {
@@ -2163,6 +2170,46 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 
 .day-journal { margin-top: 14px; }
+
+/* ---- morning brief ----
+   Quiet on purpose. The shift banner above it is the thing that must be read
+   at a glance; this is the thing that gets SENT, so its job is to show the
+   message exactly as it will arrive rather than to compete for attention. */
+.brief-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px 16px;
+}
+.brief-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 9px;
+}
+.brief-title {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.brief-sub { font-size: 11.5px; color: var(--text-faint); font-family: var(--font-num); }
+
+/* A <pre> so the composed line breaks survive, but wearing the body font —
+   the brief is prose that happens to be pre-wrapped, not code. */
+.brief-text {
+  margin: 0;
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.brief-actions {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 12px;
+}
+.brief-send .icon { width: 15px; height: 15px; }
+.brief-status { font-size: 11.5px; color: var(--text-faint); }
 
 /* The rota answer, at the top of Home. Loud on purpose: it is the one thing
    on this screen you must not misread, and a four-night block looks exactly

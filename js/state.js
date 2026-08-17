@@ -18,6 +18,55 @@ const STORAGE_KEY = 'daily-organizer:v1';
 const UNDO_LIMIT = 40;
 
 /**
+ * Device-local settings, deliberately OUTSIDE the synced document.
+ *
+ * The main state travels: it goes to Google Drive and it comes out of "Export
+ * backup" as a plain JSON file. Neither is a place for an API key. Putting
+ * these in `settings` would have meant a key sitting in a file people mail to
+ * themselves, and a key in Drive that a later Drive-wide share would carry
+ * with it — a leak with no visible moment of leaking.
+ *
+ * So the delivery settings for the brief live here, on this device only. The
+ * cost is re-entering them on a second device; the benefit is that they cannot
+ * escape by a route nobody was thinking about.
+ */
+const DEVICE_KEY = 'daily-organizer:device';
+
+const DEVICE_DEFAULTS = {
+  // Only ever used to address a WhatsApp message you send yourself.
+  whatsappNumber: '',
+  // Optional third-party relay for hands-off sending. See brief.js.
+  callMeBotKey: '',
+  // Optional. See the note at the top of ai.js about what storing this means.
+  anthropicKey: '',
+};
+
+let deviceCache = null;
+
+/** Device-local settings. Never synced, never exported. */
+export function device() {
+  if (!deviceCache) {
+    try {
+      deviceCache = { ...DEVICE_DEFAULTS, ...JSON.parse(localStorage.getItem(DEVICE_KEY) || '{}') };
+    } catch {
+      deviceCache = { ...DEVICE_DEFAULTS };
+    }
+  }
+  return deviceCache;
+}
+
+export function updateDevice(patch) {
+  deviceCache = { ...device(), ...patch };
+  try {
+    localStorage.setItem(DEVICE_KEY, JSON.stringify(deviceCache));
+  } catch {
+    // Private mode, or storage full. The app keeps working; the setting just
+    // does not survive a reload, which is better than throwing here.
+  }
+  return deviceCache;
+}
+
+/**
  * The Google OAuth client for this app.
  *
  * This is deliberately committed. Browser OAuth clients have no client secret;
@@ -1006,14 +1055,29 @@ export function journalFor(dateKey) {
  *
  * Empty text deletes the key rather than storing a blank, so an entry the user
  * emptied stops appearing in the diary and stops travelling to Drive.
+ *
+ * `live` marks a save made WHILE the box is still being typed in, and changes
+ * two things that both mattered:
+ *
+ *   - It labels the change 'journal-live', which the app's render subscriber
+ *     ignores. A normal save redraws the whole app, which tore down the
+ *     textarea under the caret every 700ms — see the note in journalEditor.
+ *   - It keeps the change off the undo stack. Every undoable mutation
+ *     JSON.stringifies the ENTIRE state, so writing a long entry pushed a full
+ *     snapshot of every item every time you paused for breath. On a phone with
+ *     a year of rota on it that is a stall you can feel, for undo steps nobody
+ *     wants — undo should step over the whole entry, not each pause in it.
+ *
+ * The final save on blur is not live, so the app catches up once, at the point
+ * where a redraw costs nothing.
  */
-export function setJournal(dateKey, text) {
+export function setJournal(dateKey, text, { live = false } = {}) {
   const clean = String(text ?? '').trim();
   return store.mutate((s) => {
     if (!s.journal) s.journal = {};
     if (clean) s.journal[dateKey] = { text: clean, updatedAt: nowISO() };
     else delete s.journal[dateKey];
-  }, { label: 'journal' });
+  }, { label: live ? 'journal-live' : 'journal', undoable: !live });
 }
 
 /** Every written day, newest first. */

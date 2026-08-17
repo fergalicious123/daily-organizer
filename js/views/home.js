@@ -8,10 +8,12 @@
  * and a home screen that takes reading is a home screen you skip past.
  */
 
-import { el, icon } from '../ui.js';
+import { el, icon, toast } from '../ui.js';
+import { composeBrief, whatsappLink, sendViaCallMeBot } from '../brief.js';
+import { aiConfigured, polishBrief } from '../ai.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
-  currentStreak, completionHistory, settings, eventColorSlot,
+  currentStreak, completionHistory, settings, device, eventColorSlot,
   shiftOnDay, crewOnDay, SHIFT,
 } from '../state.js';
 
@@ -68,6 +70,80 @@ function findFocus() {
   return null;
 }
 
+/**
+ * The morning brief, and the buttons that send it.
+ *
+ * Shows the exact text that will be sent rather than a prettier version of it.
+ * A send button whose result you have not seen is one you stop trusting the
+ * first time it surprises you.
+ *
+ * Built once per render and cached on the node, because rewording it through
+ * Claude costs money and a re-render must not silently spend it again.
+ */
+function briefCard() {
+  const cfg = device();
+  const brief = composeBrief();
+
+  const body = el('pre.brief-text', brief.text);
+  const status = el('span.brief-status');
+
+  const setText = (text) => { body.textContent = text; };
+
+  const send = el('button.btn.btn-primary.brief-send', {
+    onclick: async () => {
+      const text = body.textContent;
+      // Auto-send only where it has been deliberately set up. Everyone else
+      // gets the deep link, which needs nothing and works everywhere.
+      if (cfg.callMeBotKey && cfg.whatsappNumber) {
+        status.textContent = 'Sending…';
+        try {
+          await sendViaCallMeBot(text, { phone: cfg.whatsappNumber, apiKey: cfg.callMeBotKey });
+          status.textContent = '';
+          toast('Sent to WhatsApp.');
+        } catch (err) {
+          status.textContent = '';
+          toast(err.message || 'Could not send.', { error: true });
+        }
+        return;
+      }
+      // Opens WhatsApp with the message already typed; you press send. No
+      // account, no key, no third party — and nothing leaves the phone until
+      // you choose to send it.
+      window.open(whatsappLink(text, cfg.whatsappNumber), '_blank', 'noopener');
+    },
+  }, icon('send', 'icon'), cfg.callMeBotKey && cfg.whatsappNumber ? 'Send to WhatsApp' : 'Open in WhatsApp');
+
+  const actions = el('div.brief-actions', send, status);
+
+  // Only offered when a key is set. An always-visible button that fails until
+  // you go and configure something is a button that teaches you to ignore it.
+  if (aiConfigured()) {
+    actions.appendChild(el('button.btn.btn-quiet', {
+      onclick: async (e) => {
+        const button = e.currentTarget;
+        button.disabled = true;
+        status.textContent = 'Rewording…';
+        const result = await polishBrief(brief);
+        setText(result.text);
+        status.textContent = '';
+        button.disabled = false;
+        if (result.error) toast(result.error, { error: true });
+      },
+    }, 'Reword'));
+  }
+
+  return el('section.brief-card',
+    el('div.brief-head',
+      el('span.brief-title', 'Morning brief'),
+      el('span.brief-sub', brief.counts.overdue
+        ? `${brief.counts.overdue} overdue`
+        : `${brief.counts.timed + brief.counts.tasks} to do`),
+    ),
+    body,
+    actions,
+  );
+}
+
 export function homeView({ onNavigate }) {
   const cfg = settings();
   const today = todayKey();
@@ -106,6 +182,9 @@ export function homeView({ onNavigate }) {
         : null,
     ));
   }
+
+  /* ---- the brief, and the button that sends it ---- */
+  root.appendChild(briefCard());
 
   /* ---- what's happening ---- */
   if (focus) {

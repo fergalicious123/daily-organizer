@@ -8,7 +8,8 @@
 
 import { el, clear, icon, toast, openModal, confirmDialog, isMobile, isTablet, $ } from './ui.js';
 import {
-  store, settings, updateSettings, addList, removeList, renameList,
+  store, settings, updateSettings, device, updateDevice,
+  addList, removeList, renameList,
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
   completedItems, rollOverdueTasks, rolloverDue,
@@ -572,16 +573,24 @@ function statsView() {
 function renderRail() {
   clear(railEl);
 
-  // The rail follows the calendar; in list views the main area already is
-  // the list, so showing it twice would be noise.
-  const dayKey = route.view === 'day' ? route.anchor : todayKey();
+  // In the day view the main panel IS this day's list, so a rail repeating it
+  // put the same tasks on screen twice — two columns, same eight rows, and no
+  // way to tell which one you were meant to act on. The day view gets the
+  // backlog instead, which turns the pair into something useful: the day on
+  // the left, everything waiting for a date on the right, drag across.
+  if (route.view === 'day') {
+    renderBacklogRail();
+    return;
+  }
+
+  const dayKey = todayKey();
   const items = itemsOnDay(dayKey);
   const unscheduled = unscheduledTasks().filter((i) => !i.done).slice(0, 12);
   const prog = progressFor(items);
 
   railEl.appendChild(el('div.rail-header',
     el('div.rail-title',
-      el('span', dayKey === todayKey() ? 'Today' : formatDayShort(dayKey)),
+      el('span', 'Today'),
       prog.total ? el('span.rail-sub', `${prog.done}/${prog.total}`) : null,
     ),
     el('div.rail-sub', formatDayLong(dayKey)),
@@ -604,6 +613,42 @@ function renderRail() {
     body.appendChild(el('div.task-group-label', 'Unscheduled'));
     body.appendChild(taskList(unscheduled, { showDate: false, groupDone: false }));
   }
+
+  railEl.appendChild(body);
+}
+
+/**
+ * The rail while a day is open: everything with no date on it.
+ *
+ * Not capped, unlike the glance-sized list shown beside the calendar. This is
+ * the pile you are working through, and a backlog silently cut off at twelve
+ * is a backlog you stop trusting.
+ */
+function renderBacklogRail() {
+  const waiting = unscheduledTasks().filter((i) => !i.done);
+
+  railEl.appendChild(el('div.rail-header',
+    el('div.rail-title',
+      el('span', 'Unscheduled'),
+      waiting.length ? el('span.rail-sub', String(waiting.length)) : null,
+    ),
+    el('div.rail-sub', 'Drag onto an hour to plan it'),
+  ));
+
+  const body = el('div.rail-body');
+  // No date on the defaults, so anything typed here lands in the backlog
+  // rather than quietly on the day you happen to be looking at.
+  body.appendChild(quickAdd({
+    parser: parseCommand,
+    placeholder: 'Something to do, no date yet…',
+    focusId: 'quick-add-rail',
+  }));
+  body.appendChild(taskList(waiting, {
+    showDate: false,
+    groupDone: false,
+    emptyMessage: 'Nothing waiting',
+    emptyHint: 'Tasks with no date collect here, ready to be dropped onto a day.',
+  }));
 
   railEl.appendChild(body);
 }
@@ -1028,6 +1073,49 @@ function openSettings(focusSection = null) {
         ),
       ));
 
+      /* --- Morning brief ---
+         These three live on this device only: they are deliberately kept out
+         of Drive sync and out of exported backups, so a key can never leave
+         by a route nobody was thinking about. See device() in state.js. */
+      const dev = device();
+      fields.push(el('div.section-label', { style: { padding: '0' } }, 'Morning brief'));
+      fields.push(el('div.field',
+        el('label', 'Your WhatsApp number'),
+        el('input', {
+          type: 'tel', placeholder: '+44 7700 900000', value: dev.whatsappNumber || '',
+          onchange: (e) => updateDevice({ whatsappNumber: e.target.value.trim() }),
+        }),
+        el('p.field-hint',
+          'Used only to address a message you send yourself. Leave it blank and '
+          + 'WhatsApp will ask who to send to. Saved on this device only.'),
+      ));
+
+      fields.push(el('div.field',
+        el('label', 'CallMeBot key (optional)'),
+        el('input', {
+          type: 'text', placeholder: 'Leave blank to send by hand', value: dev.callMeBotKey || '',
+          onchange: (e) => updateDevice({ callMeBotKey: e.target.value.trim() }),
+        }),
+        el('p.field-hint',
+          'Without this, Send opens WhatsApp with the brief typed out and you press send — '
+          + 'no setup, nothing shared. With it, the app sends on its own through CallMeBot, '
+          + 'a free relay that reads the message on its way past. Fine for a to-do list; '
+          + 'not for anything private.'),
+      ));
+
+      fields.push(el('div.field',
+        el('label', 'Anthropic API key (optional)'),
+        el('input', {
+          type: 'password', placeholder: 'sk-ant-…', value: dev.anthropicKey || '',
+          onchange: (e) => updateDevice({ anthropicKey: e.target.value.trim() }),
+        }),
+        el('p.field-hint',
+          'Adds a Reword button that has Claude rephrase the brief. The brief itself is '
+          + 'always written by the app, so it stays right — and stays working — with this '
+          + 'empty. Stored on this device only, never in the app or your backups; set a '
+          + 'low spend limit on the key, and leave this blank on a shared computer.'),
+      ));
+
       /* --- Data --- */
       fields.push(el('div.section-label', { style: { padding: '0' } }, 'Your data'));
       fields.push(el('div.field',
@@ -1226,7 +1314,40 @@ function captureFocus() {
     value: node.value,
     start: node.selectionStart,
     end: node.selectionEnd,
+    // How far the caret had pushed the text up inside its own box. Restoring
+    // the caret without this puts the cursor on line 20 of a box scrolled to
+    // line 1, which looks exactly like the app eating your typing.
+    scrollTop: node.scrollTop,
   };
+}
+
+/**
+ * Where each scrolling region had got to.
+ *
+ * Emptying an element collapses its scroll height, which forces scrollTop to
+ * zero; refilling it does not bring the position back. So every render sent
+ * the day panel, the rail and the main body back to the top — you write a note
+ * halfway down the day view, it saves, and the page jumps to the top.
+ *
+ * Matched by selector rather than by element because most of these are rebuilt
+ * from scratch, so the node captured is not the node restored.
+ */
+const SCROLL_REGIONS = ['#viewBody', '.day-side', '.rail-body', '.sidebar'];
+
+function captureScroll() {
+  const out = [];
+  for (const sel of SCROLL_REGIONS) {
+    const node = document.querySelector(sel);
+    if (node?.scrollTop) out.push({ sel, top: node.scrollTop });
+  }
+  return out;
+}
+
+function restoreScroll(marks) {
+  for (const { sel, top } of marks) {
+    const node = document.querySelector(sel);
+    if (node) node.scrollTop = top;
+  }
 }
 
 function restoreFocus(snapshot) {
@@ -1241,6 +1362,13 @@ function restoreFocus(snapshot) {
   } catch {
     // Not all input types support selection ranges; focus alone is enough.
   }
+  // A textarea that grows to fit its content needs to be re-measured against
+  // the value we just put back, and this must happen before the scroll
+  // position is set — a shorter box would clamp it.
+  node.dispatchEvent(new CustomEvent('refit'));
+  // Last, because both focus() and setSelectionRange() scroll the caret into
+  // view and would otherwise overwrite it.
+  if (snapshot.scrollTop) node.scrollTop = snapshot.scrollTop;
 }
 
 let renderQueued = false;
@@ -1259,6 +1387,7 @@ function render() {
   setTimeout(() => {
     renderQueued = false;
     const focus = captureFocus();
+    const scroll = captureScroll();
     try {
       renderSidebar();
       renderHeader();
@@ -1273,6 +1402,7 @@ function render() {
       toast('Something went wrong drawing the page.', { error: true });
     }
     restoreFocus(focus);
+    restoreScroll(scroll);
   }, 0);
 }
 
@@ -1284,7 +1414,16 @@ function boot() {
   restoreRoute();
   applyTheme();
 
-  store.subscribe(() => render());
+  // Everything redraws on a change, EXCEPT a diary entry still being typed.
+  // Those save every 700ms, and redrawing rebuilt the textarea mid-sentence:
+  // the caret survived (restoreFocus) but the box's own scroll position did
+  // not, so past the seventh line the view snapped back to the top and you
+  // could no longer see the words you were typing. Sync still hears this
+  // label, so the entry is pushed to Drive on the usual three-second debounce.
+  store.subscribe((_state, detail) => {
+    if (detail?.label === 'journal-live') return;
+    render();
+  });
   sync.addEventListener('change', () => {
     // Only the sync chip changes, so avoid a full redraw on every tick.
     const existing = sidebarEl.querySelector('.sync-status');
@@ -1307,6 +1446,11 @@ function boot() {
   setInterval(() => {
     runRollover();
     if (route.view === 'day' && route.anchor !== todayKey()) return;
+    // Not while you are writing something. This redraw only moves the now-line
+    // and re-reads the date, and it was rebuilding the diary box under the
+    // caret once a minute for as long as you kept typing. Nothing here is
+    // urgent enough to interrupt a sentence; the next tick picks it up.
+    if (document.activeElement?.dataset?.focusId) return;
     render();
   }, 60_000);
 
