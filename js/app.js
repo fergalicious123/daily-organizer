@@ -1424,6 +1424,12 @@ function boot() {
     if (detail?.label === 'journal-live') return;
     render();
   });
+
+  // Views that hold their own presentation state — which collapsed hours are
+  // open, whether the all-day strip is expanded — ask for a redraw this way.
+  // Nothing about the data changed, so routing it through store.mutate would
+  // mean a pointless write to disk and a pointless push to Drive.
+  document.addEventListener('organizer:rerender', () => render());
   sync.addEventListener('change', () => {
     // Only the sync chip changes, so avoid a full redraw on every tick.
     const existing = sidebarEl.querySelector('.sync-status');

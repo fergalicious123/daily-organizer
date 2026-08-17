@@ -553,6 +553,140 @@ export function weekView(anchorKey, { onSelectDay }) {
 /* ------------------------------------------------------------------ */
 
 /** Hour grid plus that day's todo list. */
+/* ------------------------------------------------------------------ */
+/* The day's vertical scale                                            */
+/* ------------------------------------------------------------------ */
+
+/** Above this many all-day items the strip collapses to a single line. */
+const ALLDAY_MAX = 3;
+const alldayOpen = new Map();
+const alldayOpenFor = (dayKey) => alldayOpen.get(dayKey) === true;
+
+/** A run this long or longer is worth collapsing. Two quiet hours read fine. */
+const QUIET_RUN = 3;
+/**
+ * What a collapsed run costs, however many hours it swallows.
+ *
+ * 34 rather than the 30 it wants to be: this is a button you tap with a thumb
+ * to open the afternoon, and 34px is the floor this app uses everywhere else
+ * for touch.
+ */
+const QUIET_H = 34;
+
+/**
+ * Which gaps the user has opened, per day.
+ *
+ * Kept outside the view because dayView is rebuilt from scratch on every
+ * render — a sync tick, a ticked checkbox — and a gap that closed itself every
+ * few seconds would be unusable. Keyed by day so opening 10:00 on Monday does
+ * not silently open it on Tuesday as well.
+ */
+const expandedGaps = new Map();
+function expandedGapsFor(dayKey) {
+  if (!expandedGaps.has(dayKey)) expandedGaps.set(dayKey, new Set());
+  return expandedGaps.get(dayKey);
+}
+
+/**
+ * Build the minute -> pixel mapping for one day.
+ *
+ * Hours with something in them keep their full height; runs of quiet hours
+ * collapse to a single band. An hour counts as busy if any event OVERLAPS it,
+ * not merely starts in it — otherwise a four-hour shift would have its middle
+ * two hours collapsed out from under it and the block would be drawn across a
+ * band claiming to be empty.
+ *
+ * The hour containing "now" never collapses. Hiding where you are in the day
+ * is the one thing this whole grid exists to show.
+ */
+function buildDayScale({ first, last, laid, nowHour, expanded }) {
+  const busy = new Set();
+  for (const slot of laid) {
+    const from = Math.floor(slot.start / 60);
+    const to = Math.ceil(slot.end / 60) - 1;
+    for (let h = from; h <= to; h++) busy.add(h);
+  }
+
+  const rows = [];
+  let y = 0;
+  let h = first;
+
+  while (h <= last) {
+    const quiet = !busy.has(h) && h !== nowHour;
+    if (!quiet) {
+      rows.push({ type: 'hour', hour: h, y, h: HOUR_H });
+      y += HOUR_H;
+      h += 1;
+      continue;
+    }
+
+    let end = h;
+    while (end <= last && !busy.has(end) && end !== nowHour) end += 1;
+    const key = `h${h}`;
+
+    if (end - h >= QUIET_RUN && !expanded.has(key)) {
+      rows.push({
+        type: 'gap', key, fromHour: h, toHour: end - 1, hours: end - h, y, h: QUIET_H,
+      });
+      y += QUIET_H;
+    } else {
+      for (let q = h; q < end; q += 1) {
+        rows.push({ type: 'hour', hour: q, y, h: HOUR_H });
+        y += HOUR_H;
+      }
+    }
+    h = end;
+  }
+
+  const span = (row) => (row.type === 'hour'
+    ? [row.hour * 60, (row.hour + 1) * 60]
+    : [row.fromHour * 60, (row.toHour + 1) * 60]);
+
+  /** Where a given minute sits, interpolating within whichever row holds it. */
+  const yFor = (minute) => {
+    if (!rows.length) return 0;
+    for (const row of rows) {
+      const [from, to] = span(row);
+      if (minute < to) {
+        const frac = Math.max(0, (minute - from) / (to - from));
+        return row.y + frac * row.h;
+      }
+    }
+    return y;
+  };
+
+  return { rows, total: y, yFor };
+}
+
+/**
+ * A collapsed run of quiet hours.
+ *
+ * Still a drop target, landing on the first hour of the run — collapsing the
+ * afternoon must not take away the ability to drag something into it. Click
+ * opens the run if you want to be more precise than that.
+ */
+function quietBand(row, dayKey, cfg) {
+  const label = `${row.hours} hours clear`;
+  const band = el('button.quiet-band', {
+    type: 'button',
+    style: { top: `${row.y}px`, height: `${row.h}px` },
+    title: `${formatHourLabel(row.fromHour, cfg.hour12)} – ${formatHourLabel(row.toHour + 1, cfg.hour12)} — click to open`,
+    'aria-label': `${label}. Open these hours`,
+    onclick: () => {
+      expandedGapsFor(dayKey).add(row.key);
+      // Re-render through the store's own channel so the whole view rebuilds
+      // the same way it does for any other change.
+      document.dispatchEvent(new CustomEvent('organizer:rerender'));
+    },
+  },
+    el('span.quiet-band-line'),
+    el('span.quiet-band-text', label),
+    el('span.quiet-band-line'),
+  );
+  makeDropTarget(band, dayKey, `${String(row.fromHour).padStart(2, '0')}:00`);
+  return band;
+}
+
 export function dayView(dayKey, { onOpenItem } = {}) {
   const cfg = settings();
   const timed = timedItemsOnDay(dayKey);
@@ -577,10 +711,37 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   const root = el('div.day.view-anim', { class: isMobile() ? 'is-single' : '' });
   const gridWrap = el('div.day-grid-wrap');
 
-  // All-day strip.
+  /* All-day strip.
+   *
+   * Left expanded it was seven chips stacked three rows deep before you
+   * reached a single hour — the top of the page taken up by the part of the
+   * day that has no time attached to it. Past a few items it collapses to one
+   * line you can open, so the grid starts where the eye lands. */
+  const allDayOpen = alldayOpenFor(dayKey);
   const allDay = el('div.day-allday');
-  if (untimed.length) {
+  if (untimed.length > ALLDAY_MAX && !allDayOpen) {
     allDay.appendChild(el('span.day-allday-label', 'All day'));
+    allDay.appendChild(el('button.day-allday-more', {
+      type: 'button',
+      onclick: () => {
+        alldayOpen.set(dayKey, true);
+        document.dispatchEvent(new CustomEvent('organizer:rerender'));
+      },
+    },
+      `${untimed.length} items`,
+      icon('chevronRight', 'icon'),
+    ));
+  } else if (untimed.length) {
+    allDay.appendChild(el('span.day-allday-label', 'All day'));
+    if (untimed.length > ALLDAY_MAX) {
+      allDay.appendChild(el('button.day-allday-more', {
+        type: 'button',
+        onclick: () => {
+          alldayOpen.set(dayKey, false);
+          document.dispatchEvent(new CustomEvent('organizer:rerender'));
+        },
+      }, 'Hide'));
+    }
     for (const item of untimed) {
       allDay.appendChild(el('div.day-event', {
         class: [
@@ -602,20 +763,38 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   /* A real time grid: events are positioned by their start minute and sized by
      their duration, the way a calendar is supposed to read. Previously
      everything sat inside its start hour at a uniform height, so three
-     90-minute events crowded the 9pm band while 10pm looked free. */
+     90-minute events crowded the 9pm band while 10pm looked free.
+
+     The scale is no longer linear, though. On a normal day 14 of 16 hours are
+     empty, and giving each of them a full hour of screen meant ~87% of the
+     panel was blank while the three things actually happening were squeezed
+     into 25px boxes. Long quiet runs now collapse to a single band, and the
+     space that frees goes back to the hours that have something in them. */
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const nowHour = isToday(dayKey) ? Math.floor(nowMinutes / 60) : -1;
   const gridStart = first * 60;
   const gridMinutes = (last - first + 1) * 60;
-  const grid = el('div.day-grid', {
-    style: { height: `${(gridMinutes / 60) * HOUR_H}px` },
+  const gridEnd = gridStart + gridMinutes;
+
+  const laid = layoutDayEvents(timed, cfg.defaultDurationMin);
+  const scale = buildDayScale({
+    first, last, laid, nowHour,
+    expanded: expandedGapsFor(dayKey),
   });
 
+  const grid = el('div.day-grid', { style: { height: `${scale.total}px` } });
+
   // Hour lines and per-hour drop targets, behind the events.
-  for (let h = first; h <= last; h++) {
+  for (const row of scale.rows) {
+    if (row.type === 'gap') {
+      grid.appendChild(quietBand(row, dayKey, cfg));
+      continue;
+    }
+    const h = row.hour;
     const time = `${String(h).padStart(2, '0')}:00`;
     const line = el('div.hour-line', {
       class: (isToday(dayKey) && h * 60 + 59 < nowMinutes) ? 'is-past' : '',
-      style: { top: `${((h * 60 - gridStart) / 60) * HOUR_H}px`, height: `${HOUR_H}px` },
+      style: { top: `${row.y}px`, height: `${row.h}px` },
     },
       el('span.hour-label', formatHourLabel(h, cfg.hour12)),
       el('button.hour-add', {
@@ -635,8 +814,6 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   // ran back underneath the hour labels — and an event's fill is translucent,
   // so "7am" showed through the middle of the shift sitting on top of it.
   const lanes = el('div.day-lanes');
-  const laid = layoutDayEvents(timed, cfg.defaultDurationMin);
-  const gridEnd = gridStart + gridMinutes;
   for (const slot of laid) {
     const node = dayEventNode(slot.item, onOpenItem);
     const width = 100 / slot.lanes;
@@ -651,9 +828,10 @@ export function dayView(dayKey, { onOpenItem } = {}) {
     const drawnEnd = Math.min(slot.end, gridEnd);
     if (slot.end > gridEnd) node.classList.add('is-cont-after');
 
+    const top = scale.yFor(slot.start);
     Object.assign(node.style, {
-      top: `${((slot.start - gridStart) / 60) * HOUR_H}px`,
-      height: `${Math.max((drawnEnd - slot.start) / 60 * HOUR_H - 2, 20)}px`,
+      top: `${top}px`,
+      height: `${Math.max(scale.yFor(drawnEnd) - top - 2, 20)}px`,
       left: `calc(${slot.lane * width}% + 2px)`,
       width: `calc(${width}% - 4px)`,
     });
@@ -666,7 +844,7 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   if (isToday(dayKey) && nowMinutes >= gridStart && nowMinutes <= gridStart + gridMinutes) {
     const nowLabel = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
     grid.appendChild(el('div.now-line', {
-      style: { top: `${((nowMinutes - gridStart) / 60) * HOUR_H}px` },
+      style: { top: `${scale.yFor(nowMinutes)}px` },
       'aria-hidden': 'true',
     },
       // Always 24-hour, even when the rest of the grid is on 12-hour labels:
@@ -694,18 +872,37 @@ export function dayView(dayKey, { onOpenItem } = {}) {
         ? el('span.shift-card-crew', `With ${dayCrew.join(', ')}`)
         : el('span.shift-card-crew.is-empty', 'No crew recorded'),
     ) : null,
-    el('div.progress-card',
-      el('div.progress-card-head',
-        el('span.progress-card-title', 'This day'),
-        el('span.progress-card-scope', isToday(dayKey) ? 'today' : ''),
-      ),
-      progressRing(progressFor(items), { size: 116, label: 'This day' }),
-    ),
+    /* What is next, and how far through you are — in one strip rather than a
+       116px ring. The ring was the largest and most saturated thing on the
+       page and, first thing in the morning, it always read 0%. A bar says the
+       same in a tenth of the space and gives the rest to the question you
+       actually opened the day to answer. */
     (() => {
-      const tasks = items.filter((i) => i.kind === 'task');
-      const eventCount = items.length - tasks.length;
+      const prog = progressFor(items);
+      const pct = prog.total ? Math.round((prog.done / prog.total) * 100) : 0;
+      const next = isToday(dayKey)
+        ? timed.find((i) => !i.done && timeToMinutes(i.time) > nowMinutes)
+        : timed.find((i) => !i.done);
+      return el('div.day-status',
+        el('div.day-status-head',
+          el('span.day-status-label', isToday(dayKey) ? 'Up next' : 'First up'),
+          el('span.day-status-count', `${prog.done}/${prog.total}`),
+        ),
+        el('div.day-status-next', next
+          ? `${formatTime(next.time, cfg.hour12)} · ${next.title || 'Untitled'}`
+          : 'Nothing else with a time on it'),
+        el('div.day-status-bar', el('span', { style: { width: `${pct}%` } })),
+      );
+    })(),
+    (() => {
+      // Only what has NO time. Anything with a clock time is already drawn on
+      // the grid a few inches to the left, and listing it twice made the grid
+      // look like a decorative copy of the list rather than the point of the
+      // page.
+      const tasks = items.filter((i) => i.kind === 'task' && !i.time);
+      const eventCount = items.length - items.filter((i) => i.kind === 'task').length;
       return el('div',
-        el('div.task-group-label', 'Tasks'),
+        el('div.task-group-label', 'No time set'),
         quickAdd({
           defaults: { date: dayKey },
           // Every quick-add box parses. Two identical-looking inputs where
