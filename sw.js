@@ -21,6 +21,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v13: day grid — titles clamp instead of clipping, short events read on one
+// line, calmer event fills, the now-line carries the time.
 // v12: First things — the morning ritual, with its two voices.
 // v11: morning brief with WhatsApp send; diary box no longer redraws under
 // the caret; the rail shows the backlog instead of repeating the day.
@@ -38,7 +40,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v12';
+const CACHE_VERSION = 'organizer-v13';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports

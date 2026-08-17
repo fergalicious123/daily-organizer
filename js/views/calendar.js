@@ -664,10 +664,16 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   if (laid.length) grid.appendChild(lanes);
 
   if (isToday(dayKey) && nowMinutes >= gridStart && nowMinutes <= gridStart + gridMinutes) {
+    const nowLabel = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
     grid.appendChild(el('div.now-line', {
       style: { top: `${((nowMinutes - gridStart) / 60) * HOUR_H}px` },
       'aria-hidden': 'true',
-    }));
+    },
+      // Always 24-hour, even when the rest of the grid is on 12-hour labels:
+      // this sits in a 46px gutter and "3:04 pm" does not fit where "15:04"
+      // does. It is a position marker, not a reading of the clock.
+      el('span.now-time', nowLabel),
+    ));
   }
 
   gridWrap.appendChild(grid);
