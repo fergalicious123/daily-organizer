@@ -90,14 +90,24 @@ document.addEventListener('dragover', (e) => edgeScroll(e.clientX, e.clientY));
  * the duration of the drag, so the hour beneath receives it. Clicking a block
  * when NOT dragging is unaffected.
  */
-document.addEventListener('dragstart', () => {
+document.addEventListener('dragstart', (e) => {
   document.body.classList.add('is-mouse-dragging');
+  // Mark the source itself. The rule that makes blocks transparent has to
+  // spare the one being dragged: at the instant dragstart fires the cursor is
+  // still over it, and pulling pointer-events out from under the element the
+  // browser is currently dragging is asking for the drag to be cancelled.
+  // The touch path already sets this class; now both do.
+  if (e.target instanceof Element) e.target.classList.add('is-dragging');
 }, true);
 
 // Both, because a drag cancelled with Escape fires dragend but never drop.
 for (const done of ['dragend', 'drop']) {
-  document.addEventListener(done, () => {
+  document.addEventListener(done, (e) => {
     document.body.classList.remove('is-mouse-dragging');
+    if (e.target instanceof Element) e.target.classList.remove('is-dragging');
+    // Belt and braces: a drag that ends over a different element would
+    // otherwise strand the class on the source.
+    document.querySelectorAll('.is-dragging').forEach((n) => n.classList.remove('is-dragging'));
   }, true);
 }
 
