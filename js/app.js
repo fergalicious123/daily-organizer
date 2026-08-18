@@ -26,6 +26,7 @@ import { doneView } from './views/done.js';
 import { journalView, journalEditor } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { mountShortcutsButton } from './views/shortcutsPanel.js';
+import { mountBin } from './views/bin.js';
 import { declaredKeys } from './shortcuts.js';
 import { homeView } from './views/home.js';
 import { taskList, quickAdd, openItemEditor, confirmDeleteList } from './views/tasks.js';
@@ -1426,6 +1427,9 @@ function boot() {
   mountClockWidget();
   startClockTicker();
   mountShortcutsButton();
+  // Lives on <body>, not in a view: every view rebuilds on render, and the
+  // bin has to survive a redraw that lands mid-drag.
+  mountBin();
 
   window.addEventListener('resize', debounceRender());
 

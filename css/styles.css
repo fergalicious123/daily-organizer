@@ -3270,3 +3270,69 @@ body.is-touch-dragging {
   }
   .month-shift { animation: none; opacity: 1; transform: none; }
 }
+
+/* ------------------------------------------------------------------ */
+/* The bin                                                             */
+/* ------------------------------------------------------------------ */
+
+/* Present only while something is being dragged. A delete target that is
+   always on screen is an always-available mistake, and it would cost space on
+   every view for a gesture used a few times a week. The drag already flags the
+   document, so this can simply appear for the length of the drag.
+
+   pointer-events must be OFF when hidden or it would silently intercept
+   clicks on whatever sits underneath it at the bottom of the page. */
+.bin {
+  position: fixed;
+  left: 50%;
+  bottom: calc(22px + var(--safe-b));
+  transform: translate(-50%, 16px);
+  z-index: 60;
+
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 18px;
+  border-radius: 999px;
+
+  border: 1px dashed var(--border-strong, var(--border));
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s var(--ease), transform .16s var(--ease),
+              background .12s var(--ease), border-color .12s var(--ease),
+              color .12s var(--ease);
+}
+.bin .icon { width: 17px; height: 17px; }
+
+body.is-mouse-dragging .bin,
+body.is-touch-dragging .bin {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+/* Armed. Solid, and unmistakably the destructive option — this is the one
+   drop on the page you cannot undo by dragging it back. */
+.bin.is-drop-target {
+  background: var(--danger);
+  border-color: var(--danger);
+  border-style: solid;
+  color: #fff;
+  transform: translate(-50%, 0) scale(1.05);
+}
+
+/* Clear of the tab bar on a phone, where it would otherwise land on top of
+   the navigation and be impossible to drop onto. */
+@media (max-width: 760px) {
+  .bin { bottom: calc(var(--tabbar-h) + 16px + var(--safe-b)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bin { transition: opacity .01ms, background .01ms, border-color .01ms, color .01ms; }
+}
