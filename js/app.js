@@ -26,7 +26,7 @@ import { doneView } from './views/done.js';
 import { journalView, journalEditor } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { mountShortcutsButton } from './views/shortcutsPanel.js';
-import { mountBin } from './views/bin.js';
+import { mountBin, binPanel } from './views/bin.js';
 import { declaredKeys } from './shortcuts.js';
 import { homeView } from './views/home.js';
 import { taskList, quickAdd, openItemEditor, confirmDeleteList } from './views/tasks.js';
@@ -633,6 +633,9 @@ function renderNotesRail(dayKey) {
 
   const body = el('div.rail-body');
   body.appendChild(journalEditor(dayKey));
+  // Under the notes, where Ben asked for it. Always visible here, unlike the
+  // floating one, which you can only find if you are already dragging.
+  body.appendChild(binPanel());
   railEl.appendChild(body);
 }
 

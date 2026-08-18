@@ -743,7 +743,7 @@ export function dayView(dayKey, { onOpenItem } = {}) {
       }, 'Hide'));
     }
     for (const item of untimed) {
-      allDay.appendChild(el('div.day-event', {
+      const chip = el('div.day-event', {
         class: [
           item.done ? 'is-done' : '',
           item.kind === 'event' ? 'is-event' : '',
@@ -755,7 +755,14 @@ export function dayView(dayKey, { onOpenItem } = {}) {
           e.dataTransfer.setData('text/plain', item.id);
           e.dataTransfer.effectAllowed = 'move';
         },
-      }, el('span.day-event-title', item.title || 'Untitled')));
+      }, el('span.day-event-title', item.title || 'Untitled'));
+      // `draggable` is mouse-only — Android and a touchscreen laptop never
+      // fire dragstart from a finger. Every other draggable thing in the app
+      // pairs it with this; the all-day strip was the one that did not, which
+      // meant the items MOST likely to need a time — the ones that have not
+      // got one — were the only items that could not be dragged to one.
+      makeTouchDraggable(chip, () => item.id);
+      allDay.appendChild(chip);
     }
   }
   gridWrap.appendChild(allDay);

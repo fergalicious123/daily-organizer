@@ -3336,3 +3336,27 @@ body.is-touch-dragging .bin {
 @media (prefers-reduced-motion: reduce) {
   .bin { transition: opacity .01ms, background .01ms, border-color .01ms, color .01ms; }
 }
+
+/* The docked bin: always on screen, so it can be found without already being
+   mid-drag. Quiet until something is actually being dragged. */
+.bin-docked {
+  position: static;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+  width: 100%;
+  margin-top: 14px;
+  justify-content: center;
+  box-shadow: none;
+  background: none;
+}
+body.is-mouse-dragging .bin-docked,
+body.is-touch-dragging .bin-docked {
+  transform: none;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Only one bin on screen at a time. Wherever a docked one is rendered the
+   floating one stays out of the way, rather than both appearing mid-drag. */
+body:has(.bin-docked) .bin-float { display: none; }

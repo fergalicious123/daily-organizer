@@ -134,14 +134,25 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
           kind: 'routine',
           text: left == null ? step.label : `${step.label} (${left})`,
         });
+        // Each step carries its OWN voice. This used to take a single quote
+        // from the first outstanding step, on the theory that two would read
+        // like a poster and one was a nudge — but study always sorts first, so
+        // the training quote only ever appeared on days the studying was
+        // already done. In other words the half of this Ben most wanted before
+        // a run was the half he never saw. One each, next to the thing it is
+        // talking about.
+        const quote = quoteFor(step.kind, dateKey);
+        if (quote) lines.push({ kind: 'quote', text: `"${quote.text}" — ${quote.author}` });
       }
-      // One quote, from the voice belonging to the first thing still to do.
-      // Two would be a poster; one is a nudge at the moment it is useful.
-      const quote = quoteFor(outstanding[0].kind, dateKey);
-      if (quote) lines.push({ kind: 'quote', text: `"${quote.text}" — ${quote.author}` });
     } else {
       lines.push({ kind: 'label', text: 'First things' });
-      lines.push({ kind: 'routine-done', text: 'Done — study and gym both ticked off.' });
+      // Built from the step labels rather than written out, so it stays true
+      // when a step is renamed — this line still said "gym" for a while after
+      // the gym became Para 10 training.
+      lines.push({
+        kind: 'routine-done',
+        text: `Done — ${ritual.map((s) => s.label).join(' and ')}.`,
+      });
     }
   }
 
@@ -206,9 +217,11 @@ function toText(lines) {
     else if (line.kind === 'timed' || line.kind === 'task') out.push(`• ${line.text}`);
     else if (line.kind === 'routine') out.push(`• ${line.text}`);
     else if (line.kind === 'routine-done') out.push(line.text);
-    // Set apart with a blank line above it. In a WhatsApp message a quote
-    // butted against a task list reads as another task.
-    else if (line.kind === 'quote') out.push('', `_${line.text}_`);
+    // Indented under the step it belongs to rather than set apart by a blank
+    // line: it is that step's voice, not a general epigraph, and in WhatsApp
+    // the leading spaces are what make it read as subordinate to the line
+    // above instead of as another task.
+    else if (line.kind === 'quote') out.push(`   _${line.text}_`);
     else if (line.kind === 'alert') out.push('', line.text);
     else out.push(line.text);
   }

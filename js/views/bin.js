@@ -22,7 +22,7 @@ import { el, icon, toast, haptic } from '../ui.js';
 import { registerDropZone } from '../dragdrop.js';
 import { store, removeItem, getItem } from '../state.js';
 
-let node = null;
+let floater = null;
 
 /** Take the item out, and offer it straight back. */
 function dropIntoBin({ itemId }) {
@@ -50,17 +50,15 @@ function truncate(text, max = 38) {
 }
 
 /**
- * Put the bin on the page. Safe to call more than once.
+ * Build a bin. `docked` decides whether it sits in a panel or floats.
  *
- * Appended to <body> rather than into a view, because every view rebuilds on
- * render and the bin must survive a redraw that happens mid-drag.
+ * Both kinds are the same drop target with the same handlers; only placement
+ * and when they are visible differ.
  */
-export function mountBin() {
-  if (node) return node;
-
-  node = el('div.bin', { 'aria-hidden': 'true' },
+function createBin({ docked }) {
+  const node = el(docked ? 'div.bin.bin-docked' : 'div.bin.bin-float', {},
     icon('trash', 'icon'),
-    el('span.bin-label', 'Drop here to delete'),
+    el('span.bin-label', docked ? 'Drag here to delete' : 'Drop here to delete'),
   );
 
   // Mouse path: HTML5 drag-and-drop delivers straight to the element under
@@ -74,14 +72,38 @@ export function mountBin() {
   node.addEventListener('drop', (e) => {
     e.preventDefault();
     node.classList.remove('is-drop-target');
-    const itemId = e.dataTransfer.getData('text/plain');
-    dropIntoBin({ itemId });
+    dropIntoBin({ itemId: e.dataTransfer.getData('text/plain') });
   });
 
-  // Touch path: found by elementFromPoint, so the bin must be hit-testable
-  // while a drag is running. The highlight class is applied for us.
+  // Touch path: found by elementFromPoint, so it must be hit-testable while a
+  // drag is running. The highlight class is applied for us.
   registerDropZone(node, {}, dropIntoBin);
-
-  document.body.appendChild(node);
   return node;
+}
+
+/**
+ * A bin that lives inside a panel and is always visible.
+ *
+ * Ben could not find the floating one, which is a fair verdict on a control
+ * that only exists while you are already dragging: you cannot discover it
+ * unless you happen to start a drag, and you have no reason to start a drag if
+ * you do not know it is there. A visible target teaches itself.
+ */
+export function binPanel() {
+  return createBin({ docked: true });
+}
+
+/**
+ * The floating bin, for views with no panel to dock one into.
+ *
+ * Appended to <body> rather than into a view, because every view rebuilds on
+ * render and this must survive a redraw that lands mid-drag. It hides itself
+ * wherever a docked bin is on screen — see .bin-float in the stylesheet — so
+ * the two never appear at once.
+ */
+export function mountBin() {
+  if (floater) return floater;
+  floater = createBin({ docked: false });
+  document.body.appendChild(floater);
+  return floater;
 }

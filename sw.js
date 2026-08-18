@@ -21,6 +21,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v19: a quote per routine step in the brief; all-day chips draggable by
+// finger; the bin docks under the notes.
 // v18: drag anything onto the bin to delete it, with undo.
 // v17: a month of quotes per side; long events no longer block drops beneath
 // them; day view swaps notes into the rail and the backlog into the panel.
@@ -47,7 +49,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v18';
+const CACHE_VERSION = 'organizer-v19';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
