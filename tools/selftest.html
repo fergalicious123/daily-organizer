@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Organizer — self test</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    margin: 0; padding: 24px; max-width: 900px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lede { opacity: .7; margin: 0 0 20px; max-width: 70ch; font-size: 13px; }
+  #out { white-space: pre-wrap; }
+  .pass { color: #1f7a54; }
+  .fail { color: #c0392b; font-weight: 700; }
+  .group { margin-top: 16px; font-weight: 700; }
+  #summary { margin-top: 22px; padding: 12px 14px; border-radius: 8px; font-weight: 700; }
+  #summary.ok { background: #e4f1eb; color: #1f7a54; }
+  #summary.bad { background: #fbeae8; color: #c0392b; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0e1016; color: #e9ecf3; }
+    .pass { color: #5fc79b; } .fail { color: #ef8073; }
+    #summary.ok { background: #142a22; color: #5fc79b; }
+    #summary.bad { background: #351f1d; color: #ef8073; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Self test</h1>
+<p class="lede">
+  Runs against the real modules with no build step: open
+  <code>/tools/selftest.html</code> on the dev server and read the result.
+  Everything here is a PURE function called with arguments — nothing touches
+  the store, localStorage, or the network, so running this cannot disturb your
+  data.
+</p>
+
+<div id="out"></div>
+<div id="summary"></div>
+
+<script type="module">
+const out = document.getElementById('out');
+let passed = 0;
+let failed = 0;
+
+function group(name) {
+  out.appendChild(Object.assign(document.createElement('div'),
+    { className: 'group', textContent: name }));
+}
+
+/*
+ * `fn` is a function, not a value, and that is the whole point.
+ *
+ * The first version took an already-evaluated boolean. Then a deliberate break
+ * was introduced to check this file could actually fail, and one assertion
+ * threw a TypeError on the way to producing its boolean — which killed the
+ * script, so two failures were reported, no summary was rendered, and every
+ * check after that point silently never ran. A suite that stops at the first
+ * broken thing is worse than none: it reports a short list of problems and
+ * looks like it finished.
+ */
+function check(label, fn, detail = '') {
+  let ok = false;
+  let thrown = '';
+  try {
+    ok = Boolean(typeof fn === 'function' ? fn() : fn);
+  } catch (err) {
+    thrown = err.message;
+  }
+  ok ? passed++ : failed++;
+  const line = document.createElement('div');
+  line.className = ok ? 'pass' : 'fail';
+  const why = thrown || (!ok ? detail : '');
+  line.textContent = `${ok ? '  ok  ' : ' FAIL '} ${label}${why ? `  — ${why}` : ''}`;
+  out.appendChild(line);
+}
+
+/* ------------------------------------------------------------------ */
+/* Every module still parses                                           */
+/* ------------------------------------------------------------------ */
+/*
+ * app.js is deliberately absent: it calls boot() at import time, so pulling it
+ * in here would start a second copy of the whole app against this origin's
+ * storage. Its syntax is checked by the app opening at all.
+ */
+group('Modules parse');
+const MODULES = [
+  'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
+  'brief', 'quotes', 'ai', 'reflect', 'dragdrop', 'shortcuts',
+].map((n) => `../js/${n}.js`).concat(
+  ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
+    'clocks', 'shortcutsPanel'].map((n) => `../js/views/${n}.js`),
+);
+
+const loaded = {};
+for (const path of MODULES) {
+  try {
+    loaded[path] = await import(path);
+    check(path, true);
+  } catch (err) {
+    check(path, false, err.message);
+  }
+}
+
+const { gcalIdFor } = loaded['../js/google.js'] || {};
+const { mergeDocuments } = loaded['../js/sync.js'] || {};
+const { verify, materialToText, hasMaterial } = loaded['../js/reflect.js'] || {};
+const dates = loaded['../js/dates.js'] || {};
+
+/* ------------------------------------------------------------------ */
+/* Calendar event ids                                                  */
+/* ------------------------------------------------------------------ */
+/* These are what stop a create whose reply was lost becoming a duplicate. */
+group('gcalIdFor — deterministic, legal, distinct');
+if (gcalIdFor) {
+  const LEGAL = /^[0-9a-v]{5,1024}$/;   // Google's base32hex rule
+  const samples = [
+    '2f3a9b1c-4d5e-4f60-9a8b-7c6d5e4f3a2b',
+    'id-m4x9k2-a7bz3q1w',
+    'spaces and Ünïcode ☺',
+    'x',
+  ];
+  check('every id is legal for Google', () => samples.every((s) => LEGAL.test(gcalIdFor(s))));
+  check('same input gives the same id', () => samples.every((s) => gcalIdFor(s) === gcalIdFor(s)));
+  check('different inputs give different ids', () => new Set(samples.map(gcalIdFor)).size === samples.length);
+  check('short input still clears the 5-char floor', () => gcalIdFor('x').length >= 5);
+}
+
+/* ------------------------------------------------------------------ */
+/* Quote verification                                                  */
+/* ------------------------------------------------------------------ */
+/* The thing that stops an invented suggestion looking like a grounded one. */
+group('verify — catches a paraphrase, forgives punctuation');
+if (verify) {
+  const source = 'Docs for the Landy are out of date, need Ferguson to sign them off.\n'
+    + 'Right knee tight again on the downhills.';
+  const v = (q) => verify([{ quote: q }], source)[0].verified;
+  check('exact quote passes', () => v('need Ferguson to sign them off'));
+  check('different case passes', () => v('NEED FERGUSON TO SIGN THEM OFF'));
+  check('a newline read as a space passes', () => v('sign them off. Right knee tight'));
+  check('a paraphrase is caught', () => !v('Ferguson needs to sign the documents'));
+  check('an invented quote is caught', () => !v('book the dentist on Tuesday'));
+  check('an empty quote is caught', () => !v(''));
+  check('word soup is caught', () => !v('Ferguson downhills Landy'));
+}
+
+/* ------------------------------------------------------------------ */
+/* Sync merge                                                          */
+/* ------------------------------------------------------------------ */
+/* Every failure here is silent, unrecoverable data loss. */
+group('mergeDocuments — notes survive two devices');
+if (mergeDocuments) {
+  const base = { items: [], lists: [], journal: {}, routine: {} };
+  const doc = (log, updatedAt, title = 'Task') =>
+    ({ ...base, items: [{ id: 'i1', title, updatedAt, log }] });
+
+  const phone = doc([{ id: 'a', at: '2026-08-20T10:00:00Z', text: 'phone' }], '2026-08-20T10:00:00Z');
+  const laptop = doc([{ id: 'b', at: '2026-08-20T11:00:00Z', text: 'laptop' }], '2026-08-20T11:00:00Z');
+  const merged = mergeDocuments(phone, laptop).document.items[0];
+  check('a note from each device survives', () => merged.log.length === 2 && merged.log.map((n) => n.id).sort().join() === 'a,b');
+  check('notes come back in time order', () => merged.log[0].id === 'a' && merged.log[1].id === 'b');
+
+  // An item edited by a device running older code has no `log` at all.
+  const noLog = { ...base, items: [{ id: 'i1', title: 'Renamed', updatedAt: '2026-08-21T10:00:00Z' }] };
+  const kept = mergeDocuments(doc([{ id: 'a', at: '2026-08-20T10:00:00Z', text: 'keep me' }],
+    '2026-08-20T10:00:00Z'), noLog).document.items[0];
+  check('a newer side with no log does not wipe notes', () => kept.log.length === 1 && kept.log[0].text === 'keep me');
+  check('the newer side still wins on ordinary fields', () => kept.title === 'Renamed');
+
+  // A delete must not be handed back by a device that still holds a copy.
+  const buried = doc([{ id: 'a', at: '2026-08-20T10:00:00Z', text: '', deleted: true }], '2026-08-21T09:00:00Z');
+  const alive = doc([{ id: 'a', at: '2026-08-20T10:00:00Z', text: 'zombie' }], '2026-08-20T10:00:00Z');
+  check('a delete sticks when local buried it', () => mergeDocuments(buried, alive).document.items[0].log.every((n) => n.deleted));
+  check('a delete sticks when remote buried it', () => mergeDocuments(alive, buried).document.items[0].log.every((n) => n.deleted));
+}
+
+/* ------------------------------------------------------------------ */
+/* Review material                                                     */
+/* ------------------------------------------------------------------ */
+group('reflect — nothing in, nothing sent');
+if (materialToText && hasMaterial) {
+  const empty = { from: '2026-08-01', to: '2026-08-08', notes: [], journal: [], done: [], slipped: [] };
+  check('empty material reports as empty', () => hasMaterial(empty) === false);
+  check('empty material renders no text', () => materialToText(empty) === '');
+  const some = { ...empty, notes: [{ day: '2026-08-02', itemTitle: 'Job', text: 'a note' }] };
+  check('a single note is enough to have material', () => hasMaterial(some) === true);
+  check('the note reaches the text', () => materialToText(some).includes('a note'));
+}
+
+/* ------------------------------------------------------------------ */
+/* Dates                                                               */
+/* ------------------------------------------------------------------ */
+/* Local wall-clock, never UTC instants — the rule the whole app rests on. */
+group('dates — local wall-clock, boundaries intact');
+if (dates.addDays) {
+  check('crosses a month end', () => dates.addDays('2026-01-31', 1) === '2026-02-01');
+  check('crosses a year end', () => dates.addDays('2026-12-31', 1) === '2027-01-01');
+  check('handles a leap day', () => dates.addDays('2028-02-28', 1) === '2028-02-29');
+  check('steps backwards', () => dates.addDays('2026-03-01', -1) === '2026-02-28');
+  // The clocks go forward on 29 March 2026 in the UK. A UTC-based
+  // implementation loses or repeats a day here; a wall-clock one does not.
+  check('survives the spring clock change', () => dates.addDays('2026-03-28', 2) === '2026-03-30');
+  check('survives the autumn clock change', () => dates.addDays('2026-10-24', 2) === '2026-10-26');
+  check('diffDays agrees with addDays', () => dates.diffDays('2026-08-01', '2026-08-15') === 14);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shortcuts                                                           */
+/* ------------------------------------------------------------------ */
+group('shortcuts — the panel cannot promise a key that does nothing');
+const shortcuts = loaded['../js/shortcuts.js'];
+if (shortcuts?.SHORTCUTS) {
+  const keyed = shortcuts.SHORTCUTS.filter((s) => s.key);
+  check('every declared key has a label', () => keyed.every((s) => s.label));
+  check('every declared key has something to display', () => keyed.every((s) => s.display?.length));
+  check('no key is declared twice', () => new Set(keyed.map((s) => s.key)).size === keyed.length);
+  check('letter keys are lower case, as the caveats claim', () => keyed.filter((s) => s.key.length === 1).every((s) => s.key === s.key.toLowerCase()));
+}
+
+/* ------------------------------------------------------------------ */
+const summary = document.getElementById('summary');
+summary.className = failed ? 'bad' : 'ok';
+summary.textContent = failed
+  ? `${failed} failed, ${passed} passed`
+  : `All ${passed} checks passed`;
+</script>
+
+</body>
+</html>

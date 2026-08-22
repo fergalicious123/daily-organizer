@@ -1294,8 +1294,15 @@ export function reflectionMaterial(fromKey, untilKey) {
 
   // Still open and already past its date. This is the half of a review that is
   // uncomfortable and therefore the half worth showing.
+  //
+  // TASKS only. An event is not a thing that can slip — it happened, or it did
+  // not, and either way there is nothing to tick, so `done` is false forever.
+  // Without the kind check every appointment Ben had ever been to came back
+  // under "still not done", and went to Claude under a heading saying so —
+  // which is a recipe for being told to rebook a dentist he already saw.
   const slipped = liveItems()
-    .filter((i) => !i.done && i.date && i.date >= fromKey && i.date <= untilKey
+    .filter((i) => i.kind === 'task' && !i.done && i.date
+      && i.date >= fromKey && i.date <= untilKey
       && i.date < todayKey() && !shiftKindOf(i))
     .map((i) => ({ id: i.id, title: i.title || 'Untitled', day: i.date }));
 

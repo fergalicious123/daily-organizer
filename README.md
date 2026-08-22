@@ -28,6 +28,28 @@ browser. To add sync, follow [SETUP-GOOGLE.md](SETUP-GOOGLE.md).
 
 ---
 
+### Checking nothing is broken
+
+Two checks, both runnable with nothing installed:
+
+```bash
+python tools/contrast.py
+```
+
+Reads the colour tokens straight out of `styles.css` and works out every
+contrast ratio the app actually renders, in both themes. Exits non-zero if any
+falls below WCAG AA. Three known failures are listed in the file rather than
+hidden, because fixing them changes the look of things already in daily use.
+
+With the server running, open **`/tools/selftest.html`**. It imports every
+module — which catches a syntax error immediately — and exercises the logic
+where a mistake would be silent: calendar event ids, the quote check behind the
+review's proposals, and the sync merge, where a wrong answer is unrecoverable
+data loss rather than a visible bug. It only calls pure functions, so running
+it cannot touch your data.
+
+---
+
 ## Getting it on your phone
 
 Phones only allow notifications from an installed app served over HTTPS, so it
@@ -443,6 +465,7 @@ js/views/bin.js         drag-to-delete, with undo
 sw.js                   offline shell (cache-first; network-first on localhost)
 tools/make_icons.py     regenerates the PWA icons
 tools/contrast.py       checks every token pair meets WCAG AA, both themes
+tools/selftest.html     runs the pure logic in a browser; no build step
 ```
 
 ---
