@@ -82,7 +82,12 @@ function rangeFor(choice) {
   if (!block) return { from: addDays(today, -6), to: today, label: 'Last 7 days' };
   return {
     from: block.start,
-    to: block.end,
+    // Collect to the end of the last SHIFT, not the end of its calendar day —
+    // see gatherTo in shiftBlock(). The heading still names the block's own
+    // dates, because "17–21 Aug" for four nights worked on the 17th to the
+    // 20th would just look wrong.
+    to: block.gatherTo || block.end,
+    shown: block.end,
     // "Last block" is only true once it is over. Opening this three nights
     // into four and being told you are reading back the LAST block, when the
     // dates plainly include today, is the kind of small wrongness that makes
@@ -154,9 +159,12 @@ function header(span, material) {
       el('div',
         el('h2.review-title', span.label),
         el('p.review-dates',
-          span.from === span.to
-            ? formatDayLong(span.from)
-            : `${formatDayShort(span.from)} — ${formatDayShort(span.to)}`),
+          (() => {
+            const last = span.shown || span.to;
+            return span.from === last
+              ? formatDayLong(span.from)
+              : `${formatDayShort(span.from)} — ${formatDayShort(last)}`;
+          })()),
       ),
       pills,
     ),

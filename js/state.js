@@ -1243,9 +1243,24 @@ export function shiftBlock(dateKey = todayKey()) {
     if (worked(key) !== kind) break;
     start = key;
   }
+  /*
+   * `gatherTo` is where to stop COLLECTING, which is not always where the
+   * block stops.
+   *
+   * A night runs 18:30 to 06:30, so the last shift of a run of nights finishes
+   * on the morning AFTER its own date. Notes are stamped with the wall-clock
+   * day they were made on, and the small hours are exactly when there is time
+   * to dictate one — so on a night block everything said after midnight fell
+   * outside the range and the review quietly did not include it. Half of Ben's
+   * rota is nights, so this was half the notes.
+   *
+   * A day shift ends the same day it starts, so nothing is added there.
+   */
+  const gatherTo = kind === SHIFT.NIGHT ? addDays(end, 1) : end;
+
   // Finished if today is not itself part of it — either you are off, or the
   // shift has changed under you and a new block has started.
-  return { start, end, kind, ended: end !== dateKey };
+  return { start, end, gatherTo, kind, ended: end !== dateKey };
 }
 
 /**
