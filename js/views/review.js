@@ -12,8 +12,9 @@
  */
 
 import { el, icon, toast } from '../ui.js';
+import { openItemEditor } from './tasks.js';
 import {
-  reflectionMaterial, shiftBlock, markReviewed, addItem, settings, SHIFT,
+  reflectionMaterial, shiftBlock, markReviewed, addItem, SHIFT, NOTE_SOURCE,
 } from '../state.js';
 import { todayKey, addDays, formatDayShort, formatDayLong } from '../dates.js';
 import {
@@ -41,7 +42,10 @@ let result = null;             // { reflection, proposals, sourceText }
 let pending = false;
 let failure = '';
 let showSource = false;
-const dismissed = new Set();   // proposal quotes the user has waved away
+// Indices, not quote text. Two proposals can legitimately cite the same line —
+// one note often implies more than one job — and keying by the quote made
+// dealing with either of them silently remove both.
+const dismissed = new Set();
 
 /** Reset everything the previous review left behind. */
 function clearResult() {
@@ -68,12 +72,18 @@ function rangeFor(choice) {
   return {
     from: block.start,
     to: block.end,
-    label: `Last block — ${SHIFT_LABEL[block.kind] || 'shift'}`,
+    // "Last block" is only true once it is over. Opening this three nights
+    // into four and being told you are reading back the LAST block, when the
+    // dates plainly include today, is the kind of small wrongness that makes
+    // you stop trusting the bigger numbers on the page.
+    label: block.ended
+      ? `Last block — ${SHIFT_LABEL[block.kind] || 'shift'}`
+      : `This block so far — ${SHIFT_LABEL[block.kind] || 'shift'}`,
     block,
   };
 }
 
-export function reviewView({ onNavigate } = {}) {
+export function reviewView() {
   const span = rangeFor(range);
   const material = reflectionMaterial(span.from, span.to);
   const root = el('div.review');
@@ -91,7 +101,7 @@ export function reviewView({ onNavigate } = {}) {
     return root;
   }
 
-  root.appendChild(readback(material, onNavigate));
+  root.appendChild(readback(material));
   root.appendChild(claudeSection(material));
   return root;
 }
@@ -142,7 +152,7 @@ function header(span, material) {
 /* Reading it back                                                     */
 /* ------------------------------------------------------------------ */
 
-function readback(material, onNavigate) {
+function readback(material) {
   const wrap = el('div.review-body');
 
   if (material.journal.length) {
@@ -166,15 +176,19 @@ function readback(material, onNavigate) {
 
     wrap.appendChild(section('Notes you made', [...byItem.entries()].map(([itemId, notes]) =>
       el('article.review-entry',
+        // Opens the item itself rather than navigating to a list. The first
+        // version of this passed a `focusItem` key to navigate(), which nothing
+        // anywhere handled — so it jumped to Unscheduled, which need not even
+        // contain the task, and left a dead key in the persisted route.
         el('button.review-entry-day.review-entry-link', {
           type: 'button',
           title: 'Open this task',
-          onclick: () => onNavigate?.({ view: 'tasks', listId: null, focusItem: itemId }),
+          onclick: () => openItemEditor(itemId),
         }, notes[0].itemTitle),
         ...notes.map((note) => el('p.review-note',
           el('span.review-note-when', formatDayShort(note.day)),
-          note.source === 'voice' ? icon('mic', 'icon review-note-src') : null,
-          note.source === 'paste' ? icon('clipboard', 'icon review-note-src') : null,
+          note.source === NOTE_SOURCE.VOICE ? icon('mic', 'icon review-note-src') : null,
+          note.source === NOTE_SOURCE.PASTE ? icon('clipboard', 'icon review-note-src') : null,
           el('span', note.text),
         )),
       ))));
@@ -257,7 +271,9 @@ function claudeSection(material) {
       wrap.appendChild(el('blockquote.review-reflection', result.reflection));
     }
 
-    const live = result.proposals.filter((p) => !dismissed.has(p.quote));
+    const live = result.proposals
+      .map((p, index) => ({ ...p, index }))
+      .filter((p) => !dismissed.has(p.index));
 
     if (!live.length) {
       wrap.appendChild(el('p.review-hint',
@@ -318,7 +334,7 @@ function proposalCard(proposal) {
     el('span.proposal-urgency', proposal.urgency),
     el('button.btn.btn-quiet', {
       onclick: () => {
-        dismissed.add(proposal.quote);
+        dismissed.add(proposal.index);
         document.dispatchEvent(new CustomEvent('organizer:rerender'));
       },
     }, 'No'),
@@ -329,12 +345,13 @@ function proposalCard(proposal) {
           kind: 'task',
           title: proposal.title,
           date,
-          listId: settings().reviewListId || undefined,
+          // No listId: makeItem drops it in the inbox, which is where
+          // something you have only just agreed to belongs until you file it.
           // Where it came from, kept with it. In a month's time "why is this on
           // my list" has an answer that is not a guess.
           notes: `From the review of ${formatDayShort(todayKey())}.\n“${proposal.quote}”`,
         });
-        dismissed.add(proposal.quote);
+        dismissed.add(proposal.index);
         toast(date ? 'Added for tomorrow' : 'Added to Unscheduled');
         document.dispatchEvent(new CustomEvent('organizer:rerender'));
       },

@@ -128,6 +128,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* Where the app is being developed rather than used. */
+const DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0']);
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -142,6 +145,23 @@ self.addEventListener('fetch', (event) => {
   // wedged: a hard reload fetches a real index.html from the server rather
   // than whatever this cache believes.
   if (request.mode === 'navigate') {
+    event.respondWith(
+      fetchAndCache(request).catch(() =>
+        caches.match(request).then((cached) => cached || offlineFallback(request)),
+      ),
+    );
+    return;
+  }
+
+  // On localhost, keep the old network-first behaviour.
+  //
+  // Cache-first is right for the deployed app and wrong for developing it:
+  // every edit is invisible until the cache version changes or the cache is
+  // cleared by hand. That cost me several confusing minutes in the session
+  // that introduced it — a file edited on disk, served from cache, and an A/B
+  // test that silently compared a build against itself. The speed it buys is
+  // for a phone on a bad connection, which localhost is not.
+  if (DEV_HOSTS.has(self.location.hostname)) {
     event.respondWith(
       fetchAndCache(request).catch(() =>
         caches.match(request).then((cached) => cached || offlineFallback(request)),

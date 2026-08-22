@@ -453,7 +453,7 @@ function renderBody() {
   } else if (route.view === 'journal') {
     bodyEl.appendChild(journalView({ onNavigate: navigate }));
   } else if (route.view === 'review') {
-    bodyEl.appendChild(reviewView({ onNavigate: navigate }));
+    bodyEl.appendChild(reviewView());
   } else if (route.view === 'stats') {
     bodyEl.appendChild(statsView());
   }

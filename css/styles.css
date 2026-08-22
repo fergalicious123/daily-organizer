@@ -1962,6 +1962,11 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
+/* CAREFUL. These three selectors are 0,1,1 — an element selector qualified by
+   a class. A bare `.some-input` class is 0,1,0 and LOSES to them no matter
+   where it sits in the file, so a rule written to restyle one particular field
+   silently does nothing. That has now happened three times. Qualify with the
+   ancestor — `.field .some-input` — when overriding anything here. */
 .field textarea { resize: vertical; min-height: 66px; font-family: inherit; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field-hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; }
@@ -3425,7 +3430,12 @@ body:has(.bin-docked) .bin-float { display: none; }
 .note-text { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
 
 .note-compose { display: flex; flex-direction: column; gap: 6px; }
-.note-input { resize: vertical; min-height: 44px; }
+/* `.field .note-input`, not `.note-input`. This box lives inside a .field, so
+   `.field textarea` (0,1,1) beats a bare class (0,1,0) whatever the source
+   order — and quietly forced this to the 66px a full-size Notes box wants,
+   rather than the 44px a one-line "add a note" box wants. Third time that rule
+   has caught an edit in this file; see the warning beside it. */
+.field .note-input { resize: vertical; min-height: 44px; }
 .note-compose-actions { display: flex; align-items: center; gap: 7px; }
 .note-mic .icon, .note-compose-actions .btn .icon { width: 14px; height: 14px; }
 .note-status { font-size: 11.5px; color: var(--text-muted); }
@@ -3480,8 +3490,12 @@ body:has(.bin-docked) .bin-float { display: none; }
   margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--border);
 }
 .review-entry-day { margin: 0 0 5px; font-size: 12.5px; font-weight: 600; }
+/* Negative margin cancels the padding, so the touch target grows to a
+   comfortable 32px without moving anything on the page. At 24px it cleared the
+   AA minimum by exactly nothing, which on a phone in gloves is not a margin. */
 .review-entry-link {
-  background: none; border: 0; padding: 0; cursor: pointer;
+  background: none; border: 0; cursor: pointer;
+  padding: 4px 0; margin: -4px 0 1px;
   color: var(--accent); text-align: left; font: inherit; font-weight: 600;
 }
 .review-entry-link:hover { text-decoration: underline; }
