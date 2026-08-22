@@ -39,6 +39,16 @@ const SHIFT_LABEL = {
  */
 let range = 'block';           // block | 7 | 14
 let result = null;             // { reflection, proposals, sourceText }
+/*
+ * Which days `result` actually describes.
+ *
+ * Without this, an answer outlived the thing it was about. Switching the range
+ * pills cleared it, but simply leaving the review and coming back did not — so
+ * next week, with a new block finished, the page would draw the NEW block's
+ * dates and counts above LAST week's proposals, quoting notes from a stretch of
+ * time no longer on screen. Nothing about it would look wrong.
+ */
+let resultSpan = '';
 let pending = false;
 let failure = '';
 let showSource = false;
@@ -50,6 +60,7 @@ const dismissed = new Set();
 /** Reset everything the previous review left behind. */
 function clearResult() {
   result = null;
+  resultSpan = '';
   failure = '';
   dismissed.clear();
   showSource = false;
@@ -85,6 +96,11 @@ function rangeFor(choice) {
 
 export function reviewView() {
   const span = rangeFor(range);
+
+  // The block itself moves on when a new one finishes, so an answer can go
+  // stale without anybody touching the range pills.
+  if (result && resultSpan !== `${span.from}..${span.to}`) clearResult();
+
   const material = reflectionMaterial(span.from, span.to);
   const root = el('div.review');
 
@@ -386,11 +402,16 @@ function proposalCard(proposal) {
 }
 
 async function run(material) {
+  // A second click before the first re-render lands would be a second request
+  // and a second charge. The button is removed once `pending` renders, but the
+  // render is debounced, so there is a window.
+  if (pending) return;
   pending = true;
   failure = '';
   document.dispatchEvent(new CustomEvent('organizer:rerender'));
   try {
     result = await proposeActions(material);
+    resultSpan = `${material.from}..${material.to}`;
   } catch (err) {
     failure = err?.message || 'Could not read the block back.';
   } finally {
