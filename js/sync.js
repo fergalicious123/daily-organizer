@@ -453,34 +453,7 @@ class SyncEngine extends EventTarget {
         const body = buildPatch(item);
 
         if (!item.gcalId) {
-          // Ask for a specific id rather than letting Google mint one, so that
-          // retrying a create whose reply was lost adopts the event already
-          // there instead of making a second. See gcalIdFor().
-          const wanted = gcalIdFor(item.id);
-          let created;
-          try {
-            created = await google.createEvent(calendarId, { ...body, id: wanted });
-          } catch (err) {
-            if (err?.status === 409) {
-              // Already created, by an earlier attempt whose reply never
-              // arrived. Nothing to do but take the id we asked for.
-              created = { id: wanted };
-            } else if (err?.status === 400) {
-              // Google refused the id itself. Never seen — hex is always legal
-              // — but falling back to the old behaviour is better than not
-              // creating the event at all.
-              created = await google.createEvent(calendarId, body);
-            } else {
-              throw err;
-            }
-          }
-          store.mutate((s) => {
-            const target = s.items.find((i) => i.id === item.id);
-            if (target) {
-              target.gcalId = created.id;
-              target.gcalCalendarId = calendarId;
-            }
-          }, { undoable: false, silent: true });
+          await createOnce(item, body, calendarId);
         } else {
           const remote = byGcalId.get(item.gcalId);
           // Only push when we are the fresher side; otherwise the pull above
@@ -546,11 +519,11 @@ class SyncEngine extends EventTarget {
         } else if (item.gcalId) {
           await google.updateEvent(targetCal, item.gcalId, body);
         } else {
-          const created = await google.createEvent(calendarId, body);
-          store.mutate((s) => {
-            const target = s.items.find((i) => i.id === item.id);
-            if (target) target.gcalId = created.id;
-          }, { undoable: false, silent: true });
+          // The same idempotent create as the push path. This one was missed
+          // when that was fixed, which mattered more than it sounds: the queue
+          // is what runs AFTER a failed write, so it is the likelier of the two
+          // routes to a duplicate, not the rarer one. Hence one function.
+          await createOnce(item, body, calendarId);
         }
       } catch (err) {
         // Carry on with the rest — do not let one bad op hold up the queue.
@@ -604,6 +577,47 @@ function exportDocument() {
  * Per-item last-write-wins union of local and remote documents.
  * Returns the merged doc plus flags saying which side needs writing.
  */
+/**
+ * Create the event for an item exactly once, however many times this is called.
+ *
+ * The id is derived from the item rather than minted by Google, so a create
+ * whose reply never arrived is a 409 on the next attempt instead of a second
+ * event. See gcalIdFor() for why that failure is the ordinary one rather than
+ * an exotic one.
+ *
+ * Shared by the push pass and the queue flush. They had a create each, and only
+ * one of them got the fix — which left the duplicate alive on the path that
+ * runs after a failure, which is to say the path that matters.
+ */
+async function createOnce(item, body, calendarId) {
+  const wanted = gcalIdFor(item.id);
+  let created;
+  try {
+    created = await google.createEvent(calendarId, { ...body, id: wanted });
+  } catch (err) {
+    if (err?.status === 409) {
+      // Already there, from an attempt whose reply was lost. Take the id we
+      // asked for; it is the one the event has.
+      created = { id: wanted };
+    } else if (err?.status === 400) {
+      // Google refused the id itself. Hex is always legal, so this should not
+      // happen — but falling back to the old behaviour beats not creating the
+      // event at all.
+      created = await google.createEvent(calendarId, body);
+    } else {
+      throw err;
+    }
+  }
+  store.mutate((s) => {
+    const target = s.items.find((i) => i.id === item.id);
+    if (target) {
+      target.gcalId = created.id;
+      target.gcalCalendarId = calendarId;
+    }
+  }, { undoable: false, silent: true });
+  return created;
+}
+
 /**
  * Both sides' notes, never one side's.
  *

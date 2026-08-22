@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v26: the offline queue creates events idempotently too; closing a dialog
+// or changing view stops dictation.
 // v25: a review's suggestions cannot outlive the block they describe.
 // v24: a task row shows how many notes are on it.
 // v23: calendar events are created with an id we choose, so a create whose
@@ -71,7 +73,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v25';
+const CACHE_VERSION = 'organizer-v26';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not

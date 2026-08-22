@@ -555,6 +555,11 @@ export function openItemEditor(id, presets = {}) {
 
   openModal({
     title: existing ? 'Edit' : 'New item',
+    // Closing the dialog must stop the microphone. Start dictating a note,
+    // then press Escape or tap the backdrop, and nothing else in the app ever
+    // told it to stop — a phone left listening indefinitely, with the only
+    // indicator gone from the screen along with the dialog.
+    onClose: () => { if (voice.listening) voice.stop(); },
     render: (close) => {
       const fields = [];
 

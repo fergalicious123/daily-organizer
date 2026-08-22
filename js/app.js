@@ -35,7 +35,7 @@ import { progressRing, historyColumns, listBars, sparkline } from './chart.js';
 // Speech capture is currently switched off — see the note at the top of
 // voice.js. The natural-language parser stays, because it is what makes the
 // quick-add boxes understand "call mum tomorrow at 3".
-import { parseCommand } from './voice.js';
+import { parseCommand, voice } from './voice.js';
 import { sync, SyncState } from './sync.js';
 import { google } from './google.js';
 import { notifications } from './notify.js';
@@ -51,6 +51,10 @@ const route = {
 };
 
 function navigate(patch) {
+  // Leaving a view takes its microphone with it. The diary's mic had the same
+  // hole as the item editor's: start dictating, tap another view, and the
+  // control that would have stopped it is gone while the recogniser carries on.
+  if (voice.listening) voice.stop();
   Object.assign(route, patch);
   persistRoute();
   render();
