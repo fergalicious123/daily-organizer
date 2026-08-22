@@ -15,7 +15,7 @@
  * as data loss.
  */
 
-import { google, itemToEvent, eventToItem, isOurEvent } from './google.js';
+import { google, itemToEvent, eventToItem, isOurEvent, gcalIdFor } from './google.js';
 import { store, settings, updateSettings } from './state.js';
 import { todayKey, addDays } from './dates.js';
 
@@ -302,6 +302,23 @@ class SyncEngine extends EventTarget {
     }
     const byGcalId = new Map(remoteEvents.map((e) => [e.id, e]));
 
+    /*
+     * Which local item WOULD own each id, if it had been written back.
+     *
+     * This is the other half of the duplicate fix. When a create succeeded but
+     * its reply was lost, the event exists on Google carrying the id derived
+     * from a local item, while that item still shows gcalId: null. The pull
+     * below finds the event unclaimed and imports it as a brand-new task — so
+     * one lost reply produced a duplicate even without a retry.
+     *
+     * Recomputing the id makes the link recoverable without having recorded
+     * anything, so the pair reattach on the next sync and no copy is made.
+     */
+    const byDerivedId = new Map();
+    for (const item of store.state.items) {
+      if (!item.gcalId && !item.deleted) byDerivedId.set(gcalIdFor(item.id), item);
+    }
+
     /* --- pull: remote -> local --- */
     for (const event of remoteEvents) {
       const mapped = eventToItem(event);
@@ -317,6 +334,19 @@ class SyncEngine extends EventTarget {
             if (item) { item.deleted = true; item.updatedAt = new Date().toISOString(); }
           }, { undoable: false, silent: true });
         }
+        continue;
+      }
+
+      // An event this app created but never managed to record. Reattach it to
+      // the item it belongs to rather than importing a second copy.
+      const orphaned = !local ? byDerivedId.get(event.id) : null;
+      if (orphaned) {
+        store.mutate((s) => {
+          const item = s.items.find((i) => i.id === orphaned.id);
+          if (!item) return;
+          item.gcalId = event.id;
+          item.gcalCalendarId = event._calendarId || calendarId;
+        }, { undoable: false, silent: true });
         continue;
       }
 
@@ -423,7 +453,27 @@ class SyncEngine extends EventTarget {
         const body = buildPatch(item);
 
         if (!item.gcalId) {
-          const created = await google.createEvent(calendarId, body);
+          // Ask for a specific id rather than letting Google mint one, so that
+          // retrying a create whose reply was lost adopts the event already
+          // there instead of making a second. See gcalIdFor().
+          const wanted = gcalIdFor(item.id);
+          let created;
+          try {
+            created = await google.createEvent(calendarId, { ...body, id: wanted });
+          } catch (err) {
+            if (err?.status === 409) {
+              // Already created, by an earlier attempt whose reply never
+              // arrived. Nothing to do but take the id we asked for.
+              created = { id: wanted };
+            } else if (err?.status === 400) {
+              // Google refused the id itself. Never seen — hex is always legal
+              // — but falling back to the old behaviour is better than not
+              // creating the event at all.
+              created = await google.createEvent(calendarId, body);
+            } else {
+              throw err;
+            }
+          }
           store.mutate((s) => {
             const target = s.items.find((i) => i.id === item.id);
             if (target) {

@@ -24,6 +24,34 @@ const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 
 export const DATA_FILENAME = 'organizer-data.json';
 
+/**
+ * The Google event id an item will always be given.
+ *
+ * Derived from the item's own id rather than left to Google, which makes
+ * creation idempotent — insert the same id twice and the second call is a 409
+ * rather than a second event.
+ *
+ * That matters because of a specific, silent failure. `createEvent` can
+ * succeed on Google's side and still reject here: the network drops after the
+ * write but before the reply, or the tab closes mid-flight. The item keeps a
+ * null gcalId, the retry creates a SECOND event, and the pull then finds the
+ * first one unclaimed and imports it as a brand-new task. Three identical
+ * entries at the same time is what that looks like from the outside, and there
+ * is nothing in the app to suggest what happened.
+ *
+ * Google's ids allow base32hex characters — 0-9 and a-v — and 5 to 1024 of
+ * them. Hex-encoding the id's bytes only ever produces 0-9a-f, so it is always
+ * valid, deterministic, and needs no separate record of what was sent.
+ */
+export function gcalIdFor(itemId) {
+  const bytes = new TextEncoder().encode(String(itemId ?? ''));
+  let out = '';
+  for (const b of bytes) out += b.toString(16).padStart(2, '0');
+  // Google's floor is 5 characters; nothing this app generates is that short,
+  // but a hand-edited document could be.
+  return out.length >= 5 ? out.slice(0, 1024) : `${out}00000`.slice(0, 5);
+}
+
 const TOKEN_KEY = 'daily-organizer:token:v1';
 
 /**
@@ -246,7 +274,13 @@ class GoogleClient {
 
     if (!response.ok) {
       const body = await safeJson(response);
-      throw new Error(body?.error?.message || `Google request failed (${response.status}).`);
+      const error = new Error(body?.error?.message || `Google request failed (${response.status}).`);
+      // Carried so callers can tell WHICH failure this was. Creating an event
+      // needs to distinguish "already exists" (409, and fine) from everything
+      // else, and a bare message cannot be tested for that without matching on
+      // English text Google is free to change.
+      error.status = response.status;
+      throw error;
     }
 
     if (response.status === 204) return null;
