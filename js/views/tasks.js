@@ -70,6 +70,15 @@ function metaChips(item, { showDate = true, showList = true } = {}) {
     const done = item.subtasks.filter((s) => s.done).length;
     chips.push(el('span.chip', `${done}/${item.subtasks.length}`));
   }
+  // Notes are otherwise invisible until you open the item, which makes a job
+  // you have already said three things about look identical to one you have
+  // never touched — and the review reads exactly those notes back.
+  const notes = itemLog(item).length;
+  if (notes) {
+    chips.push(el('span.chip.is-noted', {
+      title: `${notes} note${notes === 1 ? '' : 's'} on this`,
+    }, icon('mic', 'icon'), String(notes)));
+  }
   if (showList && item.kind === 'task') {
     const list = getList(item.listId);
     if (list) {
