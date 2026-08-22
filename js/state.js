@@ -12,7 +12,7 @@
  *    happen in exactly one place.
  */
 
-import { todayKey, diffDays } from './dates.js';
+import { todayKey, diffDays, addDays, toKey } from './dates.js';
 
 const STORAGE_KEY = 'daily-organizer:v1';
 const UNDO_LIMIT = 40;
@@ -182,6 +182,9 @@ function defaultState() {
       // Move unfinished tasks forward a day, then to Unscheduled.
       rollover: true,
       lastRolloverOn: '',
+      // Last day a shift-block review was sat down with. Empty means never,
+      // which is why reviewDue() compares with < rather than testing presence.
+      lastReviewOn: '',
       groupBy: 'none',       // none | list | priority | due
       // Your own name, as it appears prefixed on shared-calendar entries.
       // Only needed if your rota is written "Ben: Night Shift" rather than
@@ -478,6 +481,12 @@ export function makeItem(fields = {}) {
     // Kept separate from `notes` so completing something never overwrites
     // instructions you wrote for yourself beforehand.
     comment: '',
+    // Timestamped notes added as you go: dictated, typed, or pasted in from
+    // somewhere else. Append-only, and every entry carries its own id and
+    // time. That shape is doing two jobs — it lets a review ask "what did I
+    // say about this during the last block", and it lets two devices merge
+    // their notes rather than one silently overwriting the other's.
+    log: [],
     listId: s.inboxListId,
     done: false,
     doneAt: null,
@@ -1140,6 +1149,157 @@ export function journalEntries() {
     .filter(([, e]) => e && e.text)
     .map(([date, e]) => ({ date, ...e }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/* ------------------------------------------------------------------ */
+/* Notes on an item                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Where a note came from. Kept so a review can say so, and for the icon. */
+export const NOTE_SOURCE = { VOICE: 'voice', TYPED: 'typed', PASTE: 'paste' };
+
+/** An item's live notes, oldest first, tolerating items saved before this existed. */
+export function itemLog(item) {
+  if (!Array.isArray(item?.log)) return [];
+  return item.log.filter((n) => n && !n.deleted);
+}
+
+/**
+ * Add a note to an item.
+ *
+ * Append-only by design. Dictation in particular arrives in bursts — you talk
+ * about something, stop, then remember one more thing — and a second burst
+ * that replaced the first would be worse than not recording it at all.
+ */
+export function addNote(itemId, text, source = NOTE_SOURCE.TYPED) {
+  const clean = String(text ?? '').trim();
+  if (!clean) return null;
+  let entry = null;
+  store.mutate((s) => {
+    const item = s.items.find((i) => i.id === itemId);
+    if (!item) return;
+    if (!Array.isArray(item.log)) item.log = [];
+    entry = { id: uid(), at: nowISO(), text: clean, source };
+    item.log.push(entry);
+    item.updatedAt = nowISO();
+  }, { label: 'note' });
+  return entry;
+}
+
+/**
+ * Bury a note.
+ *
+ * Tombstoned rather than spliced out, for the same reason items are: the sync
+ * unions notes from both devices so neither loses one, and a hard delete would
+ * be undone by the first device that still had a copy — forever, on every
+ * sync. A marker travels; an absence does not.
+ */
+export function removeNote(itemId, noteId) {
+  return store.mutate((s) => {
+    const item = s.items.find((i) => i.id === itemId);
+    if (!item || !Array.isArray(item.log)) return;
+    const note = item.log.find((n) => n.id === noteId);
+    if (!note) return;
+    note.deleted = true;
+    note.text = '';
+    item.updatedAt = nowISO();
+  }, { label: 'note' });
+}
+
+/* ------------------------------------------------------------------ */
+/* Shift blocks and the review                                         */
+/* ------------------------------------------------------------------ */
+
+/** An explicit day off is not a worked day, and neither is no entry at all. */
+function worked(dateKey) {
+  const kind = shiftOnDay(dateKey);
+  return kind && kind !== SHIFT.OFF ? kind : null;
+}
+
+/**
+ * The most recent run of worked days, and whether it is finished.
+ *
+ * A week is the wrong unit for looking back at this rota. Four days then four
+ * nights does not divide into sevens, so a Sunday review lands three days into
+ * a run of nights — half a block behind you, half still to come, and the part
+ * you most want to think about split across two reviews.
+ *
+ * The natural boundary is the end of a block: the last day you worked before
+ * the shift changed or ran out. Walks back at most a fortnight, so a gap in
+ * the rota ends the search rather than scanning the whole history.
+ */
+export function shiftBlock(dateKey = todayKey()) {
+  let end = null;
+  for (let i = 0; i <= 14; i += 1) {
+    const key = addDays(dateKey, -i);
+    if (worked(key)) { end = key; break; }
+  }
+  if (!end) return null;
+
+  const kind = worked(end);
+  let start = end;
+  for (let i = 1; i <= 14; i += 1) {
+    const key = addDays(end, -i);
+    if (worked(key) !== kind) break;
+    start = key;
+  }
+  // Finished if today is not itself part of it — either you are off, or the
+  // shift has changed under you and a new block has started.
+  return { start, end, kind, ended: end !== dateKey };
+}
+
+/**
+ * Is there a block worth sitting down with?
+ *
+ * Deliberately quiet: it only asks once per block, and only once the block is
+ * actually over. Being prompted to reflect on a run of nights while you are
+ * still three shifts into it is how a prompt gets ignored permanently.
+ */
+export function reviewDue(dateKey = todayKey()) {
+  const block = shiftBlock(dateKey);
+  if (!block?.ended) return false;
+  return String(settings().lastReviewOn || '') < block.end;
+}
+
+export function markReviewed(dateKey = todayKey()) {
+  return updateSettings({ lastReviewOn: dateKey });
+}
+
+/**
+ * Everything written between two days, gathered for reading back.
+ *
+ * Notes carry an ISO instant while the rest of the app works in local
+ * wall-clock days, so they are bucketed through toKey() rather than compared
+ * as strings — otherwise a note written at 23:00 on a night shift lands on the
+ * wrong side of a boundary, which is precisely the note you wanted.
+ */
+export function reflectionMaterial(fromKey, untilKey) {
+  const inRange = (key) => key >= fromKey && key <= untilKey;
+
+  const notes = [];
+  for (const item of liveItems()) {
+    for (const note of itemLog(item)) {
+      const day = toKey(new Date(note.at));
+      if (!inRange(day)) continue;
+      notes.push({ ...note, day, itemId: item.id, itemTitle: item.title || 'Untitled' });
+    }
+  }
+  notes.sort((a, b) => (a.at < b.at ? -1 : 1));
+
+  const journal = journalEntries().filter((e) => inRange(e.date)).reverse();
+
+  const done = liveItems()
+    .filter((i) => i.done && i.doneAt && inRange(toKey(new Date(i.doneAt))))
+    .map((i) => ({ id: i.id, title: i.title || 'Untitled', day: toKey(new Date(i.doneAt)) }));
+
+  // Still open and already past its date. This is the half of a review that is
+  // uncomfortable and therefore the half worth showing.
+  const slipped = liveItems()
+    .filter((i) => !i.done && i.date && i.date >= fromKey && i.date <= untilKey
+      && i.date < todayKey() && !shiftKindOf(i))
+    .map((i) => ({ id: i.id, title: i.title || 'Untitled', day: i.date }));
+
+  return { from: fromKey, to: untilKey, notes, journal, done, slipped };
 }
 
 /* ------------------------------------------------------------------ */

@@ -37,13 +37,31 @@
   --danger-soft:   #fbeae8;
   --success:       #1f7a54;
   --success-soft:  #e4f1eb;
-  --warning:       #a86a12;
+  /* Darkened from #a86a12, which measured 4.43:1 on a card and 3.95:1 on its
+     own soft fill — under AA, and the review's "not found in your notes" badge
+     is 10px uppercase, which is the least forgiving thing this token is used
+     for. #955d0f is the smallest step that clears 4.5 on card, page and soft
+     fill alike. Dark mode already passed and is untouched. */
+  --warning:       #955d0f;
   --warning-soft:  #fbf1dd;
 
-  /* Priority accents */
+  /* Priority accents.
+     These are drawn two ways, and the two ways want different things. As a
+     checkbox border they only have to be perceivable (3:1). As the fill behind
+     an ACTIVE priority pill they carry a label, so the label needs 4.5:1
+     against them — and that is where this came unstuck: the pill hardcoded
+     white text, which measured 3.77:1 on medium and 2.89:1 on low in light,
+     and 2.6/2.1/2.1 across the board in dark, where the accents are pastel.
+     The paired -text tokens below are per-theme for that reason.
+     --p-low was #5aa0c4, which is 2.89:1 on a card — under the 3:1 a control
+     boundary needs. #4a90b8 is the smallest step that clears it. */
   --p-high:   #c0392b;
   --p-medium: #b57614;
-  --p-low:    #5aa0c4;
+  --p-low:    #4a90b8;
+
+  --p-high-text:   #ffffff;   /* 5.44:1 */
+  --p-medium-text: #0f1522;   /* 4.84:1 — white was 3.77 */
+  --p-low-text:    #0f1522;   /* 6.31:1 — white was 2.89 */
 
   /* Chart tokens. The progress ring is a METER, not a two-category pie: the
      fill is the accent and the unfilled track is a lighter step of the SAME
@@ -118,6 +136,8 @@
     --p-high:   #ef8073;
     --p-medium: #e0a94e;
     --p-low:    #7fbcd9;
+    /* Every dark accent is a pastel, so white on it is 2.1-2.6:1. Ink. */
+    --p-high-text: #0e1016; --p-medium-text: #0e1016; --p-low-text: #0e1016;
 
     --chart-track: #333567;   /* 1.53:1 on the dark card, 4.08:1 vs the fill */
 
@@ -136,6 +156,7 @@
   --danger: #ef8073; --danger-soft: #351f1d; --success: #5fc79b; --success-soft: #142a22;
   --warning: #e0a94e; --warning-soft: #2c2314;
   --p-high: #ef8073; --p-medium: #e0a94e; --p-low: #7fbcd9;
+  --p-high-text: #0e1016; --p-medium-text: #0e1016; --p-low-text: #0e1016;
   --chart-track: #333567;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.45); --shadow: 0 2px 12px rgba(0,0,0,.5); --shadow-lg: 0 16px 40px rgba(0,0,0,.62);
 }
@@ -1958,9 +1979,12 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 .pill:hover { border-color: var(--border-strong); color: var(--text); }
 .pill.is-active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-.pill.p-3.is-active { background: var(--p-high); border-color: var(--p-high); color: #fff; }
-.pill.p-2.is-active { background: var(--p-medium); border-color: var(--p-medium); color: #fff; }
-.pill.p-1.is-active { background: var(--p-low); border-color: var(--p-low); color: #fff; }
+/* The label colour is a token, not a hardcoded #fff — see the note by the
+   priority accents. White was unreadable on four of the six theme/priority
+   combinations, worst in dark mode where every accent is a pastel. */
+.pill.p-3.is-active { background: var(--p-high); border-color: var(--p-high); color: var(--p-high-text); }
+.pill.p-2.is-active { background: var(--p-medium); border-color: var(--p-medium); color: var(--p-medium-text); }
+.pill.p-1.is-active { background: var(--p-low); border-color: var(--p-low); color: var(--p-low-text); }
 
 /* ---- calendar picker ---- */
 
@@ -3360,3 +3384,204 @@ body.is-touch-dragging .bin-docked {
 /* Only one bin on screen at a time. Wherever a docked one is rendered the
    floating one stays out of the way, rather than both appearing mid-drag. */
 body:has(.bin-docked) .bin-float { display: none; }
+
+/* ==================================================================== */
+/* Notes as you go, and the review                                      */
+/* ==================================================================== */
+
+/* --- The note log inside the item editor --------------------------- */
+
+.note-log { border-top: 1px solid var(--border); padding-top: 12px; }
+
+.note-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 9px; }
+.note-empty { margin: 0; }
+
+.note-row {
+  background: var(--surface-sunk);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+}
+.note-row-head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 3px;
+}
+/* Muted rather than faint: --text-faint is 3.2:1, which does not clear AA,
+   and a timestamp you cannot read is the one thing a note log must not have. */
+.note-when { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.note-src { width: 12px; height: 12px; color: var(--text-muted); }
+.note-del {
+  margin-left: auto;
+  background: none; border: 0; padding: 2px; cursor: pointer;
+  color: var(--text-muted); border-radius: var(--radius-sm);
+  opacity: 0; transition: opacity .12s ease, color .12s ease;
+}
+.note-row:hover .note-del,
+.note-del:focus-visible { opacity: 1; }
+.note-del:hover { color: var(--danger); }
+.note-del .icon { width: 13px; height: 13px; }
+/* Touch has no hover, so the control would never appear at all. */
+@media (hover: none) { .note-del { opacity: 1; } }
+
+.note-text { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+
+.note-compose { display: flex; flex-direction: column; gap: 6px; }
+.note-input { resize: vertical; min-height: 44px; }
+.note-compose-actions { display: flex; align-items: center; gap: 7px; }
+.note-mic .icon, .note-compose-actions .btn .icon { width: 14px; height: 14px; }
+.note-status { font-size: 11.5px; color: var(--text-muted); }
+
+/* Same treatment as the diary mic, and for the same reason: a phone left
+   listening by accident is worse than any styling concern. */
+.note-mic.is-live {
+  background: var(--danger-soft);
+  color: var(--danger);
+  animation: journal-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .note-mic.is-live { animation: none; } }
+
+/* --- The review ---------------------------------------------------- */
+
+.review { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }
+
+.review-head { display: flex; flex-direction: column; gap: 6px; }
+.review-head-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+}
+.review-title { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+.review-dates { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
+.review-counts { margin: 0; font-size: 12px; color: var(--text-muted); }
+.review-ranges { flex-shrink: 0; }
+
+.review-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 44px 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.review-empty-icon { width: 26px; height: 26px; color: var(--text-muted); }
+.review-empty-title { margin: 4px 0 0; font-weight: 600; }
+.review-empty-body { margin: 0; font-size: 13px; color: var(--text-muted); max-width: 42ch; }
+
+.review-body { display: flex; flex-direction: column; gap: 18px; }
+
+.review-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 15px 17px;
+}
+.review-section-title {
+  margin: 0 0 11px; font-size: 11px; font-weight: 650;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted);
+}
+
+.review-entry + .review-entry {
+  margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--border);
+}
+.review-entry-day { margin: 0 0 5px; font-size: 12.5px; font-weight: 600; }
+.review-entry-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--accent); text-align: left; font: inherit; font-weight: 600;
+}
+.review-entry-link:hover { text-decoration: underline; }
+.review-entry-text { margin: 0; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+
+.review-note {
+  margin: 0 0 5px; font-size: 13px; line-height: 1.5;
+  display: flex; align-items: baseline; gap: 7px;
+}
+.review-note-when {
+  flex-shrink: 0; font-size: 11px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.review-note-src { width: 12px; height: 12px; color: var(--text-muted); align-self: center; }
+
+.review-list { margin: 0; padding: 0; list-style: none; }
+.review-list-item {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px; padding: 3px 0;
+}
+.review-tick { color: var(--success); font-weight: 700; }
+.review-when {
+  font-size: 11px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.review-list-item.is-slipped { color: var(--text-muted); }
+
+.review-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+.review-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* What gets sent, shown verbatim. Monospaced because it is data, not prose,
+   and it scrolls inside itself so a long block cannot widen the page. */
+.review-source {
+  margin: 12px 0 0; padding: 11px 13px;
+  background: var(--surface-sunk); border-radius: var(--radius);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; line-height: 1.55; color: var(--text-muted);
+  max-height: 260px; overflow: auto; white-space: pre-wrap;
+}
+
+.review-pending {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; color: var(--text-muted);
+}
+.review-error { margin: 0; font-size: 13px; color: var(--danger); }
+
+.review-reflection {
+  margin: 0 0 14px; padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--accent);
+  font-size: 14px; line-height: 1.6;
+}
+
+.spinner {
+  width: 13px; height: 13px; flex-shrink: 0;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* --- A proposal ---------------------------------------------------- */
+
+.proposal {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 9px;
+}
+/* An unverified proposal is the model's own wording rather than yours. It is
+   still shown, because it may be a fair reading that got the quote wrong, but
+   it has to LOOK different or the badge is doing all the work by itself. */
+.proposal.is-unverified { border-left-color: var(--warning); background: var(--surface); }
+
+.proposal-title { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+.proposal-why { margin: 0 0 9px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+
+.proposal-quote {
+  margin: 0; display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px; line-height: 1.5;
+}
+.proposal-quote-text { color: var(--text-muted); font-style: italic; }
+.proposal-badge {
+  align-self: flex-start;
+  font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 6px; border-radius: 999px;
+  background: var(--success-soft); color: var(--success);
+}
+.proposal-badge.is-warn { background: var(--warning-soft); color: var(--warning); }
+
+.proposal-actions { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+.proposal-urgency {
+  flex: 1; font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+
+@media (max-width: 640px) {
+  .review-head-top { flex-direction: column; }
+  .review-section { padding: 13px 14px; }
+}

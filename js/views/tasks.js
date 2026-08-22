@@ -2,16 +2,17 @@
  * Shared by the right rail, the day view's side panel, and the list views.
  */
 
-import { el, icon, toast, openModal, confirmDialog, haptic } from '../ui.js';
+import { el, icon, toast, openModal, confirmDialog, haptic, clear as clearNode } from '../ui.js';
 import { makeTouchDraggable } from '../dragdrop.js';
 import {
   store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
   toggleDone, toggleSubtask, addSubtask, removeSubtask, settings, liveItems,
-  byUrgency, eventColorSlot,
+  byUrgency, eventColorSlot, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
 import {
-  todayKey, formatRelativeDay, formatTime, addDays, DAY_ABBR,
+  todayKey, formatRelativeDay, formatTime, addDays, toKey, DAY_ABBR,
 } from '../dates.js';
+import { voice, speechSupported } from '../voice.js';
 
 
 /* ------------------------------------------------------------------ */
@@ -399,6 +400,138 @@ const REMINDER_OPTIONS = [
 ];
 
 /** Open the full editor for an existing item, or a new one when id is null. */
+/* ------------------------------------------------------------------ */
+/* Notes as you go                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The running note log for an item: what you said about it, when.
+ *
+ * Saved immediately rather than with the rest of the dialog. A note dictated
+ * between jobs is the thing most likely to be interrupted — you get called
+ * away and the dialog never gets closed — and losing it because Cancel was
+ * pressed would defeat the point of being able to speak it in the first place.
+ *
+ * That is also why it sits at the bottom, below Save's usual reach: these are
+ * a different kind of edit from the fields above, and mixing them would make
+ * "Cancel" mean two things at once.
+ */
+function noteLog(item) {
+  const field = el('div.field.note-log');
+  const list = el('div.note-list');
+
+  const redraw = () => {
+    clearNode(list);
+    const notes = itemLog(getItem(item.id) || item);
+    if (!notes.length) {
+      list.appendChild(el('p.field-hint.note-empty',
+        'Nothing yet. Press the mic and talk, or paste notes in.'));
+      return;
+    }
+    for (const note of notes) {
+      list.appendChild(el('div.note-row',
+        el('div.note-row-head',
+          el('span.note-when', formatNoteTime(note.at)),
+          note.source === NOTE_SOURCE.VOICE ? icon('mic', 'icon note-src') : null,
+          note.source === NOTE_SOURCE.PASTE ? icon('clipboard', 'icon note-src') : null,
+          el('button.note-del', {
+            type: 'button',
+            title: 'Delete this note',
+            'aria-label': 'Delete this note',
+            onclick: () => { removeNote(item.id, note.id); redraw(); },
+          }, icon('trash', 'icon')),
+        ),
+        el('p.note-text', note.text),
+      ));
+    }
+  };
+
+  const status = el('span.note-status');
+  const box = el('textarea.note-input', {
+    placeholder: 'Add a note…',
+    rows: 2,
+  });
+
+  const commit = (source = NOTE_SOURCE.TYPED) => {
+    const text = box.value.trim();
+    if (!text) return;
+    addNote(item.id, text, source);
+    box.value = '';
+    redraw();
+  };
+
+  const mic = el('button.btn.btn-quiet.note-mic', {
+    type: 'button',
+    title: speechSupported() ? 'Dictate a note' : 'This browser cannot listen — type instead',
+    disabled: !speechSupported(),
+    onclick: () => {
+      if (voice.listening) { voice.stop(); return; }
+      // Dictation adds to whatever is already in the box rather than replacing
+      // it, so a second thought after a pause joins the first note instead of
+      // wiping it.
+      const before = box.value.trim() ? `${box.value.trim()} ` : '';
+      mic.classList.add('is-live');
+      status.textContent = 'Listening…';
+      voice.start({
+        continuous: true,
+        onInterim: (final, interim) => { box.value = before + final + interim; },
+        onFinal: (text) => { box.value = before + text; commit(NOTE_SOURCE.VOICE); },
+        onError: (message) => toast(message, { error: true }),
+        onEnd: () => { mic.classList.remove('is-live'); status.textContent = ''; },
+      });
+    },
+  }, icon('mic', 'icon'));
+
+  // Granola, and anything else that produces text you want kept with a task.
+  // Deliberately a paste box rather than an integration: Granola's API needs a
+  // Business plan, and this needs nothing at all.
+  const paste = el('button.btn.btn-quiet', {
+    type: 'button',
+    title: 'Paste notes from Granola or anywhere else',
+    onclick: async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) { toast('Clipboard is empty.'); return; }
+        box.value = text.trim();
+        commit(NOTE_SOURCE.PASTE);
+        toast('Pasted in');
+      } catch {
+        // Permission refused, or a browser that will not hand it over without
+        // a real paste gesture. Focusing the box makes Ctrl+V the fallback.
+        box.focus();
+        toast('Paste into the box with Ctrl+V.');
+      }
+    },
+  }, icon('clipboard', 'icon'));
+
+  field.append(
+    el('label', 'Notes as you go'),
+    list,
+    el('div.note-compose',
+      box,
+      el('div.note-compose-actions',
+        mic,
+        paste,
+        el('button.btn.btn-quiet', {
+          type: 'button', onclick: () => commit(NOTE_SOURCE.TYPED),
+        }, 'Add'),
+        status,
+      ),
+    ),
+  );
+
+  redraw();
+  return field;
+}
+
+function formatNoteTime(iso) {
+  const when = new Date(iso);
+  const day = toKey(when);
+  const time = formatTime(`${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`,
+    settings().hour12);
+  return day === todayKey() ? time : `${formatRelativeDay(day)} ${time}`;
+}
+
 export function openItemEditor(id, presets = {}) {
   const existing = id ? getItem(id) : null;
   // Whether a type change should propagate to every item sharing this title.
@@ -600,6 +733,11 @@ export function openItemEditor(id, presets = {}) {
           oninput: (e) => { draft.notes = e.target.value; },
         }),
       ));
+
+      // Notes as you go — only on something that already exists, because they
+      // are saved the instant they are spoken rather than when the dialog is
+      // closed, and there is nothing to attach them to until the item is real.
+      if (existing) fields.push(noteLog(existing));
 
       return fields;
     },

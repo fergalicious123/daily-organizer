@@ -554,6 +554,38 @@ function exportDocument() {
  * Per-item last-write-wins union of local and remote documents.
  * Returns the merged doc plus flags saying which side needs writing.
  */
+/**
+ * Both sides' notes, never one side's.
+ *
+ * Every other field on an item is last-write-wins, which is the right call for
+ * a title or a date: they have one correct current value and the later edit is
+ * it. Notes are not like that. They are append-only observations, each with
+ * its own id and timestamp, and "the newer item wins" would mean dictating a
+ * note on the phone and another on the laptop before either syncs, then
+ * silently losing one of them. There is no way to notice that has happened and
+ * no way to get it back.
+ *
+ * A union by id is correct precisely because entries are immutable — there is
+ * no such thing as a conflicting edit to one, only its presence or absence.
+ */
+function unionLog(mine, theirs) {
+  const byId = new Map();
+  const add = (note) => {
+    if (!note?.id) return;
+    const have = byId.get(note.id);
+    // A delete is one-way. Without this the union is worse than the problem it
+    // solves: deleting a note on the phone, then syncing a laptop that still
+    // holds a copy, would hand the note straight back — and keep doing it on
+    // every sync, so the delete could never stick.
+    if (have && !note.deleted) return;
+    byId.set(note.id, note);
+  };
+  for (const note of Array.isArray(theirs?.log) ? theirs.log : []) add(note);
+  for (const note of Array.isArray(mine?.log) ? mine.log : []) add(note);
+  if (!byId.size) return [];
+  return [...byId.values()].sort((a, b) => (String(a.at) < String(b.at) ? -1 : 1));
+}
+
 export function mergeDocuments(local, remote) {
   if (!remote || typeof remote !== 'object' || !Array.isArray(remote.items)) {
     return { document: local, changedLocal: false, changedRemote: true };
@@ -571,9 +603,10 @@ export function mergeDocuments(local, remote) {
       merged.set(item.id, item);
       changedLocal = true;
     } else if (newer(item.updatedAt, mine.updatedAt)) {
-      merged.set(item.id, item);
+      merged.set(item.id, { ...item, log: unionLog(mine, item) });
       changedLocal = true;
     } else if (newer(mine.updatedAt, item.updatedAt)) {
+      merged.set(item.id, { ...mine, log: unionLog(mine, item) });
       changedRemote = true;
     }
   }

@@ -12,7 +12,7 @@ import {
   addList, removeList, renameList,
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
-  completedItems, rollOverdueTasks, rolloverDue,
+  completedItems, rollOverdueTasks, rolloverDue, reviewDue, shiftBlock,
 } from './state.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
@@ -23,6 +23,7 @@ import {
   monthView, weekView, dayView, fitMonthChips, makeDropTarget, dayStrip,
 } from './views/calendar.js';
 import { doneView } from './views/done.js';
+import { reviewView } from './views/review.js';
 import { journalView, journalEditor } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { mountShortcutsButton } from './views/shortcutsPanel.js';
@@ -44,7 +45,7 @@ import { notifications } from './notify.js';
 /* ------------------------------------------------------------------ */
 
 const route = {
-  view: 'home',         // home | month | week | day | tasks | done | journal | stats
+  view: 'home',         // home | month | week | day | tasks | done | journal | stats | review
   anchor: todayKey(),   // the date the view is centred on
   listId: null,         // when view === 'tasks'
 };
@@ -122,6 +123,11 @@ function renderSidebar() {
       () => navigate({ view: 'done' })),
     navItem('book', 'Diary', null, route.view === 'journal',
       () => navigate({ view: 'journal' })),
+    // Badged rather than merely present when a block has finished: the whole
+    // point of a review is that it happens at a moment, and a nav item that
+    // looks identical every day is one you never think to press.
+    navItem('review', 'Review', reviewDue() ? '●' : null, route.view === 'review',
+      () => navigate({ view: 'review' }), reviewDue()),
     navItem('chart', 'Progress', null, route.view === 'stats',
       () => navigate({ view: 'stats' })),
   ));
@@ -195,7 +201,11 @@ function navItem(iconName, label, count, active, onClick, alert = false) {
   },
     icon(iconName),
     el('span', { style: { flex: '1', textAlign: 'left' } }, label),
-    count != null && count > 0
+    // A badge is usually a count, but not always: the review shows a dot,
+    // because "how many reviews are outstanding" is not a question anyone
+    // asks. Testing `count > 0` alone silently dropped it — a string is never
+    // greater than zero.
+    (typeof count === 'string' ? count.length > 0 : (count != null && count > 0))
       ? el('span.count', { class: alert ? 'is-alert' : '' }, String(count))
       : null,
   );
@@ -358,6 +368,11 @@ function breadcrumb() {
     return crumbs;
   }
 
+  if (route.view === 'review') {
+    crumbs.appendChild(el('span.crumb.is-current', 'Review'));
+    return crumbs;
+  }
+
   if (route.view === 'stats') {
     crumbs.appendChild(el('span.crumb.is-current', 'Progress'));
     return crumbs;
@@ -437,6 +452,8 @@ function renderBody() {
     bodyEl.appendChild(doneView({ onNavigate: navigate }));
   } else if (route.view === 'journal') {
     bodyEl.appendChild(journalView({ onNavigate: navigate }));
+  } else if (route.view === 'review') {
+    bodyEl.appendChild(reviewView({ onNavigate: navigate }));
   } else if (route.view === 'stats') {
     bodyEl.appendChild(statsView());
   }
@@ -1465,8 +1482,35 @@ function boot() {
   // Silent reconnect, then a first sync — never blocks first paint.
   sync.resume().then((ok) => { if (ok) sync.syncNow({ quiet: true }); });
 
+  offerReview();
+
   notifications.init();
   registerServiceWorker();
+}
+
+/**
+ * Mention the review once, when a block has finished.
+ *
+ * Once per session, not once per load, and never twice in the same session:
+ * `reviewDue()` stays true until the review is actually marked done, so an
+ * ungated prompt would appear on every single open until then. A reminder you
+ * cannot get rid of by any means except obeying it stops being a reminder and
+ * becomes something you learn to dismiss without reading.
+ */
+function offerReview() {
+  if (!reviewDue()) return;
+  try {
+    if (sessionStorage.getItem('daily-organizer:review-offered')) return;
+    sessionStorage.setItem('daily-organizer:review-offered', '1');
+  } catch { /* private mode: it shows once per load instead */ }
+
+  const block = shiftBlock();
+  const what = block ? `${formatDayShort(block.start)}–${formatDayShort(block.end)}` : 'that block';
+  toast(`Block finished (${what}). Read it back?`, {
+    action: 'Review',
+    onAction: () => navigate({ view: 'review' }),
+    duration: 9000,
+  });
 }
 
 /**

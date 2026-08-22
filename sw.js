@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v22: notes as you go, dictated or pasted onto a task; a review at the end
+// of each shift block that reads the block back and proposes what to do.
 // v21: the shell loads from cache instead of revalidating every file on every
 // open; Google renews its own token ahead of expiry instead of only ever
 // discovering it has expired.
@@ -65,11 +67,12 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v21';
+const CACHE_VERSION = 'organizer-v22';
 
-// Every module the app loads. A file missing from here still works online
-// (code is network-first) but is unavailable offline, so the view that imports
-// it fails to load with no obvious cause. Several were missing.
+// Every module the app loads. Keeping this complete matters more now than it
+// used to: since the shell became cache-first, a file missing from here is not
+// merely unavailable offline — it is fetched from the network on every single
+// open, quietly giving back the startup time the change was made to save.
 const SHELL = [
   './',
   './index.html',
@@ -85,6 +88,7 @@ const SHELL = [
   './js/notify.js',
   './js/brief.js',
   './js/quotes.js',
+  './js/reflect.js',
   './js/ai.js',
   './js/dragdrop.js',
   './js/shortcuts.js',
@@ -95,6 +99,7 @@ const SHELL = [
   './js/views/journal.js',
   './js/views/routine.js',
   './js/views/bin.js',
+  './js/views/review.js',
   './js/views/clocks.js',
   './js/views/shortcutsPanel.js',
   './manifest.webmanifest',
