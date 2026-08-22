@@ -1256,6 +1256,7 @@ const KEY_ACTIONS = {
   w: () => navigate({ view: 'week' }),
   d: () => navigate({ view: 'day' }),
   t: () => navigate({ view: 'day', anchor: todayKey() }),
+  r: () => navigate({ view: 'review' }),
   n: () => openItemEditor(null, defaultsForRoute()),
   ArrowLeft: () => navigate({ anchor: stepAnchor(-1) }),
   ArrowRight: () => navigate({ anchor: stepAnchor(1) }),

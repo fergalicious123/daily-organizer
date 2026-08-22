@@ -17,6 +17,13 @@ export const SHORTCUTS = [
   { group: 'Views', key: 'w', display: ['W'], label: 'Week' },
   { group: 'Views', key: 'd', display: ['D'], label: 'Day — whichever day you are on' },
   { group: 'Views', key: 't', display: ['T'], label: 'Jump to today' },
+  {
+    group: 'Views',
+    key: 'r',
+    display: ['R'],
+    label: 'Review the last block',
+    note: 'The run of shifts you have just finished, read back in one place.',
+  },
 
   {
     group: 'Moving around',

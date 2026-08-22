@@ -3524,6 +3524,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 .review-list-item.is-slipped { color: var(--text-muted); }
 
 .review-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+.review-size { font-variant-numeric: tabular-nums; }
 .review-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
 /* What gets sent, shown verbatim. Monospaced because it is data, not prose,

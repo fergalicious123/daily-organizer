@@ -21,11 +21,11 @@
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, settings,
   shiftOnDay, crewOnDay, shiftKindOf, SHIFT,
-  routineSteps, routineStepDone, linkedTask,
+  routineSteps, routineStepDone, linkedTask, reviewDue, shiftBlock,
 } from './state.js';
 import { quoteFor } from './quotes.js';
 
-import { todayKey, formatDayLong, formatTime, timeToMinutes, diffDays } from './dates.js';
+import { todayKey, formatDayLong, formatDayShort, formatTime, timeToMinutes, diffDays } from './dates.js';
 
 /** Said the way you would say it out loud, not as a label. */
 const SHIFT_LINE = {
@@ -181,6 +181,22 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
   if (waiting.length) tail.push(`${waiting.length} unscheduled`);
   if (tail.length) lines.push({ kind: 'alert', text: tail.join(' · ') });
 
+  // A finished block, mentioned in the one place that reaches his phone
+  // without him opening anything. The sidebar carries a dot for this, but a
+  // dot lives behind a menu button on a phone — which is the device this is
+  // read on, in a car park, at six in the morning. Only ever on the first
+  // morning after a block ends, because reviewDue() stops being true the
+  // moment the review is marked done.
+  if (reviewDue(dateKey)) {
+    const block = shiftBlock(dateKey);
+    lines.push({
+      kind: 'review',
+      text: block
+        ? `That block is done — ${formatDayShort(block.start)} to ${formatDayShort(block.end)}. Worth reading back.`
+        : 'Last block is done. Worth reading back.',
+    });
+  }
+
   if (!shift && !timed.length && !untimed.length) {
     lines.push({ kind: 'clear', text: 'Nothing scheduled. The day is yours.' });
   }
@@ -223,6 +239,7 @@ function toText(lines) {
     // above instead of as another task.
     else if (line.kind === 'quote') out.push(`   _${line.text}_`);
     else if (line.kind === 'alert') out.push('', line.text);
+    else if (line.kind === 'review') out.push('', `_${line.text}_`);
     else out.push(line.text);
   }
   return out.join('\n').trim();

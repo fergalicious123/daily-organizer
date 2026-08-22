@@ -137,6 +137,7 @@ where every row of it would need a keyboard.
 | `W` | Week view |
 | `D` | Day view — the day you are currently on |
 | `T` | Jump to today |
+| `R` | Review the last block |
 | `←` `→` | Previous / next period |
 | `N` | New item |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
@@ -304,12 +305,93 @@ forgets what happened, and the list without the note is just a tally.
 Days you wrote nothing but finished something still appear, because those are
 the ones worth writing up.
 
-**On summarising a transcript with AI:** that has to happen in the Claude chat,
-not in the app. This is a static site with no server, so an API key placed in
-it would be readable by anyone who opened the page. Claude can already read
-your `organizer-data.json` from Drive, so ask it to read a stretch of diary
-entries and summarise or draw out patterns; paste its reply back into the day's
-entry if you want to keep it.
+**Reading a stretch of diary back with AI:** the app does this itself now — see
+**The review** below. It used to say this had to happen in the Claude chat,
+because a key in a static site would be readable by anyone who opened the page.
+That is still true of a key committed to the repo, which is why the one the app
+uses is typed into Settings and kept in that browser only: out of the repo, out
+of Drive sync, and out of exported backups.
+
+Claude can also still read your `organizer-data.json` from Drive directly, which
+is the better route for anything spanning months rather than one block.
+
+---
+
+## Notes as you go
+
+Open any task and there is a **Notes as you go** box under the usual fields.
+This is for what you find out while doing something, as opposed to the
+instructions you wrote for yourself beforehand — those stay in **Notes**.
+
+- **Mic** dictates. It keeps listening through pauses and adds to what is
+  already there, so you can talk about something in two goes without the
+  second wiping the first.
+- **Clipboard** pastes whatever you have copied — Granola notes, an email, a
+  WhatsApp message. If your browser will not hand the clipboard over without a
+  real gesture it focuses the box instead, and Ctrl+V works.
+- Each note is stamped with the time it was made and saved immediately, not
+  when you close the dialog. A note dictated between jobs is the one most
+  likely to be interrupted, and pressing Cancel should not lose it.
+
+Notes merge properly across devices. Every other field on a task is
+last-write-wins, which is right for a title; notes are unioned by entry
+instead, so dictating one on your phone and another on the laptop before either
+syncs keeps both. Deleting one leaves a tombstone, so the delete sticks rather
+than being handed back by the next device that still had a copy.
+
+---
+
+## The review
+
+**Review** in the sidebar, and a dot on it when there is one waiting.
+
+It covers one **shift block** — four days, or four nights — rather than a week.
+Weeks are the wrong unit for this rota: they do not divide into fours, so a
+Sunday review lands three days into a run of nights, with half the block behind
+you and half still to come. The app walks back through your rota to find the
+last run of worked days, and offers a review once that run is over. Once, not
+every time you open the app.
+
+The page puts the block in one place, in the order it happened:
+
+| | |
+|---|---|
+| **Diary** | what you wrote each day |
+| **Notes you made** | grouped by the task they are about, so four remarks about one job look different from four about four |
+| **Finished** | what you actually got done |
+| **Slipped** | still open, date gone past — the uncomfortable half, and the one worth looking at |
+
+The pills switch to a fixed 7 or 14 days when a block is not the right unit —
+a stretch of leave, or a block you never got round to.
+
+**All of the above works offline, with no API key, for nothing.** Gathering and
+reading back is the part that has to be right, so it is done by rules.
+
+### Turning it into actions
+
+At the bottom, **Read it back** sends the diary entries and notes above to
+Claude and asks what actions they imply. Three things about it:
+
+- **Nothing is created until you say so.** Every suggestion is a proposal with
+  **Add it** and **No** next to it.
+- **Every proposal quotes the words it came from, and the quote is checked**
+  against what was actually sent. One that cannot be found is labelled *not
+  found in your notes* and outlined differently, rather than being passed off
+  as something you said. This is the difference between a tool that reads your
+  notes and one that makes things up about your life.
+- **Accepted proposals carry their source into their own notes**, so "why is
+  this on my list" still has an answer in a month.
+
+Something dated *now* lands **tomorrow**, not today — you read this at the end
+of a block, when today is usually already spoken for, and dating something to a
+day that is nearly over just makes it overdue before you have seen it.
+
+**What leaves the device:** your diary entries and task notes go to Anthropic's
+API with your own key. That is more personal than the morning brief, which only
+ever sent times and titles. **See exactly what gets sent** shows you the literal
+text before you press anything.
+
+Roughly 3–5p a review at a block's worth of writing.
 
 ---
 
@@ -322,7 +404,10 @@ entry if you want to keep it.
 | Google Calendar | Anything with a date | Shows on your phone, fires reminders |
 
 Conflicts resolve last-write-wins per item, and deletions leave tombstones so a
-delete on one device is not resurrected by another. Changes made offline queue
+delete on one device is not resurrected by another. The one exception is the
+notes on a task: those are unioned entry by entry rather than letting the newer
+copy win, because they are observations rather than a current value, and losing
+one would be silent and unrecoverable. Changes made offline queue
 and flush when you reconnect.
 
 **Settings → Export backup** writes a JSON file you can keep anywhere.
@@ -343,10 +428,21 @@ js/voice.js             natural-language parser (+ speech capture, unwired)
 js/google.js            OAuth, Calendar and Drive REST
 js/sync.js              two-way merge, conflict resolution, offline queue
 js/notify.js            in-app notification scheduling
+js/brief.js             the morning brief, built by rules
+js/ai.js                optional: Claude rewords the brief
+js/reflect.js           optional: Claude proposes actions from a block
+js/quotes.js            the two voices, one pairing a day
+js/dragdrop.js          touch dragging, edge scrolling
+js/shortcuts.js         the declared keyboard map
 js/views/calendar.js    month, week, day
-js/views/tasks.js       task rows, lists, item editor
-sw.js                   offline shell (network-first for code)
+js/views/tasks.js       task rows, lists, item editor, notes as you go
+js/views/review.js      the shift-block review
+js/views/journal.js     the diary
+js/views/routine.js     First things
+js/views/bin.js         drag-to-delete, with undo
+sw.js                   offline shell (cache-first; network-first on localhost)
 tools/make_icons.py     regenerates the PWA icons
+tools/contrast.py       checks every token pair meets WCAG AA, both themes
 ```
 
 ---

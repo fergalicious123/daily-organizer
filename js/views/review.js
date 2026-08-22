@@ -239,6 +239,7 @@ function claudeSection(material) {
     wrap.appendChild(el('p.review-hint',
       'Sends the diary entries and notes above to Claude, with your key, and asks ',
       'what actions they imply. Nothing is added to your lists until you say so.'));
+    wrap.appendChild(el('p.review-hint.review-size', sizeNote(material)));
     wrap.appendChild(el('div.review-actions',
       el('button.btn.btn-primary', {
         onclick: () => run(material),
@@ -300,6 +301,29 @@ function claudeSection(material) {
   }
 
   return wrap;
+}
+
+/**
+ * Roughly how much this will cost, said out loud before you press the button.
+ *
+ * A rough figure beats no figure. Nobody can judge "is this worth doing" from a
+ * character count, and a spend you cannot see coming is the kind you stop
+ * trusting — so it is stated in pence, hedged honestly, rather than hidden
+ * behind a word like "small".
+ *
+ * ~4 characters to a token is the usual English approximation, and the reply
+ * plus the reasoning behind it are the larger half of the bill at Opus 5's
+ * $5/$25 per million. Deliberately rounded up.
+ */
+function sizeNote(material) {
+  const chars = materialToText(material).length;
+  const inTokens = Math.ceil(chars / 4);
+  // The output is what dominates: a reflection, a handful of proposals, and
+  // the thinking that produced them.
+  const outTokens = 1500;
+  const usd = (inTokens / 1e6) * 5 + (outTokens / 1e6) * 25;
+  const pence = Math.max(1, Math.ceil(usd * 80 * 100) / 100);
+  return `About ${chars.toLocaleString()} characters — roughly ${pence}p.`;
 }
 
 /**
