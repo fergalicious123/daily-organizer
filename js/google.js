@@ -26,12 +26,23 @@ export const DATA_FILENAME = 'organizer-data.json';
 
 const TOKEN_KEY = 'daily-organizer:token:v1';
 
+/**
+ * Renew this long before the token dies.
+ *
+ * Waiting for expiry means the renewal happens at the worst possible moment:
+ * mid-request, on whatever network the phone has at the time, with the sync
+ * already in flight. Renewing early means it happens while the app is open and
+ * idle, and a failure is invisible because the old token is still valid.
+ */
+const REFRESH_MARGIN_MS = 10 * 60 * 1000;
+
 class GoogleClient {
   constructor() {
     this.token = null;
     this.expiresAt = 0;
     this.tokenClient = null;
     this.clientId = null;
+    this.hint = '';
     this.gisReady = null;
     this.persist = true;
     this._restoreToken();
@@ -109,16 +120,50 @@ class GoogleClient {
     return this.gisReady;
   }
 
-  async init(clientId) {
+  /**
+   * Build the token client.
+   *
+   * `hint` is the Google account this app is already connected to, and it does
+   * two jobs. On the silent path it tells Google WHICH session to renew
+   * against — without it, a browser signed into more than one Google account
+   * cannot answer prompt:'none' unambiguously, so it errors and you get a
+   * popup instead. On the interactive path it skips the account chooser, so
+   * reconnecting is one click rather than three.
+   *
+   * The hint is part of the client's identity: changing accounts has to
+   * rebuild it, or the old address is used forever.
+   */
+  async init(clientId, hint = '') {
     if (!clientId) throw new Error('No Google Client ID set. Add one in Settings.');
     await this.loadGis();
-    if (this.tokenClient && this.clientId === clientId) return;
+    if (this.tokenClient && this.clientId === clientId && this.hint === hint) return;
     this.clientId = clientId;
+    this.hint = hint;
     this.tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPES,
+      ...(hint ? { hint } : {}),
       callback: () => {},   // replaced per-request in requestToken()
     });
+  }
+
+  /**
+   * Renew ahead of expiry, quietly, if it is worth doing.
+   *
+   * Returns false rather than throwing: this runs on a timer, nobody asked for
+   * it, and a failure costs nothing because the existing token is still good.
+   * The user only ever sees a prompt if this has been failing long enough for
+   * the token to actually run out.
+   */
+  async refreshIfStale() {
+    if (!this.tokenClient) return false;
+    if (this.token && Date.now() < this.expiresAt - REFRESH_MARGIN_MS) return false;
+    try {
+      await this.requestToken({ interactive: false });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

@@ -172,6 +172,10 @@ function defaultState() {
       googleClientId: DEFAULT_CLIENT_ID,
       googleCalendarId: 'primary',
       googleEnabled: false,
+      // Which Google account this is connected to, learned from the primary
+      // calendar's id (which IS the address) rather than by asking for a
+      // profile scope we do not otherwise need. Used only as a sign-in hint.
+      googleAccount: '',
       // Keep the access token across reloads. Off means re-authorising every
       // time the page loads, which is safer but tiresome.
       staySignedIn: true,

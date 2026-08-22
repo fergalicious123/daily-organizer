@@ -1,17 +1,29 @@
 /* Service worker — offline shell + notification clicks.
  *
  * Strategy:
- *   Code (HTML/CSS/JS)  -> network-first, falling back to cache when offline.
- *   Static assets       -> cache-first (icons and the manifest never change
- *                          within a version).
+ *   Navigation          -> network-first, falling back to cache when offline.
+ *   Everything else     -> cache-first WITHIN a cache version.
  *   Cross-origin        -> never cached. Stale calendar data presented as
  *                          current would be worse than an honest failure.
  *
- * Network-first on code is deliberate. Stale-while-revalidate is the usual
- * choice, but it leaves every user exactly one version behind — a bug fix
- * only lands on their SECOND visit after a deploy, which is confusing to ship
- * against and worse to debug. The cost here is one round trip over a handful
- * of small files, and offline still works because the cache is the fallback.
+ * This used to be network-first on all code, to guarantee nobody ever ran a
+ * stale build. It did guarantee that, and it cost a conditional request per
+ * file on every single load — twenty-three modules plus the stylesheet, and
+ * because ES imports arrive in a waterfall those were several sequential
+ * rounds of latency before anything appeared. On a phone with one bar that is
+ * the whole of the startup time, paid again at every open, forever.
+ *
+ * Cache-first is safe here because the freshness guarantee comes from
+ * somewhere better: the worker script itself is fetched with
+ * updateViaCache:'none' and re-checked every time the app is foregrounded, a
+ * new version skips waiting and claims its clients, and the page listens for
+ * controllerchange and reloads itself. So a deploy still lands on its own,
+ * without every ordinary load paying for the check.
+ *
+ * The trade: for the few seconds between a new worker activating and the page
+ * reloading, running code belongs to the old version while the cache holds the
+ * new one. Only a lazily-imported module could notice, and the reload is
+ * already in flight.
  *
  * Bump CACHE_VERSION on deploy to evict the old shell.
  */
@@ -21,6 +33,9 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v21: the shell loads from cache instead of revalidating every file on every
+// open; Google renews its own token ahead of expiry instead of only ever
+// discovering it has expired.
 // v20: the element being dragged keeps its pointer events.
 // v19: a quote per routine step in the brief; all-day chips draggable by
 // finger; the bin docks under the notes.
@@ -50,7 +65,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v20';
+const CACHE_VERSION = 'organizer-v21';
 
 // Every module the app loads. A file missing from here still works online
 // (code is network-first) but is unavailable offline, so the view that imports
@@ -108,8 +123,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-const STATIC_RE = /\.(png|svg|ico|woff2?)$|manifest\.webmanifest$/i;
-
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -119,19 +132,25 @@ self.addEventListener('fetch', (event) => {
   // Never serve Google or any cross-origin API from cache.
   if (url.origin !== self.location.origin) return;
 
-  // Icons and the manifest are immutable within a cache version.
-  if (STATIC_RE.test(url.pathname)) {
+  // The entry point stays network-first. It is one small request, so it costs
+  // almost nothing, and it keeps a way back in if a worker ever gets itself
+  // wedged: a hard reload fetches a real index.html from the server rather
+  // than whatever this cache believes.
+  if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetchAndCache(request)),
+      fetchAndCache(request).catch(() =>
+        caches.match(request).then((cached) => cached || offlineFallback(request)),
+      ),
     );
     return;
   }
 
-  // Code: network wins, cache rescues.
+  // Everything else is immutable within a cache version, so the cache is the
+  // answer — no request, no waiting. A miss (a file added since this version
+  // was precached) falls through to the network and is kept.
   event.respondWith(
-    fetchAndCache(request).catch(() =>
-      caches.match(request).then((cached) => cached || offlineFallback(request)),
-    ),
+    caches.match(request).then((cached) => cached
+      || fetchAndCache(request).catch(() => offlineFallback(request))),
   );
 });
 

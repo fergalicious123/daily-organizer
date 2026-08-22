@@ -63,7 +63,7 @@ class SyncEngine extends EventTarget {
     }
     this.setState(SyncState.SYNCING, 'Connecting…');
     try {
-      await google.init(cfg.googleClientId);
+      await google.init(cfg.googleClientId, cfg.googleAccount || '');
       await google.requestToken({ interactive });
       updateSettings({ googleEnabled: true });
       this.setState(SyncState.OK, 'Connected');
@@ -87,6 +87,32 @@ class SyncEngine extends EventTarget {
     if (!cfg.googleEnabled || !cfg.googleClientId) return false;
     google.setPersistence(cfg.staySignedIn !== false);
 
+    /*
+     * Build the token client FIRST, before deciding whether we need one.
+     *
+     * This used to sit inside the branch below, skipped entirely whenever a
+     * stored token was still valid — and the damage only showed up an hour
+     * later. The token expired mid-session, and every route out of that,
+     * silent and interactive alike, failed instantly on "Google client not
+     * initialised", because on this path nothing had ever created one. Even
+     * the 401 retry, which deliberately tries silent and then falls back to a
+     * popup, had both attempts rejected before they reached Google.
+     *
+     * So the app could not renew its own token without a reload, and the only
+     * thing that visibly worked was pressing Connect by hand. Which is exactly
+     * what it looked like from the outside: signing in, over and over.
+     */
+    try {
+      await google.init(cfg.googleClientId, cfg.googleAccount || '');
+    } catch {
+      // Offline, or the sign-in script is blocked. A stored token still works
+      // for as long as it has left; without one there is nothing to resume.
+      if (!google.isSignedIn) {
+        this.setState(SyncState.IDLE, 'Sign in to sync');
+        return false;
+      }
+    }
+
     // A token restored from the last session is still good — use it and skip
     // the round trip entirely. This is what makes a reload seamless instead of
     // dropping you back to "Sign in to sync".
@@ -97,7 +123,6 @@ class SyncEngine extends EventTarget {
     }
 
     try {
-      await google.init(cfg.googleClientId);
       await google.requestToken({ interactive: false });
       this.setState(SyncState.OK, 'Connected');
       this.start();
@@ -122,8 +147,18 @@ class SyncEngine extends EventTarget {
     this.stop();
     // Poll on a timer, and opportunistically whenever the app regains focus:
     // coming back to the tab is the moment a stale view is most obvious.
-    this.timer = setInterval(() => this.syncNow({ quiet: true }), 5 * 60 * 1000);
-    this._onFocus = () => { if (!document.hidden) this.syncNow({ quiet: true }); };
+    this.timer = setInterval(() => {
+      google.refreshIfStale();
+      this.syncNow({ quiet: true });
+    }, 5 * 60 * 1000);
+    // Coming back to the app is the best moment to renew: the tab is alive,
+    // Google's own session cookie is as warm as it will ever be, and the token
+    // still has ten minutes on it, so a failure here is free.
+    this._onFocus = () => {
+      if (document.hidden) return;
+      google.refreshIfStale();
+      this.syncNow({ quiet: true });
+    };
     this._onOnline = () => this.syncNow({ quiet: true });
     document.addEventListener('visibilitychange', this._onFocus);
     window.addEventListener('online', this._onOnline);

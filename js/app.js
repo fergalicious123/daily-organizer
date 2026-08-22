@@ -807,6 +807,17 @@ function openSettings(focusSection = null) {
        */
       const loadCalendars = async () => {
         const calendars = await google.listCalendars();
+
+        // The primary calendar's id is the account's email address, so this is
+        // where we learn which account we are on without asking for a profile
+        // scope. It becomes the sign-in hint, which is what stops Google
+        // showing the account chooser — and what lets a silent renewal succeed
+        // on a browser signed into more than one Google account.
+        const primary = calendars.find((c) => c.primary);
+        if (primary?.id && primary.id !== settings().googleAccount) {
+          updateSettings({ googleAccount: primary.id });
+        }
+
         const stored = settings().googleCalendarId;
         clear(calSelect);
         for (const c of calendars) {
