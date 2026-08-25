@@ -59,10 +59,12 @@
   --text-muted:    #5c5a51;   /* 6.9:1  */
   --text-faint:    #6e6c62;   /* 5.3:1 — finally clears AA; it was 3.2 */
 
-  --accent:        #5d6b14;   /* 5.9:1 — the olive dark-mode lime turns into
-                                 on a white ground, where lime is illegible */
-  --accent-hover:  #4a5610;
-  --accent-soft:   #eef1d8;
+  /* A pale sky blue in the dark, taken right down for the light theme: the
+     same hue that is legible on a near-black ground is invisible on a white
+     one. 7.2:1 here, 8.8:1 there. */
+  --accent:        #1f5d80;
+  --accent-hover:  #194f6d;
+  --accent-soft:   #e2eef5;
   --accent-text:   #ffffff;
 
   --danger:        #b23a2b;
@@ -99,7 +101,7 @@
      distinct). Charts elsewhere are single-hue, so no categorical palette
      is in play and no CVD pair check applies. */
   --chart-fill:  var(--accent);
-  --chart-track: #dfe3c4;   /* a lighter step of the accent's own ramp */
+  --chart-track: #cfe3ee;   /* a lighter step of the accent's own ramp */
   --chart-grid:  var(--border);
 
   /* Granola's cards are noticeably rounder than the old 9px, and that
@@ -154,9 +156,9 @@
     --text-muted:    #adaba1;   /* 6.9:1  */
     --text-faint:    #93918a;   /* 3.7:1  */
 
-    --accent:        #c8d94f;   /* 6.2:1  */
-    --accent-hover:  #d6e56a;
-    --accent-soft:   #31341a;
+    --accent:        #9ad2ea;   /* 6.2:1  */
+    --accent-hover:  #aeddf0;
+    --accent-soft:   #182a33;
     --accent-text:   #1e1e1c;
 
     --danger:        #ef8a78;
@@ -172,7 +174,7 @@
     /* Every dark accent is a pastel, so white on it is 2.1-2.6:1. Ink. */
     --p-high-text: #1e1e1c; --p-medium-text: #1e1e1c; --p-low-text: #1e1e1c;
 
-    --chart-track: #3e4322;   /* 1.53:1 on the dark card, 4.08:1 vs the fill */
+    --chart-track: #22333d;   /* 1.53:1 on the dark card, 4.08:1 vs the fill */
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
     --shadow:    0 2px 10px rgba(0, 0, 0, .45);
@@ -185,12 +187,12 @@
   --bg: #1e1e1c; --surface: #2a2a27; --surface-2: #323230; --surface-sunk: #181817;
   --border: #3a3a36; --border-strong: #7e7d77;
   --text: #f0efe9; --text-muted: #adaba1; --text-faint: #93918a;
-  --accent: #c8d94f; --accent-hover: #d6e56a; --accent-soft: #31341a; --accent-text: #1e1e1c;
+  --accent: #9ad2ea; --accent-hover: #aeddf0; --accent-soft: #182a33; --accent-text: #1e1e1c;
   --danger: #ef8a78; --danger-soft: #3a201c; --success: #8fd0a8; --success-soft: #1c2f24;
   --warning: #e3b45c; --warning-soft: #33280f;
   --p-high: #ef8a78; --p-medium: #e3b45c; --p-low: #8fd0cb;
   --p-high-text: #1e1e1c; --p-medium-text: #1e1e1c; --p-low-text: #1e1e1c;
-  --chart-track: #3e4322;
+  --chart-track: #22333d;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.45); --shadow: 0 2px 12px rgba(0,0,0,.5); --shadow-lg: 0 16px 40px rgba(0,0,0,.62);
 }
 
@@ -225,12 +227,39 @@ body {
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }
 
-/* Headings take the Display cut and slightly tighter tracking — the pairing
-   that reads as considered rather than default. */
-h1, h2, h3, .brand-name, .home-greeting, .done-title, .stat-big,
-.ring-value, .crumb.is-current, .week-col-date {
+/*
+ * The serif goes on BIG text only.
+ *
+ * This list is inherited from when the display face was Segoe UI Variable
+ * Display — an optical size of the body face, which looks right at any size.
+ * Instrument Serif is not that. It is a high-contrast display serif, and the
+ * thin strokes that give it its character at 25px thin out to nothing at 15.
+ * Applied to this list unchanged it landed on the sidebar brand at 15.5px, on
+ * every h3, and on the review's 11px uppercase section labels — which is how
+ * "Daily Organizer" ended up looking spindly and wrong.
+ *
+ * So: only things that are actually large. The measured sizes are in the
+ * comments, because that is the whole criterion.
+ */
+h1, h2,
+.home-greeting,        /* 25px */
+.done-title,           /* 22px */
+.stat-big,             /* 34px */
+.ring-value,           /* 30px */
+.crumb.is-current {    /* 25px */
   font-family: var(--font-display);
-  letter-spacing: -0.014em;
+  font-weight: 400;    /* it has one weight; asking for 650 fakes a bold */
+  letter-spacing: 0;
+}
+
+/* Everything that was on that list and is NOT large stays on the body face.
+   Named rather than left to inherit, so the next person adding a heading does
+   not have to rediscover why. */
+h3,
+.brand-name,           /* 15.5px */
+.week-col-date {       /* 19px, but a column label wants to be plain */
+  font-family: var(--font);
+  letter-spacing: -0.011em;
 }
 
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -2962,7 +2991,9 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   line-height: 1;
   color: var(--text);
 }
-.ring-pct { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 1px; }
+.ring-pct { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 1px;
+  font-family: var(--font);
+}
 .ring-empty { font-size: 26px; color: var(--text-faint); line-height: 1; }
 .ring-caption {
   font-size: 10.5px;

@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v30: the accent is a pale blue rather than olive, and the display serif is
+// confined to text big enough to carry it.
 // v29: Granola-style restyle - warm dark ground, a display serif for view
 // titles, row colour as a bar rather than a wash, quieter chips.
 // v28: bigger tick boxes with a target bigger still; the sync chip connects
@@ -79,7 +81,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v29';
+const CACHE_VERSION = 'organizer-v30';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
