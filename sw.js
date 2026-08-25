@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v29: Granola-style restyle - warm dark ground, a display serif for view
+// titles, row colour as a bar rather than a wash, quieter chips.
 // v28: bigger tick boxes with a target bigger still; the sync chip connects
 // in one click; the sign-in hint is learned on its own.
 // v27: a review of a block of NIGHTS collects the notes made after midnight,
@@ -77,7 +79,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v28';
+const CACHE_VERSION = 'organizer-v29';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -87,6 +89,11 @@ const SHELL = [
   './',
   './index.html',
   './css/styles.css',
+  // Self-hosted because the worker never caches cross-origin: a font linked
+  // from Google would disappear the moment the signal did.
+  './fonts/figtree-latin-var.woff2',
+  './fonts/instrumentserif-latin.woff2',
+  './fonts/instrumentserif-latin-italic.woff2',
   './js/app.js',
   './js/state.js',
   './js/dates.js',

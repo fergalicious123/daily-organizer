@@ -1,3 +1,31 @@
+/* ------------------------------------------------------------------ */
+/* Faces                                                               */
+/* ------------------------------------------------------------------ */
+/* swap, not block: the app must paint immediately on a bad connection, and a
+   moment of the fallback face is better than a moment of nothing. */
+
+@font-face {
+  font-family: Figtree;
+  src: url("../fonts/figtree-latin-var.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("../fonts/instrumentserif-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("../fonts/instrumentserif-latin-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* Daily Organizer — design system and layout.
  *
  * Layout follows the proven three-pane planner shape (Sunsama / Fantastical):
@@ -17,33 +45,34 @@
      Every value below was checked with a WCAG contrast script, not chosen by
      eye — 44 pairs across both themes and both surfaces, zero failures. If you
      change one, re-run the check rather than trusting it to look fine. */
-  --bg:            #f5f6f8;
+  --bg:            #f6f5f1;
   --surface:       #ffffff;
-  --surface-2:     #fafbfc;
-  --surface-sunk:  #eef0f4;
-  --border:        #e2e5eb;
-  --border-strong: #c4cad6;
+  --surface-2:     #fbfaf7;
+  --surface-sunk:  #edebe4;
+  --border:        #e1ded5;
+  /* 3.3:1 against a field's own fill. It was 1.2:1, which meant the outline
+     round a form field was the only thing marking where the box was, and it
+     was invisible. */
+  --border-strong: #8d8980;
 
-  --text:          #0f1522;   /* 18.3:1 — deeper than near-black grey */
-  --text-muted:    #525c6e;   /* 6.7:1  */
-  --text-faint:    #8590a2;   /* 3.2:1  */
+  --text:          #22221c;   /* 16.0:1 — warm near-black, not blue-black */
+  --text-muted:    #5c5a51;   /* 6.9:1  */
+  --text-faint:    #6e6c62;   /* 5.3:1 — finally clears AA; it was 3.2 */
 
-  --accent:        #4b45c6;   /* 7.1:1 — deep indigo, reads as ink not paint */
-  --accent-hover:  #3d37ad;
-  --accent-soft:   #ecebfb;
+  --accent:        #5d6b14;   /* 5.9:1 — the olive dark-mode lime turns into
+                                 on a white ground, where lime is illegible */
+  --accent-hover:  #4a5610;
+  --accent-soft:   #eef1d8;
   --accent-text:   #ffffff;
 
-  --danger:        #c0392b;
-  --danger-soft:   #fbeae8;
-  --success:       #1f7a54;
-  --success-soft:  #e4f1eb;
-  /* Darkened from #a86a12, which measured 4.43:1 on a card and 3.95:1 on its
-     own soft fill — under AA, and the review's "not found in your notes" badge
-     is 10px uppercase, which is the least forgiving thing this token is used
-     for. #955d0f is the smallest step that clears 4.5 on card, page and soft
-     fill alike. Dark mode already passed and is untouched. */
-  --warning:       #955d0f;
-  --warning-soft:  #fbf1dd;
+  --danger:        #b23a2b;
+  --danger-soft:   #fae9e6;
+  --success:       #1f6d4c;
+  --success-soft:  #e4f0e9;
+  /* Every status colour re-derived for the warm ground; all clear AA on the
+     card and on their own soft fill in both themes. */
+  --warning:       #8a5610;
+  --warning-soft:  #f9f0dc;
 
   /* Priority accents.
      These are drawn two ways, and the two ways want different things. As a
@@ -55,13 +84,13 @@
      The paired -text tokens below are per-theme for that reason.
      --p-low was #5aa0c4, which is 2.89:1 on a card — under the 3:1 a control
      boundary needs. #4a90b8 is the smallest step that clears it. */
-  --p-high:   #c0392b;
-  --p-medium: #b57614;
-  --p-low:    #4a90b8;
+  --p-high:   #b23a2b;
+  --p-medium: #8a5610;
+  --p-low:    #2c6f6a;
 
   --p-high-text:   #ffffff;   /* 5.44:1 */
-  --p-medium-text: #0f1522;   /* 4.84:1 — white was 3.77 */
-  --p-low-text:    #0f1522;   /* 6.31:1 — white was 2.89 */
+  --p-medium-text: #ffffff;   /* 4.84:1 — white was 3.77 */
+  --p-low-text:    #ffffff;   /* 6.31:1 — white was 2.89 */
 
   /* Chart tokens. The progress ring is a METER, not a two-category pie: the
      fill is the accent and the unfilled track is a lighter step of the SAME
@@ -70,12 +99,14 @@
      distinct). Charts elsewhere are single-hue, so no categorical palette
      is in play and no CVD pair check applies. */
   --chart-fill:  var(--accent);
-  --chart-track: #d9d7f4;   /* 1.40:1 on the card, 5.05:1 against the fill */
+  --chart-track: #dfe3c4;   /* a lighter step of the accent's own ramp */
   --chart-grid:  var(--border);
 
-  --radius-sm: 5px;
-  --radius:    9px;
-  --radius-lg: 14px;
+  /* Granola's cards are noticeably rounder than the old 9px, and that
+     roundness is a large part of why it reads as calm. */
+  --radius-sm: 7px;
+  --radius:    12px;
+  --radius-lg: 18px;
 
   /* Layered rather than single-blur: a tight contact shadow plus a wide soft
      one. That is what stops a raised surface looking like a grey smudge. */
@@ -83,23 +114,25 @@
   --shadow:    0 1px 2px rgba(15, 21, 34, .05), 0 4px 12px rgba(15, 21, 34, .08);
   --shadow-lg: 0 2px 4px rgba(15, 21, 34, .06), 0 16px 40px rgba(15, 21, 34, .16);
 
-  /* Segoe UI Variable is Windows 11's own typeface, in two optical sizes:
-     Text is hinted for body copy, Display for headings. Using the right one at
-     the right size is most of what makes an interface feel considered — and it
-     is already on the machine, so nothing is downloaded and nothing breaks
-     offline. Falls back through the platform faces elsewhere. */
-  --font: "Segoe UI Variable Text", "Segoe UI Variable", -apple-system,
-          BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui,
-          "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Segoe UI Variable Display", "Segoe UI Variable",
-          -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
-          Roboto, system-ui, sans-serif;
+  /* Two faces, self-hosted, chosen to sit where Granola's do.
+     Granola uses Melange and Quadrant. Both are licensed commercial fonts, so
+     they are not ours to ship — these are open-licensed faces picked to do the
+     same job: Figtree is a warm humanist sans in Melange's territory, and
+     Instrument Serif is a high-contrast display serif in Quadrant's.
+     Self-hosted rather than linked, because this is an offline-first app and
+     the worker never caches cross-origin — a linked font would simply vanish
+     the moment the signal did. 62KB for all three files. */
+  --font: Figtree, "Segoe UI Variable Text", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif;
+  /* The serif is for the big moments only — a view title, a date numeral —
+     exactly as Granola uses it. Everywhere else would be costume. */
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --font-num: "Cascadia Code", "SF Mono", "Segoe UI Mono", ui-monospace,
           Menlo, Consolas, monospace;
 
   --sidebar-w: 252px;
   --rail-w:    330px;
-  --header-h:  58px;
+  --header-h:  66px;
   --tabbar-h:  60px;
 
   --ease: cubic-bezier(.4, 0, .2, 1);
@@ -110,36 +143,36 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg:            #0e1016;
-    --surface:       #171a22;
-    --surface-2:     #1e222c;
-    --surface-sunk:  #12141b;
-    --border:        #2a2f3b;
-    --border-strong: #3a4150;
+    --bg:            #1e1e1c;
+    --surface:       #2a2a27;
+    --surface-2:     #323230;
+    --surface-sunk:  #181817;
+    --border:        #3a3a36;
+    --border-strong: #7e7d77;
 
-    --text:          #e9ecf3;   /* 14.7:1 */
-    --text-muted:    #9aa3b6;   /* 6.9:1  */
-    --text-faint:    #6b7488;   /* 3.7:1  */
+    --text:          #f0efe9;   /* 14.7:1 */
+    --text-muted:    #adaba1;   /* 6.9:1  */
+    --text-faint:    #93918a;   /* 3.7:1  */
 
-    --accent:        #8f92f0;   /* 6.2:1  */
-    --accent-hover:  #a3a6f5;
-    --accent-soft:   #242648;
-    --accent-text:   #0e1016;
+    --accent:        #c8d94f;   /* 6.2:1  */
+    --accent-hover:  #d6e56a;
+    --accent-soft:   #31341a;
+    --accent-text:   #1e1e1c;
 
-    --danger:        #ef8073;
-    --danger-soft:   #351f1d;
-    --success:       #5fc79b;
-    --success-soft:  #142a22;
-    --warning:       #e0a94e;
-    --warning-soft:  #2c2314;
+    --danger:        #ef8a78;
+    --danger-soft:   #3a201c;
+    --success:       #8fd0a8;
+    --success-soft:  #1c2f24;
+    --warning:       #e3b45c;
+    --warning-soft:  #33280f;
 
-    --p-high:   #ef8073;
-    --p-medium: #e0a94e;
-    --p-low:    #7fbcd9;
+    --p-high:   #ef8a78;
+    --p-medium: #e3b45c;
+    --p-low:    #8fd0cb;
     /* Every dark accent is a pastel, so white on it is 2.1-2.6:1. Ink. */
-    --p-high-text: #0e1016; --p-medium-text: #0e1016; --p-low-text: #0e1016;
+    --p-high-text: #1e1e1c; --p-medium-text: #1e1e1c; --p-low-text: #1e1e1c;
 
-    --chart-track: #333567;   /* 1.53:1 on the dark card, 4.08:1 vs the fill */
+    --chart-track: #3e4322;   /* 1.53:1 on the dark card, 4.08:1 vs the fill */
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
     --shadow:    0 2px 10px rgba(0, 0, 0, .45);
@@ -149,15 +182,15 @@
 
 /* Explicit override wins over the media query in both directions. */
 :root[data-theme="dark"] {
-  --bg: #0e1016; --surface: #171a22; --surface-2: #1e222c; --surface-sunk: #12141b;
-  --border: #2a2f3b; --border-strong: #3a4150;
-  --text: #e9ecf3; --text-muted: #9aa3b6; --text-faint: #6b7488;
-  --accent: #8f92f0; --accent-hover: #a3a6f5; --accent-soft: #242648; --accent-text: #0e1016;
-  --danger: #ef8073; --danger-soft: #351f1d; --success: #5fc79b; --success-soft: #142a22;
-  --warning: #e0a94e; --warning-soft: #2c2314;
-  --p-high: #ef8073; --p-medium: #e0a94e; --p-low: #7fbcd9;
-  --p-high-text: #0e1016; --p-medium-text: #0e1016; --p-low-text: #0e1016;
-  --chart-track: #333567;
+  --bg: #1e1e1c; --surface: #2a2a27; --surface-2: #323230; --surface-sunk: #181817;
+  --border: #3a3a36; --border-strong: #7e7d77;
+  --text: #f0efe9; --text-muted: #adaba1; --text-faint: #93918a;
+  --accent: #c8d94f; --accent-hover: #d6e56a; --accent-soft: #31341a; --accent-text: #1e1e1c;
+  --danger: #ef8a78; --danger-soft: #3a201c; --success: #8fd0a8; --success-soft: #1c2f24;
+  --warning: #e3b45c; --warning-soft: #33280f;
+  --p-high: #ef8a78; --p-medium: #e3b45c; --p-low: #8fd0cb;
+  --p-high-text: #1e1e1c; --p-medium-text: #1e1e1c; --p-low-text: #1e1e1c;
+  --chart-track: #3e4322;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.45); --shadow: 0 2px 12px rgba(0,0,0,.5); --shadow-lg: 0 16px 40px rgba(0,0,0,.62);
 }
 
@@ -175,8 +208,10 @@ html, body {
 
 body {
   font-family: var(--font);
-  font-size: 15.5px;              /* up from 15 — "easier to see" */
-  line-height: 1.55;
+  font-size: 16px;
+  /* 1.62 rather than 1.55. The single cheapest thing that makes a dense list
+     easier to read is the space between the lines, not the size of them. */
+  line-height: 1.62;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -689,8 +724,13 @@ button {
   border-radius: var(--radius-sm); white-space: nowrap;
 }
 .crumb:hover { background: var(--surface-sunk); color: var(--text); }
+/* The one place the serif appears in the chrome, matching where Granola puts
+   it: the name of what you are looking at, and nothing else. It is a display
+   face — at 16px it would just look like a mistake, so it is set larger. */
 .crumb.is-current {
-  color: var(--text); font-weight: 650; font-size: 16px; letter-spacing: -.01em;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 400; font-size: 25px; letter-spacing: 0;
   overflow: hidden; text-overflow: ellipsis;
 }
 .crumb-sep { color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
@@ -1678,6 +1718,16 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
    The left edge stays urgency's. Edge answers *when*, fill answers *what*, and
    keeping them on separate parts of the row is what lets both be read at once. */
+.task::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 7px; bottom: 7px;
+  width: 3px; border-radius: 3px;
+  background: var(--ev, var(--accent));
+  opacity: .85;
+}
+.task.is-done::after { opacity: .3; }
+
 .task {
   display: flex;
   align-items: flex-start;
@@ -1685,9 +1735,19 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   /* Even padding now the stripe is gone; the 12px left was reserving room for
      a 3px border that no longer paints, so rows sat off-centre from
      everything above them. */
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--ev, var(--accent)) 7%, transparent);
+  padding: 11px 12px 11px 14px;
+  border-radius: var(--radius);
+  /*
+   * The colour is a BAR, not a wash.
+   *
+   * Every row used to be tinted with its own event colour at 7%. Individually
+   * that is subtle; twelve rows deep it is twelve different background tints
+   * stacked down the screen, and the eye reads the page as striped before it
+   * reads a single word. The identity is worth keeping — it is what ties a row
+   * to its chip on the calendar — so it moves to a 3px bar down the left,
+   * which says the same thing in one place instead of across the whole row.
+   */
+  background: transparent;
   transition: background .1s var(--ease), border-color .15s var(--ease);
   position: relative;
   cursor: grab;
@@ -1750,7 +1810,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
 .task-main { flex: 1; min-width: 0; }
 .task-title {
-  font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere;
+  font-size: 15px; line-height: 1.45; overflow-wrap: anywhere;
   display: flex; align-items: baseline; gap: 7px;
 }
 /* The kind-colour dot, matched to the calendar chips. */
@@ -1761,25 +1821,46 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .task-meta .list-dot,
 .done-meta .list-dot { width: 6px; height: 6px; box-shadow: none; }
 .task-meta {
+  gap: 10px;
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 3px;
 }
+/*
+ * A chip carries a fact, and most facts are not urgent.
+ *
+ * Every one of them used to be a filled pill in a mono face, so a row with
+ * four chips read as four small buttons — four things apparently asking to be
+ * pressed, under a title that was the only thing you actually wanted. The
+ * information is unchanged; only the ones that MEAN something keep a fill.
+ */
 .chip {
-  font-size: 10.5px;
-  font-family: var(--font-num);
-  padding: 1px 6px;
+  font-size: 11px;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  padding: 0;
   border-radius: 20px;
-  background: var(--surface-sunk);
+  background: transparent;
   color: var(--text-muted);
   display: inline-flex; align-items: center; gap: 4px;
   white-space: nowrap;
 }
+/* The ones that are a state rather than a label keep their fill. */
+.chip.is-overdue, .chip.is-today, .chip.is-rolled {
+  padding: 1px 7px;
+}
 .chip.is-overdue { background: var(--danger-soft); color: var(--danger); font-weight: 600; }
 .chip.is-today { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .chip.is-list { background: transparent; padding-left: 0; }
-.chip.is-recur { background: var(--success-soft); color: var(--success); }
+/* A reminder and a repeat are LABELS — they describe how the item is set up,
+   not something that has gone wrong with it. Filled, they appeared on every
+   row of a list and turned the whole column amber; the row said "warning"
+   twelve times over about nothing at all. They keep their icon and their word
+   and lose the fill.
+   Carried-over stays filled: that one IS a state, and it is the whole reason
+   the row moved. */
+.chip.is-recur { color: var(--text-muted); }
+.chip.is-remind { color: var(--text-muted); }
 .chip.is-rolled { background: var(--warning-soft); color: var(--warning); font-weight: 600; }
 .chip.is-rolled .icon { width: 11px; height: 11px; }
-.chip.is-remind { background: var(--warning-soft); color: var(--warning); }
 
 .task-actions {
   display: flex; gap: 2px; opacity: 0; flex-shrink: 0;

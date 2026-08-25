@@ -106,6 +106,7 @@ PAIRS = [
     # surfaces already differ and the content is inside it either way, so
     # asserting 3:1 there reports a failure nobody can perceive as one. That
     # assertion was here and was wrong; this is the version that is not.
+    ("input outline",                "--border-strong", "--surface-2",   AA_LARGE),
     ("chart fill vs track",          "--chart-fill",   "--chart-track",  AA_LARGE),
 ]
 
@@ -116,15 +117,13 @@ PAIRS = [
 # the whole app rather than a tidy-up, and it needs signing off. Recording it
 # here keeps it visible instead of letting a green run imply it is fine.
 KNOWN_BAD = {
-    ("faint text on card", "--text-faint", "--surface", AA_TEXT),
-    ("faint text on page", "--text-faint", "--bg", AA_TEXT),
-    # A form field is outlined in --border on --surface-2, which measures
-    # 1.22:1 light and 1.19:1 dark. 1.4.11 wants 3:1 for a boundary you need in
-    # order to find the control, and the fill barely differs from the card, so
-    # the outline IS the only cue. Real, and pre-existing. Left alone because
-    # raising it changes the look of every form in the app, which is a decision
-    # to take deliberately rather than as a side effect of a contrast pass.
-    ("input outline", "--border", "--surface-2", AA_LARGE),
+    # Empty, and that is the point.
+    #
+    # Two entries lived here: --text-faint (3.2 light / 3.7 dark) and the form
+    # field outline (1.2 / 1.2). Both were real, both were left alone because
+    # fixing them changed the look of something in daily use. The Granola
+    # restyle changed that look deliberately, so both were fixed as part of it
+    # rather than left as permanent exceptions.
 }
 
 
