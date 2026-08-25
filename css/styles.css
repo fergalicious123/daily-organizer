@@ -1712,17 +1712,37 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .task.is-done .row-dot { background: var(--success); opacity: .65; }
 
 .checkbox {
-  width: 17px; height: 17px;
+  width: 20px; height: 20px;
   border: 1.5px solid var(--border-strong);
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
+  position: relative;
   display: grid; place-items: center;
   transition: background .12s var(--ease), border-color .12s var(--ease);
 }
+
+/* The hit area, which is deliberately bigger than the circle.
+ *
+ * A tick box wants to be small enough not to shout on a dense list and big
+ * enough to hit without aiming. Those pull opposite ways, so only the circle is
+ * sized by the rule above — this transparent ring takes the target out to 34px
+ * with a cursor and 44px on touch, without making the row look chunky.
+ *
+ * The 7px is a measured ceiling, not a guess. Rows sit flush against each other
+ * with only 10px of padding above the box, so a larger inset would put part of
+ * this box's target on top of the row ABOVE it, and a click meant for that row
+ * would tick this one instead.
+ */
+.checkbox::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
 .checkbox:hover { border-color: var(--accent); }
 .checkbox.is-checked { background: var(--accent); border-color: var(--accent); }
-.checkbox svg { width: 10px; height: 10px; color: var(--accent-text); opacity: 0; transition: opacity .1s var(--ease); }
+.checkbox svg { width: 12px; height: 12px; color: var(--accent-text); opacity: 0; transition: opacity .1s var(--ease); }
 .checkbox.is-checked svg { opacity: 1; }
 .checkbox.p-3 { border-color: var(--p-high); }
 .checkbox.p-2 { border-color: var(--p-medium); }
@@ -1781,8 +1801,11 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   display: flex; align-items: center; gap: 7px;
   font-size: 12.5px; color: var(--text-muted);
 }
-.subtask .checkbox { width: 13px; height: 13px; margin-top: 0; border-radius: 3px; }
-.subtask .checkbox svg { width: 8px; height: 8px; }
+.subtask .checkbox { width: 16px; height: 16px; margin-top: 0; border-radius: 4px; }
+/* Subtask rows sit 3px apart, so the ring is smaller than the one on a main
+   row — enough to help, not enough for one subtask's target to reach another. */
+.subtask .checkbox::before { inset: -4px; border-radius: 6px; }
+.subtask .checkbox svg { width: 10px; height: 10px; }
 .subtask.is-done span { text-decoration: line-through; opacity: .6; }
 .subtask-progress {
   font-size: 10px; font-family: var(--font-num); color: var(--text-faint);
@@ -3241,9 +3264,13 @@ body.is-touch-dragging {
     width: 34px;
     height: 34px;
   }
-  .checkbox { width: 22px; height: 22px; }
-  .checkbox svg { width: 12px; height: 12px; }
-  .subtask .checkbox { width: 18px; height: 18px; }
+  /* 26px of circle plus 9px of ring each side is a 44px target — the size a
+     fingertip actually wants. 9px because the row above starts 10px up. */
+  .checkbox { width: 26px; height: 26px; }
+  .checkbox::before { inset: -9px; }
+  .checkbox svg { width: 15px; height: 15px; }
+  .subtask .checkbox { width: 20px; height: 20px; }
+  .subtask .checkbox::before { inset: -6px; }
   .crumb { padding: 7px 9px; }
   .hour-add { padding: 8px 10px; }
   .mini-day { font-size: 13px; }

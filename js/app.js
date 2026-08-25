@@ -296,11 +296,40 @@ function syncStatusButton() {
     [SyncState.IDLE]: '',
   }[sync.state] || '';
 
+  const offline = sync.state === SyncState.ERROR || sync.state === SyncState.IDLE;
+
   return el('button.sync-status', {
-    title: sync.lastError?.message || sync.message,
-    onclick: () => {
-      if (sync.state === SyncState.ERROR || sync.state === SyncState.IDLE) openSettings('google');
-      else sync.syncNow();
+    title: offline
+      ? 'Connect to Google and sync'
+      : (sync.lastError?.message || sync.message),
+    /*
+     * One click, and it connects.
+     *
+     * This used to open Settings when disconnected, so reconnecting was: click
+     * the chip, find the Google section, click Connect, then deal with Google.
+     * Three clicks and a hunt to do the one thing the chip is about. It goes
+     * straight to Google now, and only falls back to Settings if there is
+     * something to configure — which is the only case Settings actually helps
+     * with.
+     *
+     * The click matters for another reason: Google's sign-in is a popup, and a
+     * popup opened without a user gesture is blocked by the browser. So this
+     * cannot be made to happen on its own; what CAN be made automatic is not
+     * needing it, which is what the silent renewal does.
+     */
+    onclick: async (e) => {
+      if (!offline) { sync.syncNow(); return; }
+      const button = e.currentTarget;
+      button.disabled = true;
+      try {
+        await sync.connect({ interactive: true });
+        toast('Connected — syncing now.');
+      } catch (err) {
+        toast(err.message || 'Could not connect.', { error: true });
+        openSettings('google');
+      } finally {
+        button.disabled = false;
+      }
     },
   },
     el('span.sync-dot', { class: dotClass }),

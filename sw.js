@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v28: bigger tick boxes with a target bigger still; the sync chip connects
+// in one click; the sign-in hint is learned on its own.
 // v27: a review of a block of NIGHTS collects the notes made after midnight,
 // which is most of them.
 // v26: the offline queue creates events idempotently too; closing a dialog
@@ -75,7 +77,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v27';
+const CACHE_VERSION = 'organizer-v28';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not

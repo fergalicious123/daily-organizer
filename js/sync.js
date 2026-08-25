@@ -66,6 +66,7 @@ class SyncEngine extends EventTarget {
       await google.init(cfg.googleClientId, cfg.googleAccount || '');
       await google.requestToken({ interactive });
       updateSettings({ googleEnabled: true });
+      this.learnAccount();
       this.setState(SyncState.OK, 'Connected');
       // Must start the scheduler here as well as in resume(). Without it a
       // fresh interactive connect syncs exactly once and then goes silent
@@ -78,6 +79,29 @@ class SyncEngine extends EventTarget {
       this.lastError = err;
       this.setState(SyncState.ERROR, err.message);
       throw err;
+    }
+  }
+
+  /**
+   * Find out which Google account this is, once, quietly.
+   *
+   * The sign-in hint is what lets Google renew a token without a popup: without
+   * one, a browser signed into more than one Google account cannot answer
+   * prompt:'none' unambiguously and errors straight into a prompt.
+   *
+   * It used to be learned in exactly one place — the calendar dropdown inside
+   * the Settings dialog — so it was only ever set if you happened to open
+   * Settings AND the list loaded. Anyone who did not was left permanently
+   * without the thing that stops them being asked to sign in, which is the
+   * opposite of the intended effect. One request, once, on first connection.
+   */
+  async learnAccount() {
+    if (settings().googleAccount) return;
+    try {
+      const primary = (await google.listCalendars()).find((c) => c.primary);
+      if (primary?.id) updateSettings({ googleAccount: primary.id });
+    } catch {
+      // Nothing depends on this succeeding now; it retries next connection.
     }
   }
 
@@ -118,6 +142,7 @@ class SyncEngine extends EventTarget {
     // dropping you back to "Sign in to sync".
     if (google.isSignedIn) {
       this.setState(SyncState.OK, 'Connected');
+      this.learnAccount();
       this.start();
       return true;
     }
@@ -125,6 +150,7 @@ class SyncEngine extends EventTarget {
     try {
       await google.requestToken({ interactive: false });
       this.setState(SyncState.OK, 'Connected');
+      this.learnAccount();
       this.start();
       return true;
     } catch {
