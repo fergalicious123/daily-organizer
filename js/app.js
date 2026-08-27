@@ -67,6 +67,9 @@ function persistRoute() {
   } catch { /* private mode */ }
 }
 
+/** Views a URL is allowed to ask for. Anything else is ignored. */
+const ROUTABLE = new Set(['home', 'month', 'week', 'day', 'tasks', 'done', 'journal', 'stats', 'review']);
+
 function restoreRoute() {
   try {
     const saved = JSON.parse(sessionStorage.getItem('daily-organizer:route'));
@@ -74,6 +77,29 @@ function restoreRoute() {
     // Never restore to a stale day — reopening the app means "now".
     if (route.view === 'day' && route.anchor < todayKey()) route.anchor = todayKey();
   } catch { /* fine */ }
+
+  /*
+   * A view asked for in the URL wins over the restored one.
+   *
+   * This is what makes the home-screen shortcuts real: long-pressing the icon
+   * on Android offers "Today" and "Review", and both are plain URLs. Without
+   * this they would open wherever you happened to be last, which is a shortcut
+   * that lies about where it goes.
+   *
+   * Checked against a list rather than trusted, so a hand-edited URL cannot put
+   * the app into a view that does not exist and leave it blank.
+   */
+  try {
+    const asked = new URLSearchParams(location.search).get('view');
+    if (asked && ROUTABLE.has(asked)) {
+      route.view = asked;
+      if (asked === 'day') route.anchor = todayKey();
+      if (asked === 'tasks') route.listId = null;
+      // Take the parameter out of the address bar once it has been used, so a
+      // later reload does not drag you back here.
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch { /* no URL API, or a blocked history write */ }
 }
 
 /* ------------------------------------------------------------------ */

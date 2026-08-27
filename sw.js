@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v34: Catch installs as its own app with its own icon; long-pressing either
+// icon offers shortcuts, and the URLs behind them actually route.
 // v33: the Overdue page can turn the pile into a plan, spread across the days
 // your rota actually leaves free, with each step draggable onto a day.
 // v32: Catch, a note app at /capture/ that shares this app's storage; lines
@@ -88,7 +90,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v33';
+const CACHE_VERSION = 'organizer-v34';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -140,6 +142,10 @@ const SHELL = [
   './capture/index.html',
   './capture/capture.js',
   './capture/manifest.webmanifest',
+  './capture/icons/icon.svg',
+  './capture/icons/icon-192.png',
+  './capture/icons/icon-512.png',
+  './capture/icons/icon-maskable-512.png',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',

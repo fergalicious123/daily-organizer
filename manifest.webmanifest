@@ -8,7 +8,10 @@
   "orientation": "portrait-primary",
   "background_color": "#f4f5f7",
   "theme_color": "#3d5ccc",
-  "categories": ["productivity", "utilities"],
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "icons/icon.svg",
@@ -37,16 +40,28 @@
   ],
   "shortcuts": [
     {
+      "name": "Catch a note",
+      "short_name": "Catch",
+      "url": "./capture/",
+      "description": "Talk at it and sort it later",
+      "icons": [
+        {
+          "src": "./capture/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
       "name": "Today",
       "short_name": "Today",
       "url": "./?view=day",
-      "description": "Jump straight to today"
+      "description": "What is on today"
     },
     {
-      "name": "Add by voice",
-      "short_name": "Voice",
-      "url": "./?action=voice",
-      "description": "Capture a task by speaking"
+      "name": "Review the last block",
+      "short_name": "Review",
+      "url": "./?view=review",
+      "description": "Read the block back"
     }
   ]
 }

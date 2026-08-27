@@ -146,6 +146,19 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .line-when { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .line-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .line-actions button { padding: 5px 11px; font-size: 13px; }
+/* Bin is the destructive one and it sat flush against "Just a note". Pushed to
+   the end of the row with a gap, so the button that deletes something is not
+   the one your thumb finds next to the button that keeps it. */
+.line-actions .bin { margin-left: auto; }
+
+/* On touch every one of these was 32px tall — over the bare minimum and well
+   under what a thumb wants, on the app most likely to be used one-handed
+   standing next to a vehicle. */
+@media (hover: none), (max-width: 620px) {
+  .line-actions button { min-height: 44px; padding: 8px 14px; }
+  .to-organizer { min-height: 44px; display: flex; align-items: center; }
+  button { min-height: 44px; }
+}
 .tag {
   font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em;
   padding: 2px 7px; border-radius: 999px; align-self: flex-start;

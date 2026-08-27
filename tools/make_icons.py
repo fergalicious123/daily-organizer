@@ -26,18 +26,25 @@ SS = 4                       # supersample factor
 
 
 def rounded_rect_inside(x, y, left, top, right, bottom, radius):
-    """True when (x, y) falls inside a rounded rectangle."""
+    """True when (x, y) falls inside a rounded rectangle.
+
+    Which corner is being tested is decided by WHICH ONE it is, not by
+    comparing its centre back to an edge. The old version did the latter, and
+    it broke the moment a radius reached half the width: on a pill shape
+    `left + radius` and `right - radius` are the same number, so every corner
+    matched the left-hand test and the right-hand side came out square. The
+    organizer's own icon never hit it because its radius is 7% of the width;
+    the microphone capsule in Catch is a true pill, and drew with a flat right
+    edge and a bite out of it.
+    """
     if x < left or x > right or y < top or y > bottom:
         return False
     # Corner regions get a circle test; everything else is a plain rect.
-    for cx, cy in (
-        (left + radius, top + radius),
-        (right - radius, top + radius),
-        (left + radius, bottom - radius),
-        (right - radius, bottom - radius),
-    ):
-        in_corner_x = (x < left + radius) if cx == left + radius else (x > right - radius)
-        in_corner_y = (y < top + radius) if cy == top + radius else (y > bottom - radius)
+    for is_left, is_top in ((True, True), (False, True), (True, False), (False, False)):
+        cx = left + radius if is_left else right - radius
+        cy = top + radius if is_top else bottom - radius
+        in_corner_x = x < left + radius if is_left else x > right - radius
+        in_corner_y = y < top + radius if is_top else y > bottom - radius
         if in_corner_x and in_corner_y:
             return (x - cx) ** 2 + (y - cy) ** 2 <= radius * radius
     return True

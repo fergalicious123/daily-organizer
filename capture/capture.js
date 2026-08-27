@@ -227,7 +227,7 @@ function captureRow(capture) {
         'Unscheduled'),
       el('button', { onclick: () => { setCaptureKind(capture.id, CAPTURE.NOTE); render(); } },
         'Just a note'),
-      el('button', { onclick: () => { removeCapture(capture.id); render(); } }, 'Bin'),
+      el('button.bin', { onclick: () => { removeCapture(capture.id); render(); } }, 'Bin'),
     ));
   }
 

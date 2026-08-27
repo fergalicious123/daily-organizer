@@ -2869,9 +2869,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0;
   border-radius: 50%;
   background: var(--success);
+  position: relative;
   display: grid; place-items: center;
   transition: background .12s var(--ease);
 }
+/* Same trick as the row checkbox: an invisible ring makes the target a
+   fingertip's worth without making an 18px dot into a button. This one
+   un-completes a task, so a miss is not free. */
+.done-tick::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
 .done-tick svg { width: 11px; height: 11px; color: #fff; }
 .done-tick:hover { background: var(--text-faint); }
 
@@ -3380,6 +3385,12 @@ body.is-touch-dragging {
      fingertip actually wants. 9px because the row above starts 10px up. */
   .checkbox { width: 26px; height: 26px; }
   .checkbox::before { inset: -9px; }
+  /* The add-an-hour button is 22px, which is under the 24px floor even before
+     you consider a thumb. It is also opacity:0 until hover — and a touch
+     device has no hover, so on a phone it was an invisible 22px target. */
+  .hour-add { width: 40px; height: 40px; opacity: .55; font-size: 18px; }
+  .group-bar .pill { min-height: 38px; }
+  .done-tick::before { inset: -13px; }
   .checkbox svg { width: 15px; height: 15px; }
   .subtask .checkbox { width: 20px; height: 20px; }
   .subtask .checkbox::before { inset: -6px; }
