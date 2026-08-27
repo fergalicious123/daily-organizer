@@ -3792,3 +3792,64 @@ body:has(.bin-docked) .bin-float { display: none; }
    looking at, this leaves the app. */
 a.nav-external { text-decoration: none; }
 a.nav-external:hover { background: var(--surface-sunk); color: var(--text); }
+
+/* ==================================================================== */
+/* The plan panel                                                       */
+/* ==================================================================== */
+
+.plan-panel {
+  margin: 14px 0 4px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line, var(--border));
+  border-radius: var(--radius-lg);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.plan-head { display: flex; align-items: center; gap: 8px; }
+.plan-head-icon { width: 15px; height: 15px; color: var(--accent); }
+.plan-head-label {
+  font-size: 10.5px; font-weight: 650; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.plan-hint, .plan-drag-hint {
+  margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.55;
+}
+.plan-approach {
+  margin: 0; font-size: 14px; line-height: 1.6;
+  padding-left: 12px; border-left: 2px solid var(--accent);
+}
+.plan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.plan-working, .plan-error { margin: 0; font-size: 13.5px; display: flex; align-items: center; gap: 9px; }
+.plan-error { color: var(--danger); }
+.plan-source {
+  margin: 0; padding: 11px 13px;
+  background: var(--surface-sunk); border-radius: var(--radius);
+  font-family: var(--font-num); font-size: 11.5px; line-height: 1.55;
+  color: var(--text-muted); max-height: 260px; overflow: auto; white-space: pre-wrap;
+}
+
+/* A step is draggable, so it has to look it — same grab cursor and lift as a
+   task row, because it is dropped on the same targets. */
+.plan-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: grab;
+}
+.plan-step:active { cursor: grabbing; }
+.plan-step.is-dragging { opacity: .5; }
+.plan-step-main { flex: 1; min-width: 0; }
+.plan-step-title { margin: 0; font-size: 14.5px; font-weight: 500; line-height: 1.4; }
+.plan-step-why { margin: 3px 0 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+.plan-step-side {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;
+}
+.plan-step-day {
+  font-size: 11px; font-weight: 650; color: var(--accent);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.plan-step-day.is-loose { color: var(--text-muted); font-weight: 400; }
+
+@media (max-width: 560px) {
+  .plan-step { flex-direction: column; gap: 8px; }
+  .plan-step-side { flex-direction: row; align-items: center; align-self: stretch; }
+}

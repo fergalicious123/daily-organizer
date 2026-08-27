@@ -28,6 +28,7 @@ import { journalView, journalEditor } from './views/journal.js';
 import { mountClockWidget, startClockTicker } from './views/clocks.js';
 import { mountShortcutsButton } from './views/shortcutsPanel.js';
 import { mountBin, binPanel } from './views/bin.js';
+import { planPanel } from './views/planpanel.js';
 import { declaredKeys } from './shortcuts.js';
 import { homeView } from './views/home.js';
 import { taskList, quickAdd, openItemEditor, confirmDeleteList } from './views/tasks.js';
@@ -541,6 +542,13 @@ function tasksView() {
     onSelectDay: (dayKey) => navigate({ view: 'day', anchor: dayKey }),
     onOpenUnscheduled: () => navigate({ view: 'tasks', listId: null }),
   }));
+
+  // The plan sits directly under the day strip, because the strip is what you
+  // drag its steps onto — the target is on screen with the thing being dragged.
+  if (route.listId === 'overdue') {
+    const panel = planPanel();
+    if (panel) root.appendChild(panel);
+  }
 
   // Group-by control. Only worth showing once there is enough here for
   // grouping to organise anything.

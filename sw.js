@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v33: the Overdue page can turn the pile into a plan, spread across the days
+// your rota actually leaves free, with each step draggable onto a day.
 // v32: Catch, a note app at /capture/ that shares this app's storage; lines
 // are sorted into now/later/note and reworded as actions before they become
 // tasks.
@@ -86,7 +88,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v32';
+const CACHE_VERSION = 'organizer-v33';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -114,6 +116,7 @@ const SHELL = [
   './js/quotes.js',
   './js/reflect.js',
   './js/triage.js',
+  './js/plan.js',
   './js/daylog.js',
   './js/ai.js',
   './js/dragdrop.js',
@@ -126,6 +129,7 @@ const SHELL = [
   './js/views/routine.js',
   './js/views/bin.js',
   './js/views/review.js',
+  './js/views/planpanel.js',
   './js/views/clocks.js',
   './js/views/shortcutsPanel.js',
   './manifest.webmanifest',

@@ -13,7 +13,7 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, unscheduledTasks, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
-  shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, SHIFT, store,
+  shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, SHIFT, store, addItem,
 } from '../state.js';
 
 /** How each shift is named wherever one is spelled out rather than coloured. */
@@ -48,6 +48,7 @@ const SHIFT_BADGE = {
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
 import { journalEditor } from './journal.js';
+import { PLAN_PREFIX, takePlanStep } from '../plan.js';
 import { registerDropZone, makeTouchDraggable } from '../dragdrop.js';
 import { progressRing } from '../chart.js';
 import { parseCommand } from '../voice.js';
@@ -1124,6 +1125,31 @@ function makeUnscheduleTarget(node) {
 
 export function applyDropOnDay({ itemId, dateKey, time }) {
   if (!itemId) return;
+
+  /*
+   * A step from a plan, dragged onto a day before it is anything.
+   *
+   * Threading it through the SAME drop path as a real task is deliberate: the
+   * day strip, the month cells, the mini-calendar and the hour lines are all
+   * already drop targets, on both the mouse and the touch path, and every one
+   * of them works for a plan step for free. Creating the task up front instead
+   * would have meant fourteen tasks appearing the moment a plan was generated,
+   * whether or not any of it was accepted.
+   */
+  if (String(itemId).startsWith(PLAN_PREFIX)) {
+    const step = takePlanStep(String(itemId).slice(PLAN_PREFIX.length));
+    if (!step) return;
+    addItem({
+      kind: 'task',
+      title: step.title,
+      date: dateKey,
+      time: time || null,
+      durationMin: time ? settings().defaultDurationMin : null,
+      notes: step.why ? `From a plan: ${step.why}` : '',
+    });
+    document.dispatchEvent(new CustomEvent('organizer:rerender'));
+    return;
+  }
   // A completed item dragged onto a day means "do this again": reopen it and
   // reschedule, rather than silently moving a ticked-off task.
   if (reopenOnDay(itemId, dateKey, time)) return;
