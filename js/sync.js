@@ -730,6 +730,31 @@ export function mergeDocuments(local, remote) {
     if (!(day in (remote.journal || {}))) changedRemote = true;
   }
 
+  /*
+   * Captures, unioned by id like the notes on an item and for the same reason:
+   * they are append-only observations, not a value with one correct version.
+   * Two devices each catching a line before either syncs must keep both, and a
+   * delete has to stick or the union hands it straight back forever.
+   *
+   * `kind` CAN change after the fact — a line gets triaged — so unlike a note
+   * this takes the more recently touched copy when both sides have one.
+   */
+  const capturesById = new Map();
+  const takeCapture = (c) => {
+    if (!c?.id) return;
+    const have = capturesById.get(c.id);
+    if (!have) { capturesById.set(c.id, c); return; }
+    if (c.deleted) { capturesById.set(c.id, c); return; }   // a delete is one-way
+    if (have.deleted) return;
+    if (newer(c.updatedAt || c.at, have.updatedAt || have.at)) capturesById.set(c.id, c);
+  };
+  for (const c of (remote.captures || [])) takeCapture(c);
+  for (const c of (local.captures || [])) takeCapture(c);
+  const mergedCaptures = [...capturesById.values()]
+    .sort((a, b) => (String(a.at) < String(b.at) ? -1 : 1));
+  if ((local.captures || []).length !== mergedCaptures.length) changedLocal = true;
+  if ((remote.captures || []).length !== mergedCaptures.length) changedRemote = true;
+
   // The written-up day summaries. Same shape, same merge, and kept apart from
   // the journal entries themselves so a summary generated on one device cannot
   // land on top of a sentence typed on another.
@@ -776,6 +801,7 @@ export function mergeDocuments(local, remote) {
       items: [...merged.values()],
       journal,
       journalSummary,
+      captures: mergedCaptures,
       routine,
       lists: [...lists.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       inboxListId: local.inboxListId || remote.inboxListId,

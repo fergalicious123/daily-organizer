@@ -12,7 +12,7 @@ import {
   addList, removeList, renameList,
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
-  completedItems, rollOverdueTasks, rolloverDue, reviewDue, shiftBlock,
+  completedItems, rollOverdueTasks, rolloverDue, reviewDue, shiftBlock, openCaptures,
 } from './state.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
@@ -134,6 +134,19 @@ function renderSidebar() {
       () => navigate({ view: 'review' }), reviewDue()),
     navItem('chart', 'Progress', null, route.view === 'stats',
       () => navigate({ view: 'stats' })),
+  ));
+
+  /*
+   * Catch, the note app. A real link, not a route: it is a separate app that
+   * happens to share this one's storage and its address. Kept apart from the
+   * nav above because those switch views and this leaves — and shown with the
+   * number waiting, since a pile you have not sorted is the only reason to go.
+   */
+  const waiting = openCaptures().length;
+  sidebarEl.appendChild(el('a.nav-item.nav-external', { href: './capture/' },
+    icon('mic'),
+    el('span', { style: { flex: '1', textAlign: 'left' } }, 'Catch a note'),
+    waiting ? el('span.count', String(waiting)) : null,
   ));
 
   /* mini month */

@@ -168,6 +168,17 @@ function defaultState() {
      * Its own map merges independently, exactly like `routine` below.
      */
     journalSummary: {},
+    /*
+     * Lines caught by the capture app, before they are anything else.
+     *
+     * A flat append-only list rather than a per-day map, because a capture is a
+     * moment, not a day: three in one minute is normal, and they are triaged
+     * as a pile rather than read back as an entry. Each carries its own id and
+     * time so two devices merge by union instead of one overwriting the other,
+     * and deletes are tombstoned — the same shape, and the same reasoning, as
+     * the notes on an item.
+     */
+    captures: [],
     // dateKey -> { steps: [stepId], updatedAt }. Same shape as `journal` on
     // purpose: sync merges both the same way, per day, newest write wins.
     routine: {},
@@ -1222,6 +1233,88 @@ export function journalEntries() {
     .filter(([, e]) => e && e.text)
     .map(([date, e]) => ({ date, ...e }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+/* ------------------------------------------------------------------ */
+/* Captures — the note app's pile                                      */
+/* ------------------------------------------------------------------ */
+
+/** Where a capture ended up. `open` means nobody has triaged it yet. */
+export const CAPTURE = { OPEN: 'open', NOW: 'now', LATER: 'later', NOTE: 'note' };
+
+/** Every live capture, oldest first. */
+export function captures() {
+  const all = Array.isArray(store.state.captures) ? store.state.captures : [];
+  return all.filter((c) => c && !c.deleted);
+}
+
+/** Just the ones still waiting to be sorted. */
+export function openCaptures() {
+  return captures().filter((c) => (c.kind || CAPTURE.OPEN) === CAPTURE.OPEN);
+}
+
+export function addCapture(text, source = NOTE_SOURCE.VOICE) {
+  const clean = String(text ?? '').trim();
+  if (!clean) return null;
+  let entry = null;
+  store.mutate((s) => {
+    if (!Array.isArray(s.captures)) s.captures = [];
+    entry = { id: uid(), at: nowISO(), text: clean, source, kind: CAPTURE.OPEN, itemId: null };
+    s.captures.push(entry);
+  }, { label: 'capture' });
+  return entry;
+}
+
+export function setCaptureKind(id, kind) {
+  return store.mutate((s) => {
+    const c = (s.captures || []).find((x) => x.id === id);
+    if (c) { c.kind = kind; c.updatedAt = nowISO(); }
+  }, { label: 'capture' });
+}
+
+/** Tombstoned, not spliced — see removeNote() for why. */
+export function removeCapture(id) {
+  return store.mutate((s) => {
+    const c = (s.captures || []).find((x) => x.id === id);
+    if (!c) return;
+    c.deleted = true;
+    c.text = '';
+    c.updatedAt = nowISO();
+  }, { label: 'capture' });
+}
+
+/**
+ * Turn a capture into a real task in the organizer.
+ *
+ * This is the whole point of the two apps sharing an origin: it is a local
+ * write, so it is instant, works with no signal, and cannot half-succeed. The
+ * organizer's own sync carries it to Google afterwards, with all the retry and
+ * merge behaviour that already exists.
+ *
+ * The capture is kept and marked rather than consumed, so the pile stays an
+ * honest record of what was said and you can see what became of each line.
+ */
+export function sendCaptureToOrganizer(id, { date = null, listId = null, title = null } = {}) {
+  const capture = captures().find((c) => c.id === id);
+  if (!capture) return null;
+  const chosen = String(title || '').trim() || capture.text;
+  const item = addItem({
+    kind: 'task',
+    title: chosen,
+    date,
+    listId: listId || undefined,
+    // When the wording was changed, the original goes in the notes. In a
+    // month's time "did I mean that?" has an answer, and a rewording can never
+    // quietly become the only record of what was said.
+    notes: chosen === capture.text
+      ? `Caught on ${capture.at.slice(0, 10)}.`
+      : `Caught on ${capture.at.slice(0, 10)}. You said: "${capture.text}"`,
+  });
+  store.mutate((s) => {
+    const c = (s.captures || []).find((x) => x.id === id);
+    if (c) { c.kind = CAPTURE.LATER; c.itemId = item.id; c.updatedAt = nowISO(); }
+  }, { label: 'capture' });
+  return item;
 }
 
 /* ------------------------------------------------------------------ */

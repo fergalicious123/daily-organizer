@@ -1,0 +1,16 @@
+{
+  "name": "Catch — quick notes",
+  "short_name": "Catch",
+  "description": "Catch it now, sort it later. Notes that become tasks in the Daily Organizer.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e1e1c",
+  "theme_color": "#1e1e1c",
+  "icons": [
+    { "src": "../icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "../icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "../icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

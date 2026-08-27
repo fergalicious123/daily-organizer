@@ -3786,3 +3786,9 @@ body:has(.bin-docked) .bin-float { display: none; }
   color: var(--text-muted);
   max-height: 240px; overflow: auto; white-space: pre-wrap;
 }
+
+/* Catch lives at its own address, so this is a link rather than a nav button.
+   Marked apart from the view switches above it: those change what you are
+   looking at, this leaves the app. */
+a.nav-external { text-decoration: none; }
+a.nav-external:hover { background: var(--surface-sunk); color: var(--text); }

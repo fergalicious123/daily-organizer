@@ -33,6 +33,9 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v32: Catch, a note app at /capture/ that shares this app's storage; lines
+// are sorted into now/later/note and reworded as actions before they become
+// tasks.
 // v31: the diary can write up a day as a paragraph, from what the app
 // recorded rather than from anything invented.
 // v30: the accent is a pale blue rather than olive, and the display serif is
@@ -83,7 +86,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v31';
+const CACHE_VERSION = 'organizer-v32';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -110,6 +113,7 @@ const SHELL = [
   './js/brief.js',
   './js/quotes.js',
   './js/reflect.js',
+  './js/triage.js',
   './js/daylog.js',
   './js/ai.js',
   './js/dragdrop.js',
@@ -125,6 +129,13 @@ const SHELL = [
   './js/views/clocks.js',
   './js/views/shortcutsPanel.js',
   './manifest.webmanifest',
+  // Catch, the note app. Same origin on purpose — it shares this app's
+  // storage, so handing a note over is a local write rather than a network
+  // round trip. Precached so it opens instantly, which is its whole point.
+  './capture/',
+  './capture/index.html',
+  './capture/capture.js',
+  './capture/manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
