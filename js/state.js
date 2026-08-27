@@ -157,6 +157,17 @@ function defaultState() {
     // Keyed by day rather than held as a list so a phone and a laptop editing
     // different days never collide, and the same day merges last-write-wins.
     journal: {},
+    /*
+     * dateKey -> { text, updatedAt }. The written-up summary of a day.
+     *
+     * Deliberately NOT a field on the journal entry beside your own writing.
+     * setJournal() replaces that object wholesale on every save, so a summary
+     * living inside it would be wiped the next time you typed a character —
+     * and it merges per day, last write wins, so a summary written on the
+     * laptop and a sentence typed on the phone would fight over the same key.
+     * Its own map merges independently, exactly like `routine` below.
+     */
+    journalSummary: {},
     // dateKey -> { steps: [stepId], updatedAt }. Same shape as `journal` on
     // purpose: sync merges both the same way, per day, newest write wins.
     routine: {},
@@ -1140,6 +1151,68 @@ export function setJournal(dateKey, text, { live = false } = {}) {
     if (clean) s.journal[dateKey] = { text: clean, updatedAt: nowISO() };
     else delete s.journal[dateKey];
   }, { label: live ? 'journal-live' : 'journal', undoable: !live });
+}
+
+/** The written-up summary for a day, or null. */
+export function journalSummaryFor(dateKey) {
+  const entry = store.state.journalSummary?.[dateKey];
+  return entry && entry.text ? entry : null;
+}
+
+/** Save, replace, or (with empty text) clear a day's summary. */
+export function setJournalSummary(dateKey, text) {
+  const clean = String(text ?? '').trim();
+  return store.mutate((s) => {
+    if (!s.journalSummary) s.journalSummary = {};
+    if (clean) s.journalSummary[dateKey] = { text: clean, updatedAt: nowISO() };
+    else delete s.journalSummary[dateKey];
+  }, { label: 'journal-summary' });
+}
+
+/**
+ * What actually happened on a day, gathered from what the app already knows.
+ *
+ * This is the whole input to the summary, and it is assembled by rules for the
+ * same reason the morning brief is: a diary that quietly invents a shift you
+ * did not work, or a job you did not finish, is worse than an empty one — you
+ * would find out months later, with no way to tell which entries were real.
+ */
+export function dayMaterial(dateKey) {
+  const shift = shiftOnDay(dateKey);
+  const crew = crewOnDay(dateKey);
+
+  const done = liveItems()
+    .filter((i) => i.done && i.doneAt && toKey(new Date(i.doneAt)) === dateKey && !shiftKindOf(i))
+    .map((i) => ({ title: i.title || 'Untitled', time: i.time || null }));
+
+  const notes = [];
+  for (const item of liveItems()) {
+    for (const note of itemLog(item)) {
+      if (toKey(new Date(note.at)) !== dateKey) continue;
+      notes.push({ text: note.text, itemTitle: item.title || 'Untitled' });
+    }
+  }
+
+  const routine = routineSteps()
+    .filter((step) => routineStepDone(step, dateKey))
+    .map((step) => step.label);
+
+  // Dated for this day, still not done, and the day is behind us.
+  const missed = liveItems()
+    .filter((i) => i.kind === 'task' && !i.done && i.date === dateKey
+      && dateKey < todayKey() && !shiftKindOf(i))
+    .map((i) => i.title || 'Untitled');
+
+  return {
+    dateKey, shift, crew, done, notes, routine, missed,
+    written: journalFor(dateKey)?.text || '',
+  };
+}
+
+/** Is there anything at all to write up? */
+export function hasDayMaterial(m) {
+  return Boolean(m && (m.shift || m.done.length || m.notes.length
+    || m.routine.length || m.missed.length || m.written));
 }
 
 /** Every written day, newest first. */

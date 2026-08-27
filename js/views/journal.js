@@ -12,7 +12,11 @@
  */
 
 import { el, icon, toast } from '../ui.js';
-import { journalFor, setJournal, journalEntries, completedOn, settings } from '../state.js';
+import {
+  journalFor, setJournal, journalEntries, completedOn, settings,
+  journalSummaryFor, setJournalSummary, dayMaterial, hasDayMaterial,
+} from '../state.js';
+import { writeUpDay, plainSummary, materialToText, daylogConfigured } from '../daylog.js';
 import { todayKey, formatDayLong, formatRelativeDay, formatTime, addDays } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 
@@ -295,6 +299,112 @@ function doneList(dateKey) {
 }
 
 /* ------------------------------------------------------------------ */
+/* The day, written up                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Days currently being written up, so the button can show it. */
+const busy = new Set();
+/** Days whose "what gets sent" panel is open. */
+const showingSource = new Set();
+
+function rerender() {
+  document.dispatchEvent(new CustomEvent('organizer:rerender'));
+}
+
+/**
+ * The written-up paragraph for a day, with the control to make or remake it.
+ *
+ * Sits BELOW your own writing and in its own box, never inside it. The two are
+ * different kinds of thing: one is what you thought, the other is what the app
+ * can see you did, and folding the second into the first would mean the app
+ * editing your diary. It is also stored separately, so writing a summary can
+ * never touch a sentence you typed.
+ */
+function daySummary(dateKey) {
+  const material = dayMaterial(dateKey);
+  const saved = journalSummaryFor(dateKey);
+  const working = busy.has(dateKey);
+
+  // Nothing happened and nothing was written: there is nothing to write up,
+  // and an empty box inviting you to summarise it would be silly.
+  if (!saved && !hasDayMaterial(material)) return null;
+
+  const box = el('div.day-summary', { class: saved ? 'has-text' : '' });
+
+  box.appendChild(el('div.day-summary-head',
+    el('span.day-summary-label', 'The day, written up'),
+    saved ? el('span.day-summary-when', 'saved') : null,
+  ));
+
+  if (saved) {
+    box.appendChild(el('p.day-summary-text', saved.text));
+  } else if (!working) {
+    // Show what it WOULD say before spending anything on wording it. With no
+    // key this is also the finished article, so it is not a preview then.
+    const preview = plainSummary(material, { hour12: settings().hour12 });
+    if (preview) box.appendChild(el('p.day-summary-preview', preview));
+  }
+
+  if (working) {
+    box.appendChild(el('p.day-summary-working', el('span.spinner'), 'Writing it up…'));
+  }
+
+  const actions = el('div.day-summary-actions');
+
+  actions.appendChild(el('button.btn.btn-quiet', {
+    disabled: working,
+    onclick: async () => {
+      busy.add(dateKey);
+      rerender();
+      try {
+        const result = await writeUpDay(material, { hour12: settings().hour12 });
+        if (result.text) {
+          setJournalSummary(dateKey, result.text);
+          if (result.error) toast(result.error);
+        } else {
+          toast('Nothing recorded for that day to write up.');
+        }
+      } finally {
+        busy.delete(dateKey);
+        rerender();
+      }
+    },
+  }, saved ? 'Write it again' : 'Write it up'));
+
+  if (saved) {
+    actions.appendChild(el('button.btn.btn-quiet', {
+      onclick: () => { setJournalSummary(dateKey, ''); rerender(); },
+    }, 'Clear'));
+  }
+
+  // Only worth offering when something actually leaves the device.
+  if (daylogConfigured()) {
+    actions.appendChild(el('button.btn.btn-quiet.day-summary-peek', {
+      onclick: () => {
+        if (showingSource.has(dateKey)) showingSource.delete(dateKey);
+        else showingSource.add(dateKey);
+        rerender();
+      },
+    }, showingSource.has(dateKey) ? 'Hide what gets sent' : 'What gets sent'));
+  }
+
+  box.appendChild(actions);
+
+  if (showingSource.has(dateKey)) {
+    box.appendChild(el('pre.day-summary-source',
+      materialToText(material, { hour12: settings().hour12 })));
+  }
+
+  if (!daylogConfigured() && !saved) {
+    box.appendChild(el('p.field-hint',
+      'Written from what the app recorded. Add an Anthropic key in Settings and ',
+      'Claude will word it as a paragraph instead of a list of facts.'));
+  }
+
+  return box;
+}
+
+/* ------------------------------------------------------------------ */
 /* The diary view                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -319,6 +429,7 @@ export function journalView({ onNavigate }) {
     ),
     journalEditor(today),
     doneList(today),
+    daySummary(today),
   ));
 
   // Every other day that has something to show: a written entry, or things
@@ -358,6 +469,7 @@ export function journalView({ onNavigate }) {
         ? entryBody(entry.text)
         : el('p.journal-entry-empty', 'Nothing written for this day.'),
       doneList(key),
+      daySummary(key),
     ));
   }
 

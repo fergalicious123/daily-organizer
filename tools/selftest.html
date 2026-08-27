@@ -89,7 +89,7 @@ function check(label, fn, detail = '') {
 group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
-  'brief', 'quotes', 'ai', 'reflect', 'dragdrop', 'shortcuts',
+  'brief', 'quotes', 'ai', 'reflect', 'daylog', 'dragdrop', 'shortcuts',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
     'clocks', 'shortcutsPanel'].map((n) => `../js/views/${n}.js`),
@@ -153,7 +153,7 @@ if (verify) {
 /* Every failure here is silent, unrecoverable data loss. */
 group('mergeDocuments — notes survive two devices');
 if (mergeDocuments) {
-  const base = { items: [], lists: [], journal: {}, routine: {} };
+  const base = { items: [], lists: [], journal: {}, journalSummary: {}, routine: {} };
   const doc = (log, updatedAt, title = 'Task') =>
     ({ ...base, items: [{ id: 'i1', title, updatedAt, log }] });
 
@@ -175,6 +175,18 @@ if (mergeDocuments) {
   const alive = doc([{ id: 'a', at: '2026-08-20T10:00:00Z', text: 'zombie' }], '2026-08-20T10:00:00Z');
   check('a delete sticks when local buried it', () => mergeDocuments(buried, alive).document.items[0].log.every((n) => n.deleted));
   check('a delete sticks when remote buried it', () => mergeDocuments(alive, buried).document.items[0].log.every((n) => n.deleted));
+
+  // A day's written-up summary lives in its OWN map, not on the journal entry,
+  // precisely so these two cannot overwrite each other.
+  const withText = { ...base, journal: { d: { text: 'typed on the phone', updatedAt: '2026-08-27T21:00:00Z' } } };
+  const withSummary = { ...base, journalSummary: { d: { text: 'written on the laptop', updatedAt: '2026-08-27T22:00:00Z' } } };
+  const bothWays = mergeDocuments(withText, withSummary).document;
+  check('a typed entry and a summary both survive', () =>
+    bothWays.journal.d.text === 'typed on the phone'
+    && bothWays.journalSummary.d.text === 'written on the laptop');
+  check('a summary survives a remote that has no summaries at all', () =>
+    mergeDocuments({ ...base, journalSummary: { d: { text: 'keep me', updatedAt: '2026-08-27T10:00:00Z' } } },
+      { items: [], lists: [], journal: {}, routine: {} }).document.journalSummary.d.text === 'keep me');
 }
 
 /* ------------------------------------------------------------------ */

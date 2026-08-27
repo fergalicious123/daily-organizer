@@ -3744,3 +3744,45 @@ body:has(.bin-docked) .bin-float { display: none; }
   .review-head-top { flex-direction: column; }
   .review-section { padding: 13px 14px; }
 }
+
+/* ==================================================================== */
+/* The day, written up                                                  */
+/* ==================================================================== */
+
+/* Its own box, below your own writing and clearly not part of it. The two are
+   different kinds of thing — one is what you thought, the other is what the
+   app can see you did — and running them together would mean the app editing
+   your diary. */
+.day-summary {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface-sunk);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 9px;
+}
+.day-summary-head { display: flex; align-items: baseline; gap: 9px; }
+.day-summary-label {
+  font-size: 10.5px; font-weight: 650;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+}
+.day-summary-when { font-size: 11px; color: var(--text-muted); }
+
+.day-summary-text { margin: 0; font-size: 14.5px; line-height: 1.65; }
+/* What it would say before anything is spent on wording it. Set apart so a
+   preview is never mistaken for a saved entry. */
+.day-summary-preview {
+  margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted);
+  padding-left: 11px; border-left: 2px solid var(--border);
+}
+.day-summary-working {
+  margin: 0; display: flex; align-items: center; gap: 9px;
+  font-size: 13.5px; color: var(--text-muted);
+}
+.day-summary-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.day-summary-source {
+  margin: 0; padding: 10px 12px;
+  background: var(--surface); border-radius: var(--radius-sm);
+  font-family: var(--font-num); font-size: 11.5px; line-height: 1.55;
+  color: var(--text-muted);
+  max-height: 240px; overflow: auto; white-space: pre-wrap;
+}

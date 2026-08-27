@@ -730,6 +730,26 @@ export function mergeDocuments(local, remote) {
     if (!(day in (remote.journal || {}))) changedRemote = true;
   }
 
+  // The written-up day summaries. Same shape, same merge, and kept apart from
+  // the journal entries themselves so a summary generated on one device cannot
+  // land on top of a sentence typed on another.
+  const journalSummary = { ...(remote.journalSummary || {}) };
+  for (const [day, mine] of Object.entries(local.journalSummary || {})) {
+    const theirs = journalSummary[day];
+    if (!theirs || newer(mine.updatedAt, theirs.updatedAt)) {
+      journalSummary[day] = mine;
+      if (theirs || !remote.journalSummary) changedRemote = true;
+    } else {
+      changedLocal = true;
+    }
+  }
+  for (const day of Object.keys(remote.journalSummary || {})) {
+    if (!(day in (local.journalSummary || {}))) changedLocal = true;
+  }
+  for (const day of Object.keys(local.journalSummary || {})) {
+    if (!(day in (remote.journalSummary || {}))) changedRemote = true;
+  }
+
   // The morning routine, merged exactly like the journal and for exactly the
   // same reason: `...local` below would hand the local map straight back, so a
   // step ticked on the phone would vanish the moment the laptop synced.
@@ -755,6 +775,7 @@ export function mergeDocuments(local, remote) {
       ...local,
       items: [...merged.values()],
       journal,
+      journalSummary,
       routine,
       lists: [...lists.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       inboxListId: local.inboxListId || remote.inboxListId,

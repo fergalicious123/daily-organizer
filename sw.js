@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v31: the diary can write up a day as a paragraph, from what the app
+// recorded rather than from anything invented.
 // v30: the accent is a pale blue rather than olive, and the display serif is
 // confined to text big enough to carry it.
 // v29: Granola-style restyle - warm dark ground, a display serif for view
@@ -81,7 +83,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v30';
+const CACHE_VERSION = 'organizer-v31';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -108,6 +110,7 @@ const SHELL = [
   './js/brief.js',
   './js/quotes.js',
   './js/reflect.js',
+  './js/daylog.js',
   './js/ai.js',
   './js/dragdrop.js',
   './js/shortcuts.js',
