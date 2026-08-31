@@ -10,7 +10,7 @@ import {
   byUrgency, eventColorSlot, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
 import {
-  todayKey, formatRelativeDay, formatTime, addDays, toKey, DAY_ABBR,
+  todayKey, formatRelativeDay, formatTime, addDays, toKey, isPast, DAY_ABBR,
 } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 import { countdown, daysUntil } from '../countdown.js';
@@ -601,13 +601,23 @@ export function openItemEditor(id, presets = {}) {
       // date field has to state the date somewhere, or "Add" becomes a guess.
       const landing = el('p.editor-landing');
       const describeLanding = () => {
+        landing.classList.remove('is-past');
         if (!draft.date) {
           landing.textContent = 'Goes to Unscheduled — drag it onto a day when you want it.';
           return;
         }
         const when = formatRelativeDay(draft.date);
+        const at = draft.time ? ` at ${formatTime(draft.time, settings().hour12)}` : '';
+        // The dialog is the other way onto a day that has gone — typed or
+        // preset rather than dropped — and the date field alone will not tell
+        // you, least of all in a format like 15/09/2026.
+        if (isPast(draft.date)) {
+          landing.classList.add('is-past');
+          landing.textContent = `${when}${at} — that day has gone, so this will be overdue straight away.`;
+          return;
+        }
         landing.textContent = draft.time
-          ? `Lands on ${when} at ${formatTime(draft.time, settings().hour12)}.`
+          ? `Lands on ${when}${at}.`
           : `Lands on ${when}, with no set time.`;
       };
 

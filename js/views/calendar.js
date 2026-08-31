@@ -6,7 +6,7 @@
 
 import { el, icon, isMobile, toast } from '../ui.js';
 import {
-  monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend,
+  monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend, isPast,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
   todayKey, addDays, formatDayLong, diffDays,
 } from '../dates.js';
@@ -284,6 +284,9 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
       outside ? 'is-outside' : '',
       isWeekend(dayKey) ? 'is-weekend' : '',
       isToday(dayKey) ? 'is-today' : '',
+      // Every one of these cells is a drop target, and a day that has gone
+      // looks exactly like a day that has not until you read the number.
+      isPast(dayKey) ? 'is-past' : '',
       shift ? `on-${shift}` : '',
     ].filter(Boolean).join(' '),
     role: 'button',
@@ -491,7 +494,9 @@ export function weekView(anchorKey, { onSelectDay }) {
     const prog = progressFor(items);
     const d = fromKey(dayKey);
 
-    const col = el('div.week-col', { class: isToday(dayKey) ? 'is-today' : '' });
+    const col = el('div.week-col', {
+      class: [isToday(dayKey) ? 'is-today' : '', isPast(dayKey) ? 'is-past' : ''].filter(Boolean).join(' '),
+    });
 
     col.appendChild(el('div.week-col-head', {
       role: 'button',
@@ -801,7 +806,11 @@ export function dayView(dayKey, { onOpenItem } = {}) {
     const h = row.hour;
     const time = `${String(h).padStart(2, '0')}:00`;
     const line = el('div.hour-line', {
-      class: (isToday(dayKey) && h * 60 + 59 < nowMinutes) ? 'is-past' : '',
+      // On TODAY only the hours behind the clock are past. On a day that has
+      // already gone, all of them are — which this used to miss entirely, so
+      // yesterday's grid looked identical to tomorrow's and every hour on it
+      // offered a cheerful + to add something already overdue.
+      class: (isPast(dayKey) || (isToday(dayKey) && h * 60 + 59 < nowMinutes)) ? 'is-past' : '',
       style: { top: `${row.y}px`, height: `${row.h}px` },
     },
       el('span.hour-label', formatHourLabel(h, cfg.hour12)),
@@ -871,6 +880,17 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   const dayShift = shiftOnDay(dayKey);
   const dayCrew = crewOnDay(dayKey);
   const side = el('div.day-side',
+    /* Said outright, above everything.
+       Ben opened a day, went to put a task on it, and only just caught that
+       the day had already gone. Nothing on the screen had told him: the grid
+       looked the same as any other, the hours all offered a +, and the date
+       in the header reads as a date rather than as a warning. A tinted grid
+       is the ambient version of this; this is the sentence. */
+    isPast(dayKey) ? el('div.day-gone',
+      el('span.day-gone-label', 'This day has gone'),
+      el('span.day-gone-note',
+        `${daysAgoLabel(dayKey)} — anything put here is overdue the moment you add it.`),
+    ) : null,
     // What this day IS, before what is on it. On a run of nights that is the
     // single most useful line on the screen, and on a phone the month cell's
     // fine print is too small to carry the names.
@@ -1123,8 +1143,29 @@ function makeUnscheduleTarget(node) {
   registerDropZone(node, {}, applyUnschedule);
 }
 
+/** 'Yesterday' / '3 days ago' / '2 weeks ago' — how far behind a day is. */
+function daysAgoLabel(dayKey) {
+  const days = diffDays(dayKey, todayKey());
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.round(days / 7);
+  return weeks === 1 ? 'A week ago' : `${weeks} weeks ago`;
+}
+
 export function applyDropOnDay({ itemId, dateKey, time }) {
   if (!itemId) return;
+
+  /*
+   * Say it out loud when something lands on a day that has gone.
+   *
+   * The tinted cells and the banner on the day view are the ambient half of
+   * this; they only work if you look. A drop is the moment the mistake is
+   * actually made, and it can happen with a thumb on a phone where the cell
+   * under your finger is the one you cannot see. So this states what just
+   * happened, and offers the way out — rather than blocking it, because
+   * backdating something you genuinely did on Tuesday is a real thing to want.
+   */
+  const landsInThePast = isPast(dateKey);
 
   /*
    * A step from a plan, dragged onto a day before it is anything.
@@ -1148,15 +1189,29 @@ export function applyDropOnDay({ itemId, dateKey, time }) {
       notes: step.why ? `From a plan: ${step.why}` : '',
     });
     document.dispatchEvent(new CustomEvent('organizer:rerender'));
+    if (landsInThePast) warnPastDrop(dateKey);
     return;
   }
   // A completed item dragged onto a day means "do this again": reopen it and
   // reschedule, rather than silently moving a ticked-off task.
-  if (reopenOnDay(itemId, dateKey, time)) return;
+  if (reopenOnDay(itemId, dateKey, time)) {
+    if (landsInThePast) warnPastDrop(dateKey);
+    return;
+  }
   const patch = { date: dateKey, time: time || null };
   // Dropping onto an hour gives an untimed task a sensible block length.
   if (time) patch.durationMin = getItem(itemId)?.durationMin || settings().defaultDurationMin;
   updateItem(itemId, patch);
+  if (landsInThePast) warnPastDrop(dateKey);
+}
+
+/** Undo is the point: the message without it is just bad news. */
+function warnPastDrop(dateKey) {
+  toast(`${daysAgoLabel(dateKey)} — that day has gone, so this is overdue.`, {
+    error: true,
+    action: 'Undo',
+    onAction: () => store.undo(),
+  });
 }
 
 function makeDropTarget(node, dayKey, time) {

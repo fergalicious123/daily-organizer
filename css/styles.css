@@ -741,7 +741,12 @@ button {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* 10, not 12. The header's widest state — the longest day name against the
+     longest month, "Wednesday 25 September" — wanted 224px and had 221.6, so
+     it lost its last three letters to an ellipsis. Two pixels off each of the
+     four gaps, and the padding removed from the current crumb below, buys it
+     back with room to spare. */
+  gap: 10px;
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
@@ -790,6 +795,9 @@ button {
   color: var(--text);
   font-family: var(--font-display);
   font-weight: 400; font-size: 25px; letter-spacing: .018em;
+  /* No side padding: this one is a label, not a hover target like the crumbs
+     behind it, so the 7px each side was pure cost against the width it needs. */
+  padding-left: 2px; padding-right: 2px;
   flex-shrink: 1;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -1001,6 +1009,56 @@ button {
 .month-day:hover { border-color: var(--accent); background: var(--surface-2); }
 .month-day.is-outside { background: var(--surface-sunk); opacity: .6; }
 .month-day.is-weekend:not(.is-outside) { background: var(--surface-2); }
+
+/* ---- days that have gone ----
+ *
+ * Ben nearly dropped a task onto a day that had already passed, because
+ * nothing said it had. Every one of these cells is a drop target and they all
+ * looked alike.
+ *
+ * Hatched rather than dimmed, for two reasons. Dimming is already taken —
+ * .is-outside uses opacity for "not this month", and two meanings on one
+ * signal is no signal. And opacity drags the text down with it: these cells
+ * carry shift names and counts that have to stay readable, and every pair in
+ * here is contrast-checked. A texture sits behind the content and costs it
+ * nothing.
+ *
+ * As an overlay, not a background-image, because the rota tints below set
+ * `background` with the shorthand — which resets background-image, so the
+ * hatch would vanish on exactly the days that carry a shift.
+ */
+.month-day { position: relative; }
+.month-day.is-past::before,
+.week-col.is-past::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--text-faint) 14%, transparent) 5px 6px
+  );
+}
+/* The cells' own content sits above the texture. */
+.month-day > *, .week-col > * { position: relative; z-index: 1; }
+
+/* The date number is NOT dimmed, though the instinct is to dim it.
+   --text-faint sits at 3.2:1 light and 3.7:1 dark, below AA and already
+   logged as an exception in tools/contrast.py — and the number is precisely
+   what Ben reads to check which day this is. Fading it to say "past" would
+   have made the thing he could not see harder to see. The texture says it
+   instead, and costs the text nothing.
+   The mini-calendar's cells are far too small for a hatch to read as anything
+   but noise, so they take the same idea as a flat wash. Text colour untouched
+   there too; today and the selected day keep their own fills. */
+.mini-day.is-past:not(.is-today):not(.is-selected):not(.is-outside) {
+  background: color-mix(in srgb, var(--text-faint) 10%, transparent);
+}
+/* Today is never past, but the day BEFORE today sits right next to it, so the
+   hatch has to stop dead at the boundary rather than bleeding into the ring. */
+.month-day.is-today::before { display: none; }
 
 /* ---- rota: the whole cell says which shift you are on ----
    These are SEMANTIC, not categorical: nights are cool and dark, days warm and
@@ -1245,6 +1303,7 @@ button {
   border-radius: var(--radius);
   overflow: hidden;
   min-height: 0;
+  position: relative;
   transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
 }
 .week-col:hover { border-color: var(--border-strong); }
@@ -1457,6 +1516,24 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   transition: background .1s var(--ease);
 }
 .hour-line.is-past { background: color-mix(in srgb, var(--surface-sunk) 40%, transparent); }
+
+/* ---- "this day has gone" ----
+   The stated version of the hatch, at the top of a day you have opened and
+   cannot add to without creating something already overdue. Warning colours
+   rather than danger: nothing is broken, and backdating on purpose is a
+   perfectly ordinary thing to do. */
+.day-gone {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  background: var(--warning-soft);
+}
+.day-gone-label {
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--warning);
+}
+.day-gone-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
 .hour-line.is-drop-target {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 2px var(--accent);
@@ -2165,6 +2242,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   margin: -4px 0 0;
   font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
 }
+.editor-landing.is-past { color: var(--warning); font-weight: 600; }
 .editor-more-toggle { align-self: flex-start; }
 .field-hint a { color: var(--accent); }
 

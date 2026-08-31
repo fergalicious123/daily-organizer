@@ -19,7 +19,7 @@ import { daysUntil } from './countdown.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
   formatMonthLong, formatWeekRange, formatDayLong, formatDayShort, formatDayHeader,
-  isoWeekNumber, DAY_ABBR, monthGrid, isToday, sameMonth,
+  isoWeekNumber, DAY_ABBR, monthGrid, isToday, isPast, sameMonth,
 } from './dates.js';
 import {
   monthView, weekView, dayView, fitMonthChips, makeDropTarget, dayStrip,
@@ -288,6 +288,7 @@ function miniCalendar() {
         class: [
           !sameMonth(dayKey, anchor) ? 'is-outside' : '',
           isToday(dayKey) ? 'is-today' : '',
+          isPast(dayKey) ? 'is-past' : '',
           dayKey === route.anchor && route.view === 'day' ? 'is-selected' : '',
           count ? 'has-items' : '',
         ].filter(Boolean).join(' '),
@@ -478,7 +479,10 @@ function breadcrumb() {
     crumbs.appendChild(el('button.crumb', {
       class: route.view === 'week' ? 'is-current' : '',
       onclick: () => navigate({ view: 'week' }),
-    }, `Week ${isoWeekNumber(route.anchor)} · ${formatWeekRange(route.anchor, cfg.weekStart)}`));
+      // "Wk" rather than "Week": this is the current crumb in week view, and
+      // spelling it out cost the ~14px that pushed the date range into an
+      // ellipsis. The month grid labels its rows the same way.
+    }, `Wk ${isoWeekNumber(route.anchor)} · ${formatWeekRange(route.anchor, cfg.weekStart)}`));
   }
 
   if (route.view === 'day') {

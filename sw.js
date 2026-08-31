@@ -33,6 +33,9 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v36: a day that has gone looks like it — hatched in the month and week
+// grids, washed in the mini-calendar, stated outright on the day itself, and
+// said again with an Undo if something is dropped on one.
 // v35: countdowns on anything with a date, not just the Para 10; the day in
 // the header stops being crushed to one letter; New item asks for a title and
 // folds the rest away; Catch stops reloading itself and its filed notes can
@@ -95,7 +98,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v35';
+const CACHE_VERSION = 'organizer-v36';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not

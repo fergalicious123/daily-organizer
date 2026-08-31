@@ -107,6 +107,20 @@ export function monthGrid(key, weekStart = 1) {
   return weeks;
 }
 
+/**
+ * Is this day already behind us?
+ *
+ * String comparison, not Date arithmetic — keys are YYYY-MM-DD, which sorts
+ * correctly as text, and going through Date would reintroduce the timezone
+ * question this whole module exists to avoid.
+ *
+ * Today is NOT past. A day you are part-way through is still a day you can
+ * put something on.
+ */
+export function isPast(key) {
+  return Boolean(key) && key < todayKey();
+}
+
 export function isToday(key) {
   return key === todayKey();
 }
