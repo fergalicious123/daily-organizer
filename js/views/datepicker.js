@@ -17,7 +17,7 @@
  */
 
 import { el, icon } from '../ui.js';
-import { itemsOnDay, shiftFor, crewFrom, SHIFT } from '../state.js';
+import { itemsOnDay, shiftFor, crewFrom, hasJournal, SHIFT } from '../state.js';
 import {
   todayKey, fromKey, addMonths, monthGrid, formatMonthLong, formatDayHeader,
   formatDayShort, isToday, isPast, sameMonth, DAY_ABBR,
@@ -147,12 +147,14 @@ export function dateField({
         const crew = crewFrom(items);
         const openCount = items.filter((i) => !i.done).length;
         const gone = isPast(key);
+        const wrote = hasJournal(key);
 
         const described = [
           formatDayHeader(key),
           shift ? `on ${SHIFT_WORD[shift]}` : null,
           crew.length ? `with ${crew.join(', ')}` : null,
           openCount ? `${openCount} to do` : null,
+          wrote ? 'has a diary entry' : null,
           gone ? 'this day has gone' : null,
         ].filter(Boolean);
 
@@ -175,6 +177,7 @@ export function dateField({
           el('span.dp-num', String(fromKey(key).getDate())),
           shift && SHIFT_SHORT[shift] ? el('span.dp-shift', SHIFT_SHORT[shift]) : null,
           openCount ? el('span.dp-count', String(openCount)) : null,
+          wrote ? el('span.dp-diary') : null,
         ));
       }
     }

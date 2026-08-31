@@ -90,7 +90,7 @@ group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
   'brief', 'quotes', 'ai', 'reflect', 'daylog', 'triage', 'plan', 'dragdrop', 'shortcuts',
-  'countdown', 'usage',
+  'countdown', 'usage', 'markdown', 'paste',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
     'clocks', 'shortcutsPanel', 'planpanel', 'datepicker'].map((n) => `../js/views/${n}.js`),
@@ -323,6 +323,122 @@ if (mergeDocuments) {
   // Merging twice must not change the answer, or repeated syncs would drift.
   const twice = mergeDocuments(mergeDocuments(A, B).document, B).document.usage;
   check('merging again changes nothing', () => JSON.stringify(twice) === JSON.stringify(out));
+}
+
+/* ------------------------------------------------------------------ */
+/* Markdown                                                            */
+/* ------------------------------------------------------------------ */
+/* This renders text that arrived from somewhere else, so the first thing it
+   has to get right is not turning that text into markup that runs. The rest
+   is structure: a pasted table is worth keeping only if it stays a table. */
+group('markdown - structure survives, scripts do not');
+const md = loaded['../js/markdown.js'] || {};
+const draw = (src) => {
+  const host = document.createElement('div');
+  host.appendChild(md.renderMarkdown(src));
+  return host;
+};
+if (md.renderMarkdown) {
+  const table = [
+    '| Service No | Rank | Name |',
+    '|---|---|---|',
+    '| A8444971 | Pte | Johnston, Callum |',
+    '| 30283213 | Pte | Richards, Malcolm |',
+  ].join('\n');
+  const t = draw(table);
+  check('a pipe table becomes a table', () => t.querySelectorAll('table').length === 1);
+  check('with its header cells', () => t.querySelectorAll('thead th').length === 3);
+  check('and a row per line', () => t.querySelectorAll('tbody tr').length === 2);
+  check('cell text is kept intact', () => t.querySelectorAll('tbody td')[0].textContent === 'A8444971');
+  check('the table can scroll on its own', () => t.querySelectorAll('.md-table-wrap').length === 1);
+
+  // A ragged row must not shear the columns out of line with the headings.
+  const ragged = draw(['| A | B | C |', '|---|---|---|', '| 1 |'].join('\n'));
+  check('a short row is padded to the header width',
+    () => ragged.querySelectorAll('tbody tr td').length === 3);
+
+  // A sentence with a pipe in it is not a table.
+  const notTable = draw('Ask Hunter | Polean about the SCA scores');
+  check('a stray pipe does not start a table', () => !notTable.querySelector('table'));
+
+  const h = draw('# Title\n## Section\n### Deeper');
+  // Shifted down two: an entry already sits inside the page's own headings.
+  check('headings shift below the page level', () => h.querySelector('h3') && !h.querySelector('h1'));
+  check('every heading level renders', () => h.querySelectorAll('.md-h').length === 3);
+
+  const inline = draw('A **bold** and *italic* and `code` word.');
+  check('bold renders', () => inline.querySelector('strong')?.textContent === 'bold');
+  check('italic renders', () => inline.querySelector('em')?.textContent === 'italic');
+  check('code renders', () => inline.querySelector('code')?.textContent === 'code');
+  check('bold is not read as italic in asterisks',
+    () => draw('**x**').querySelector('strong') && !draw('**x**').querySelector('em'));
+  // Asterisks inside a code span are not markup.
+  check('markup inside code is left alone',
+    () => draw('`a **b** c`').querySelector('code').textContent === 'a **b** c');
+
+  const lists = draw('- one\n- two\n- three');
+  check('a bullet list renders', () => lists.querySelectorAll('ul li').length === 3);
+  check('a numbered list renders', () => draw('1. a\n2. b').querySelectorAll('ol li').length === 2);
+  check('a blockquote renders', () => Boolean(draw('> noted').querySelector('.md-quote')));
+
+  /* The safety properties. These matter most and are the easiest to lose in a
+     refactor to innerHTML. */
+  // The closing tag is written <\/script> deliberately: an HTML parser ends
+  // the enclosing <script> at the first literal one, wherever it appears —
+  // including inside a JS string. That truncated this whole file once.
+  const nasty = draw('<script>alert(1)<\/script> and <img src=x onerror=alert(2)>');
+  check('a script tag is text, not an element', () => !nasty.querySelector('script'));
+  check('an img tag is text, not an element', () => !nasty.querySelector('img'));
+  check('the angle brackets survive as characters', () => nasty.textContent.includes('<scr' + 'ipt>'));
+  check('a javascript: link is not made into a link',
+    () => !draw('[tap](javascript:alert(1))').querySelector('a'));
+  check('an http link is',
+    () => draw('[docs](https://example.com)').querySelector('a')?.href === 'https://example.com/');
+  check('links open away from the app',
+    () => draw('[d](https://example.com)').querySelector('a').rel.includes('noopener'));
+
+  check('empty input renders nothing', () => draw('').childNodes.length === 0);
+  check('null does not throw', () => draw(null).childNodes.length === 0);
+}
+if (md.looksLikeMarkdown) {
+  check('a table is recognised as markdown', () => md.looksLikeMarkdown('| a | b |\n|---|---|') === true);
+  check('a heading is', () => md.looksLikeMarkdown('# Hi') === true);
+  check('bold is', () => md.looksLikeMarkdown('some **bold** text') === true);
+  check('a plain sentence is not', () => md.looksLikeMarkdown('Went for a run, felt fine.') === false);
+  check('an empty string is not', () => md.looksLikeMarkdown('') === false);
+}
+
+/* ------------------------------------------------------------------ */
+/* Paste provenance                                                    */
+/* ------------------------------------------------------------------ */
+/* The line has to be truthful above all: it must never name a source it did
+   not actually read, because this writes into Ben's own diary. */
+group('paste - says when, and only says where when it knows');
+const paste = loaded['../js/paste.js'] || {};
+if (paste.provenanceLine) {
+  const when = new Date(2026, 7, 31, 17, 20);
+  check('names a source when there is one',
+    () => paste.provenanceLine('claude.ai', when).startsWith('> Pasted from claude.ai'));
+  check('says only when, with no source',
+    () => paste.provenanceLine('', when) === '> Pasted Mon 31 Aug 2026, 17:20');
+  check('is a blockquote so it renders as a caption',
+    () => paste.provenanceLine('', when).startsWith('> '));
+}
+if (paste.sourceFromClipboard) {
+  const fake = (html) => ({ getData: (t) => (t === 'text/html' ? html : '') });
+  check('reads a SourceURL header',
+    () => paste.sourceFromClipboard(fake('SourceURL:https://claude.ai/chat/1')) === 'claude.ai');
+  check('reads a base href',
+    () => paste.sourceFromClipboard(fake('<base href="https://example.com/x">')) === 'example.com');
+  check('drops the www',
+    () => paste.sourceFromClipboard(fake('SourceURL:https://www.example.com/')) === 'example.com');
+  // A link inside the copied text is not where the copy came from.
+  check('a link in the content is not treated as the source',
+    () => paste.sourceFromClipboard(fake('<p><a href="https://bbc.co.uk">news</a></p>')) === '');
+  check('a non-http scheme is refused',
+    () => paste.sourceFromClipboard(fake('SourceURL:file:///C:/secrets.txt')) === '');
+  check('no html flavour means no source', () => paste.sourceFromClipboard(fake('')) === '');
+  check('a broken clipboard does not throw', () => paste.sourceFromClipboard(null) === '');
 }
 
 /* ------------------------------------------------------------------ */

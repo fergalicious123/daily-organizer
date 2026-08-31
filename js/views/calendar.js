@@ -14,7 +14,7 @@ import {
 import {
   itemsOnDay, timedItemsOnDay, untimedItemsOnDay, unscheduledTasks, settings,
   updateItem, progressFor, getItem, eventColorSlot, liveItems, isSpanning,
-  shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, SHIFT, store, addItem,
+  shiftOnDay, crewOnDay, shiftFor, crewFrom, shiftKindOf, hasJournal, SHIFT, store, addItem,
 } from '../state.js';
 
 /** How each shift is named wherever one is spelled out rather than coloured. */
@@ -322,6 +322,12 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
 
   cell.appendChild(el('div.month-day-num',
     el('span.month-day-date', String(fromKey(dayKey).getDate())),
+    // A day you wrote something about is a day worth going back to, and there
+    // was nothing on the calendar to say which those were.
+    hasJournal(dayKey)
+      ? el('span.day-diary', { title: 'There is a diary entry for this day' },
+          icon('book', 'icon'))
+      : null,
     items.length
       ? el('span.month-count', {
         class: allDone ? 'is-clear' : '',
@@ -495,8 +501,23 @@ export function weekView(anchorKey, { onSelectDay }) {
     const prog = progressFor(items);
     const d = fromKey(dayKey);
 
+    /* The rota, on the column itself.
+       The month grid has said which shift a day is since v7, and the week
+       view never did -- so the one view that shows a whole block of four in
+       detail was the one that could not tell you it was a block of four. The
+       shift arrived as just another chip reading "Day Shift (D)", indistin-
+       guishable from a task called the same thing.
+       Derived from the items already fetched above rather than by calling
+       shiftOnDay, which re-scans and re-sorts the entire list per call. */
+    const shift = shiftFor(items);
+    const crew = crewFrom(items);
+
     const col = el('div.week-col', {
-      class: [isToday(dayKey) ? 'is-today' : '', isPast(dayKey) ? 'is-past' : ''].filter(Boolean).join(' '),
+      class: [
+        isToday(dayKey) ? 'is-today' : '',
+        isPast(dayKey) ? 'is-past' : '',
+        shift ? `on-${shift}` : '',
+      ].filter(Boolean).join(' '),
     });
 
     col.appendChild(el('div.week-col-head', {
@@ -522,6 +543,16 @@ export function weekView(anchorKey, { onSelectDay }) {
           }, String(open));
         })(),
       ),
+      // Said in words, not left to the tint alone -- the whole complaint was
+      // that this view did not say whether he was on nights or days.
+      shift ? el('div.week-col-shift',
+        el('span.week-col-shift-label', SHIFT_BADGE[shift] || 'SHIFT'),
+        crew.length ? el('span.week-col-crew', crew.join(', ')) : null,
+      ) : null,
+      hasJournal(dayKey)
+        ? el('span.day-diary', { title: 'There is a diary entry for this day' },
+            icon('book', 'icon'))
+        : null,
     ));
 
     const body = el('div.week-col-body');

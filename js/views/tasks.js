@@ -3,7 +3,7 @@
  */
 
 import { el, icon, toast, openModal, confirmDialog, haptic, clear as clearNode } from '../ui.js';
-import { makeTouchDraggable } from '../dragdrop.js';
+import { makeTouchDraggable, registerDropZone } from '../dragdrop.js';
 import {
   store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
   toggleDone, toggleSubtask, addSubtask, removeSubtask, settings, liveItems,
@@ -16,6 +16,8 @@ import { voice, speechSupported } from '../voice.js';
 import { countdown, daysUntil } from '../countdown.js';
 import * as usage from '../usage.js';
 import { dateField } from './datepicker.js';
+import { looksLikeMarkdown, markdownBlock } from '../markdown.js';
+import { stampPaste } from '../paste.js';
 
 
 /* ------------------------------------------------------------------ */
@@ -266,12 +268,19 @@ export function taskList(items, {
   // fights the grouping the user actually asked for.
   if (groupBy && groupBy !== 'none') {
     const groups = groupItems(urgencyOrder ? byUrgency(open, today) : open, groupBy, today);
-    for (const [label, members] of groups) {
-      if (!members.length) continue;
-      frag.appendChild(el('div.task-group-label',
-        { class: label === 'Overdue' ? 'is-overdue' : '' },
+    for (const [label, members, patch] of groups) {
+      // An EMPTY group still gets a heading now, where before it was skipped.
+      // That was right when a heading was only a label -- an empty one said
+      // nothing -- and wrong the moment it became a place to put things: the
+      // list you most want to drag a task into is usually the one with
+      // nothing in it yet.
+      if (!members.length && !patch) continue;
+      const head = el('div.task-group-label',
+        { class: [label === 'Overdue' ? 'is-overdue' : '', members.length ? '' : 'is-empty']
+          .filter(Boolean).join(' ') },
         label === 'Overdue' ? icon('warning', 'icon') : null,
-        `${label} · ${members.length}`));
+        members.length ? `${label} · ${members.length}` : label);
+      frag.appendChild(makeGroupTarget(head, patch, label));
       for (const item of members) frag.appendChild(taskRow(item, withRank(item)));
     }
     if (groupDone && done.length) {
@@ -308,8 +317,22 @@ export function taskList(items, {
  * High before Low — and object key order would not survive numeric-looking
  * labels.
  */
+/**
+ * The groups, each with the patch that MOVING something into it would apply.
+ *
+ * The patch is the point. A heading used to be a string, which is fine to
+ * read and useless to drop on: "High" tells you nothing about what to do to a
+ * task dragged onto it. Carrying `{ priority: 3 }` alongside makes the
+ * heading a place you can put something, and means the drop handler never has
+ * to reverse-engineer a label back into a field.
+ *
+ * A null patch is a group you cannot drop into. "Overdue" is the only one:
+ * there is no sensible date that means "make this late", and quietly picking
+ * yesterday to satisfy the gesture would be inventing a decision.
+ */
 function groupItems(items, groupBy, today) {
   const buckets = new Map();
+  const patches = new Map();
   const put = (label, item) => {
     if (!buckets.has(label)) buckets.set(label, []);
     buckets.get(label).push(item);
@@ -317,18 +340,23 @@ function groupItems(items, groupBy, today) {
 
   if (groupBy === 'list') {
     // Follow the sidebar's order so the two readings of "my lists" agree.
-    for (const list of store.state.lists) buckets.set(list.name, []);
+    for (const list of store.state.lists) {
+      buckets.set(list.name, []);
+      patches.set(list.name, { listId: list.id });
+    }
     for (const item of items) put(getList(item.listId)?.name || 'No list', item);
-    return [...buckets.entries()];
+    return [...buckets.entries()].map(([label, members]) =>
+      [label, members, patches.get(label) || null]);
   }
 
   if (groupBy === 'priority') {
     const order = ['High', 'Medium', 'Low', 'No priority'];
+    const value = { High: 3, Medium: 2, Low: 1, 'No priority': 0 };
     for (const label of order) buckets.set(label, []);
     for (const item of items) {
       put(['No priority', 'Low', 'Medium', 'High'][item.priority || 0], item);
     }
-    return order.map((label) => [label, buckets.get(label) || []]);
+    return order.map((label) => [label, buckets.get(label) || [], { priority: value[label] }]);
   }
 
   // groupBy === 'due'
@@ -344,7 +372,49 @@ function groupItems(items, groupBy, today) {
     else if (item.date <= weekOut) put('This week', item);
     else put('Later', item);
   }
-  return order.map((label) => [label, buckets.get(label) || []]);
+  const datePatch = {
+    Overdue: null,                          // nothing sane to set
+    Today: { date: today },
+    Tomorrow: { date: tomorrow },
+    'This week': { date: weekOut },
+    Later: { date: addDays(today, 14) },
+    'No date': { date: null },
+  };
+  return order.map((label) => [label, buckets.get(label) || [], datePatch[label]]);
+}
+
+/**
+ * Make a group heading somewhere you can drop a task.
+ *
+ * Both drag paths, because the tasks list is used as much on the phone as on
+ * the laptop: HTML5 for the mouse, registerDropZone for the finger.
+ */
+function makeGroupTarget(node, patch, label) {
+  if (!patch) return node;
+  node.classList.add('is-droppable');
+  node.title = `Drop a task here to move it to ${label}`;
+
+  const apply = ({ itemId }) => {
+    const item = itemId ? getItem(itemId) : null;
+    if (!item) return;
+    updateItem(itemId, { ...patch });
+    toast(`Moved to ${label}`, { action: 'Undo', onAction: () => store.undo() });
+  };
+
+  node.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    node.classList.add('is-drop-target');
+  });
+  node.addEventListener('dragleave', () => node.classList.remove('is-drop-target'));
+  node.addEventListener('drop', (e) => {
+    e.preventDefault();
+    node.classList.remove('is-drop-target');
+    const id = e.dataTransfer.getData('text/plain');
+    if (id) apply({ itemId: id });
+  });
+  registerDropZone(node, { group: label }, apply);
+  return node;
 }
 
 /* ------------------------------------------------------------------ */
@@ -467,7 +537,11 @@ function noteLog(item) {
             onclick: () => { removeNote(item.id, note.id); redraw(); },
           }, icon('trash', 'icon')),
         ),
-        el('p.note-text', note.text),
+        // Notes get pasted into as often as they get typed into, and a
+        // pasted table is the case where the shape carries the meaning.
+        looksLikeMarkdown(note.text)
+          ? markdownBlock(note.text, 'md note-md')
+          : el('p.note-text', note.text),
       ));
     }
   };
@@ -476,6 +550,7 @@ function noteLog(item) {
   const box = el('textarea.note-input', {
     placeholder: 'Add a note…',
     rows: 2,
+    onpaste: (e) => stampPaste(e, box, () => {}),
   });
 
   const commit = (source = NOTE_SOURCE.TYPED) => {

@@ -33,6 +33,10 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v38: pasted markdown renders — tables, headings, bold — with a line saying
+// when it was pasted and, where the clipboard says so, from where; the week
+// view says which shift you are on; a diary entry is marked on the calendar;
+// and a task can be dragged onto a group heading to move it there.
 // v37: the date picker is the month grid — rota colours, what is already on
 // the day, and what has gone; the diary opens on any day, including one still
 // to come; and the app counts what gets used so there is something to review
@@ -102,7 +106,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v37';
+const CACHE_VERSION = 'organizer-v38';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -134,6 +138,8 @@ const SHELL = [
   './js/daylog.js',
   './js/countdown.js',
   './js/usage.js',
+  './js/markdown.js',
+  './js/paste.js',
   './js/ai.js',
   './js/dragdrop.js',
   './js/shortcuts.js',

@@ -1341,6 +1341,17 @@ export function hasDayMaterial(m) {
 }
 
 /** Every written day, newest first. */
+/**
+ * Is there a diary entry for this day?
+ *
+ * Whitespace does not count. setJournal writes an empty string when an entry
+ * is cleared rather than deleting the key, so testing for the key would mark
+ * every day he had ever opened and thought better of.
+ */
+export function hasJournal(dateKey) {
+  return Boolean(store.state.journal?.[dateKey]?.text?.trim());
+}
+
 export function journalEntries() {
   const journal = store.state.journal || {};
   return Object.entries(journal)

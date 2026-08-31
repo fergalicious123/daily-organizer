@@ -19,6 +19,8 @@ import {
 import { writeUpDay, plainSummary, materialToText, daylogConfigured } from '../daylog.js';
 import * as usage from '../usage.js';
 import { dateField } from './datepicker.js';
+import { looksLikeMarkdown, markdownBlock } from '../markdown.js';
+import { stampPaste } from '../paste.js';
 import { todayKey, formatDayLong, formatRelativeDay, formatTime, addDays } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 
@@ -124,8 +126,48 @@ function continueBullet(e, area, onChange) {
  * which is what `focusId` is for: the caret, the half-typed value and both
  * scroll positions are restored afterwards. See captureFocus in app.js.
  */
+/**
+ * Which days are being written rather than read.
+ *
+ * Only EXPLICIT choices go in here. An absent day falls back to the rule
+ * below, so a pasted table shows itself the first time you open the day
+ * without anyone having to find a button, and a day you have deliberately
+ * put back into edit stays there while you work on it.
+ */
+const writing = new Map();
+
+/* Read by default when there is structure to show, write by default when
+   there is not. An empty day is a box to type in; a day holding a pasted
+   table is a thing to look at. */
+function isWriting(dateKey, text) {
+  if (writing.has(dateKey)) return writing.get(dateKey);
+  return !looksLikeMarkdown(text);
+}
+
 export function journalEditor(dateKey, { compact = false } = {}) {
   const entry = journalFor(dateKey);
+
+  /* ---- reading ----
+     The whole reason the markdown renderer exists: a pasted table of who is
+     out of date on SCA is a table, and showing it as pipes and asterisks
+     threw away the part worth keeping. */
+  if (!isWriting(dateKey, entry?.text || '')) {
+    return el('div.journal-editor.is-reading',
+      markdownBlock(entry.text, 'md journal-md'),
+      el('div.journal-tools',
+        el('button.btn.btn-quiet', {
+          type: 'button',
+          onclick: () => {
+            writing.set(dateKey, true);
+            document.dispatchEvent(new CustomEvent('organizer:rerender'));
+          },
+        }, icon('edit', 'icon'), 'Edit'),
+        entry?.updatedAt
+          ? el('span.journal-saved', `saved ${formatRelativeDay(entry.updatedAt.slice(0, 10))}`)
+          : null,
+      ),
+    );
+  }
   const box = el('div.journal-editor', { class: compact ? 'is-compact' : '' });
   const status = el('span.journal-status');
 
@@ -211,6 +253,7 @@ export function journalEditor(dateKey, { compact = false } = {}) {
     // Leaving the box is the moment a redraw is free, so this save is not
     // live: the rest of the app catches up with what was written, once.
     onblur: () => commit(),
+    onpaste: (e) => stampPaste(e, area, () => { fit(); scheduleSave(); }),
   });
 
   // scrollHeight is 0 until the element is in the document, so the first fit
@@ -262,10 +305,23 @@ export function journalEditor(dateKey, { compact = false } = {}) {
     },
   }, icon('mic', 'icon'), 'Dictate');
 
+  const done = el('button.btn.btn-quiet', {
+    type: 'button',
+    onclick: () => {
+      commit();
+      writing.set(dateKey, false);
+      document.dispatchEvent(new CustomEvent('organizer:rerender'));
+    },
+  }, 'Done');
+
   box.append(
     area,
     el('div.journal-tools',
       mic,
+      // Only worth offering when there is structure to render. On a plain
+      // day's write-up a "Done" button would just be a second way to do what
+      // clicking off the box already does.
+      looksLikeMarkdown(entry?.text || '') ? done : null,
       status,
       entry?.updatedAt
         ? el('span.journal-saved', `saved ${formatRelativeDay(entry.updatedAt.slice(0, 10))}`)
@@ -276,12 +332,20 @@ export function journalEditor(dateKey, { compact = false } = {}) {
 }
 
 /**
- * A written entry, as a list.
+ * A written entry, rendered.
  *
- * A single line is left as a sentence — one bullet is not a list, it is a
- * sentence with a dot in front of it.
+ * Entries used to be split on newlines and shown as bullets, which is right
+ * for a list of things that happened and wrong for anything pasted in: a
+ * table of who is out of date on SCA arrived as a wall of pipes and asterisks,
+ * and the structure — which is most of what made it worth keeping — was the
+ * first thing thrown away.
+ *
+ * Text with no markdown in it still reads as a list, because that is what a
+ * day's write-up is. A single line stays a sentence: one bullet is not a
+ * list, it is a sentence with a dot in front of it.
  */
 function entryBody(text) {
+  if (looksLikeMarkdown(text)) return markdownBlock(text, 'md journal-md');
   const lines = entryLines(text);
   if (lines.length <= 1) return el('p.journal-entry-text', lines[0] || '');
   return el('ul.journal-bullets', lines.map((line) => el('li', line)));
