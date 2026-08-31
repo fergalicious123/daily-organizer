@@ -28,6 +28,7 @@ import {
 import { quoteFor } from '../quotes.js';
 import { todayKey } from '../dates.js';
 import { countdown } from '../countdown.js';
+import * as usage from '../usage.js';
 
 /**
  * Which quotes are showing their note.
@@ -117,6 +118,7 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
       onclick: () => {
         haptic();
         toggleRoutineStep(step, dateKey);
+        usage.record('ROUTINE_TICK');
         onToggle?.();
       },
     },

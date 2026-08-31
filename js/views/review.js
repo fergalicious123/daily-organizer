@@ -13,6 +13,7 @@
 
 import { el, icon, toast } from '../ui.js';
 import { openItemEditor } from './tasks.js';
+import * as usage from '../usage.js';
 import {
   reflectionMaterial, shiftBlock, markReviewed, addItem, SHIFT, NOTE_SOURCE,
 } from '../state.js';
@@ -418,6 +419,7 @@ async function run(material) {
   failure = '';
   document.dispatchEvent(new CustomEvent('organizer:rerender'));
   try {
+    usage.record('REVIEW_RUN');
     result = await proposeActions(material);
     resultSpan = `${material.from}..${material.to}`;
   } catch (err) {

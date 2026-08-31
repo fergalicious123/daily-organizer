@@ -14,6 +14,8 @@ import {
 } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 import { countdown, daysUntil } from '../countdown.js';
+import * as usage from '../usage.js';
+import { dateField } from './datepicker.js';
 
 
 /* ------------------------------------------------------------------ */
@@ -164,6 +166,7 @@ export function taskRow(item, {
   row.append(
     checkbox(item.done, item.priority, () => {
       toggleDone(item.id);
+      usage.record('ITEM_DONE');
       if (!item.done) haptic();
     }),
     el('div.task-main',
@@ -203,6 +206,7 @@ export function taskRow(item, {
 }
 
 function deleteWithUndo(id) {
+  usage.record('ITEM_DELETE');
   const item = getItem(id);
   if (!item) return;
   removeItem(id);
@@ -373,6 +377,7 @@ export function quickAdd({
       delete fields.dateExplicit;
     }
 
+    usage.record('QUICK_ADD');
     const item = addItem(fields);
     input.value = '';
     onAdd?.(item);
@@ -477,6 +482,7 @@ function noteLog(item) {
     const text = box.value.trim();
     if (!text) return;
     addNote(item.id, text, source);
+    usage.record('NOTE_ADD');
     box.value = '';
     redraw();
   };
@@ -554,6 +560,7 @@ function formatNoteTime(iso) {
 }
 
 export function openItemEditor(id, presets = {}) {
+  usage.record('EDITOR_OPEN');
   const existing = id ? getItem(id) : null;
   // Whether a type change should propagate to every item sharing this title.
   let applyToSeries = false;
@@ -664,16 +671,26 @@ export function openItemEditor(id, presets = {}) {
       more.push(typeField);
 
       // Date + time
-      const dateInput = el('input', {
-        type: 'date', value: draft.date || '',
-        oninput: (e) => { draft.date = e.target.value || null; describeLanding(); syncCountdown(); },
+      // The rota-aware grid, in place of the browser's own picker. See the
+      // note at the top of datepicker.js: choosing a date without being able
+      // to see whether it is the second of four nights is choosing blind.
+      const picker = dateField({
+        value: draft.date,
+        weekStart: settings().weekStart,
+        label: 'Date',
+        onPick: (key) => {
+          usage.record('DATE_PICKER');
+          draft.date = key;
+          describeLanding();
+          syncCountdown();
+        },
       });
       const timeInput = el('input', {
         type: 'time', value: draft.time || '',
         oninput: (e) => { draft.time = e.target.value || null; describeLanding(); },
       });
       more.push(el('div.field-row',
-        el('div.field', el('label', 'Date'), dateInput),
+        el('div.field', el('label', 'Date'), picker.node),
         el('div.field', el('label', 'Time'), timeInput),
       ));
 
@@ -687,7 +704,7 @@ export function openItemEditor(id, presets = {}) {
         ].map(([label, value]) => el('button.pill', {
           onclick: () => {
             draft.date = value;
-            dateInput.value = value || '';
+            picker.set(value);
             describeLanding();
             syncCountdown();
           },
@@ -707,6 +724,7 @@ export function openItemEditor(id, presets = {}) {
         class: draft.countdown ? 'is-active' : '',
         onclick: (e) => {
           draft.countdown = !draft.countdown;
+          if (draft.countdown) usage.record('COUNTDOWN_SET');
           e.currentTarget.classList.toggle('is-active', Boolean(draft.countdown));
           e.currentTarget.setAttribute('aria-pressed', String(Boolean(draft.countdown)));
           syncCountdown();
@@ -858,6 +876,7 @@ export function openItemEditor(id, presets = {}) {
         'aria-expanded': startOpen ? 'true' : 'false',
         onclick: (e) => {
           const open = moreBox.hidden;
+          if (open) usage.record('EDITOR_MORE');
           moreBox.hidden = !open;
           e.currentTarget.setAttribute('aria-expanded', String(open));
           e.currentTarget.textContent = open ? 'Fewer options' : 'Date, time, list and more';
@@ -912,6 +931,7 @@ export function openItemEditor(id, presets = {}) {
         });
       }
     } else {
+      usage.record('ITEM_ADD');
       addItem(draft);
     }
     close();

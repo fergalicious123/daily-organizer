@@ -18,11 +18,19 @@
 
 import {
   store, addCapture, captures, openCaptures, setCaptureKind, removeCapture,
-  sendCaptureToOrganizer, CAPTURE, NOTE_SOURCE, settings,
+  sendCaptureToOrganizer as sendToOrganizer, CAPTURE, NOTE_SOURCE, settings,
 } from '../js/state.js';
 import { voice, speechSupported } from '../js/voice.js';
 import { triage, triageConfigured } from '../js/triage.js';
 import { todayKey, addDays, formatTime } from '../js/dates.js';
+import * as usage from '../js/usage.js';
+
+/* Every hand-off to the organizer goes through here, so the count cannot
+   drift out of step with the five buttons that can cause one. */
+function sendCaptureToOrganizer(id, opts) {
+  usage.record('CAPTURE_SEND');
+  return sendToOrganizer(id, opts);
+}
 
 const box = document.getElementById('box');
 const micBtn = document.getElementById('mic');
@@ -44,6 +52,7 @@ function commit(source = NOTE_SOURCE.TYPED) {
   const text = box.value.trim();
   if (!text) return;
   addCapture(text, source);
+  usage.record(source === NOTE_SOURCE.VOICE ? 'VOICE_ADD' : 'CAPTURE_ADD');
   box.value = '';
   box.style.height = '';
   render();
@@ -126,6 +135,7 @@ async function runTriage() {
   failure = '';
   render();
   try {
+    usage.record('TRIAGE_RUN');
     const result = await triage(open.map((c) => ({ id: c.id, text: c.text })));
     sorted = new Map(result.map((r) => [r.id, r]));
   } catch (err) {
@@ -336,6 +346,8 @@ window.addEventListener('storage', (e) => {
   if (e.key !== 'daily-organizer:v1' || e.newValue === e.oldValue) return;
   store.adoptStored();
 });
+
+usage.record('VIEW_CAPTURE');
 
 store.subscribe(() => render());
 render();

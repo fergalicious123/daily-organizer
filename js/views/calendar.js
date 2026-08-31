@@ -5,6 +5,7 @@
  */
 
 import { el, icon, isMobile, toast } from '../ui.js';
+import * as usage from '../usage.js';
 import {
   monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend, isPast,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
@@ -1166,6 +1167,7 @@ export function applyDropOnDay({ itemId, dateKey, time }) {
    * backdating something you genuinely did on Tuesday is a real thing to want.
    */
   const landsInThePast = isPast(dateKey);
+  usage.record('DRAG_SCHEDULE');
 
   /*
    * A step from a plan, dragged onto a day before it is anything.
@@ -1180,6 +1182,7 @@ export function applyDropOnDay({ itemId, dateKey, time }) {
   if (String(itemId).startsWith(PLAN_PREFIX)) {
     const step = takePlanStep(String(itemId).slice(PLAN_PREFIX.length));
     if (!step) return;
+    usage.record('PLAN_STEP_TAKE');
     addItem({
       kind: 'task',
       title: step.title,

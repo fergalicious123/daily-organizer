@@ -769,6 +769,44 @@ export function mergeDocuments(local, remote) {
   if ((local.captures || []).length !== mergedCaptures.length) changedLocal = true;
   if ((remote.captures || []).length !== mergedCaptures.length) changedRemote = true;
 
+  /*
+   * Usage counters, merged per device and per feature by taking the HIGHER
+   * count.
+   *
+   * Not last-write-wins, and not addition. Newest-wins would throw away
+   * everything the other device had counted since it last synced; adding would
+   * double every count that had already been synced once. A given device's
+   * count for a given feature only ever goes up, and only that device writes
+   * it, so the larger number is always the more complete one — whichever side
+   * it arrives from, and however many times the two are merged.
+   */
+  const usage = {};
+  for (const side of [remote.usage || {}, local.usage || {}]) {
+    for (const [deviceKey, bucket] of Object.entries(side)) {
+      if (!bucket || typeof bucket !== 'object') continue;
+      const into = usage[deviceKey] || (usage[deviceKey] = {});
+      for (const [feature, entry] of Object.entries(bucket)) {
+        if (!entry) continue;
+        /* Built field by field, not by taking whichever side has the bigger
+           count wholesale. That version replaced the entry object when a
+           larger count arrived, and took its timestamps with it — so a device
+           whose count was higher but whose last-used was older dragged the
+           first/last dates backwards. Each field has its own rule, so each
+           field gets merged by it. */
+        const have = into[feature] || {};
+        const first = [have.first, entry.first].filter(Boolean).sort();
+        const last = [have.last, entry.last].filter(Boolean).sort();
+        into[feature] = {
+          n: Math.max(Number(have.n) || 0, Number(entry.n) || 0),
+          first: first[0] || '',
+          last: last[last.length - 1] || '',
+        };
+      }
+    }
+  }
+  if (JSON.stringify(usage) !== JSON.stringify(local.usage || {})) changedLocal = true;
+  if (JSON.stringify(usage) !== JSON.stringify(remote.usage || {})) changedRemote = true;
+
   // The written-up day summaries. Same shape, same merge, and kept apart from
   // the journal entries themselves so a summary generated on one device cannot
   // land on top of a sentence typed on another.
@@ -816,6 +854,7 @@ export function mergeDocuments(local, remote) {
       journal,
       journalSummary,
       captures: mergedCaptures,
+      usage,
       routine,
       lists: [...lists.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       inboxListId: local.inboxListId || remote.inboxListId,

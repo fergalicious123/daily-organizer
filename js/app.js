@@ -16,6 +16,7 @@ import {
   routineSteps, setRoutineTarget,
 } from './state.js';
 import { daysUntil } from './countdown.js';
+import * as usage from './usage.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
   formatMonthLong, formatWeekRange, formatDayLong, formatDayShort, formatDayHeader,
@@ -53,13 +54,26 @@ const route = {
   listId: null,         // when view === 'tasks'
 };
 
+/** Which counter a view belongs to. Views not listed simply are not counted. */
+const VIEW_FEATURE = {
+  home: 'VIEW_HOME', day: 'VIEW_DAY', week: 'VIEW_WEEK', month: 'VIEW_MONTH',
+  tasks: 'VIEW_TASKS', journal: 'VIEW_JOURNAL', review: 'VIEW_REVIEW',
+  stats: 'VIEW_STATS',
+};
+
 function navigate(patch) {
   // Leaving a view takes its microphone with it. The diary's mic had the same
   // hole as the item editor's: start dictating, tap another view, and the
   // control that would have stopped it is gone while the recogniser carries on.
   if (voice.listening) voice.stop();
+  // Only when the view actually CHANGES. Stepping through days with the
+  // arrows calls this on every press with the same view, and counting those
+  // would make the day view look like the most-used thing in the app by an
+  // order of magnitude — measuring the arrow keys, not the view.
+  const changed = patch.view && patch.view !== route.view;
   Object.assign(route, patch);
   persistRoute();
+  if (changed && VIEW_FEATURE[route.view]) usage.record(VIEW_FEATURE[route.view]);
   render();
 }
 
@@ -371,6 +385,7 @@ Click to connect.`
       const button = e.currentTarget;
       button.disabled = true;
       try {
+        usage.record('SYNC_CONNECT');
         await sync.connect({ interactive: true });
         toast('Connected — syncing now.');
       } catch (err) {
@@ -665,6 +680,57 @@ function statsView() {
     ),
   ));
 
+  /* ---- what actually gets used ----
+     Built to answer one question in three months: what should come out? So it
+     shows the FULL list, zeros and all, ranked. A feature at zero is the most
+     useful row here and would be invisible in a list of things you have used.
+     It lives on Progress rather than in Settings because it is a statistic
+     about how the app is going, which is what this page is. */
+  const usageRows = usage.report();
+  const usedAt = usage.since();
+  const usedTotal = usageRows.reduce((a, r) => a + r.n, 0);
+  const top = usageRows[0]?.n || 0;
+  const unused = usageRows.filter((r) => !r.n).length;
+
+  root.appendChild(el('div.stat-card.usage-card',
+    el('h3', 'What you actually use'),
+    usedTotal === 0
+      ? el('p.stat-sub', { style: { margin: 0 } },
+          'Nothing counted yet. Use the app for a while and this fills in.')
+      : el('div',
+        el('p.stat-sub', { style: { margin: '0 0 10px' } },
+          `${usedTotal} actions counted`,
+          usedAt ? ` since ${formatDayShort(usedAt.slice(0, 10))}` : '',
+          unused ? ` · ${unused} never used` : '',
+        ),
+        el('div.usage-list', usageRows.map((row) => el('div.usage-row',
+          { class: row.n ? '' : 'is-unused' },
+          el('span.usage-label', row.label),
+          el('span.usage-bar',
+            el('span', { style: { width: `${top ? Math.round((row.n / top) * 100) : 0}%` } })),
+          el('span.usage-n', String(row.n)),
+        ))),
+        el('p.field-hint', { style: { marginTop: '10px' } },
+          'Counted on this device and any other you sync with, and kept in your own '
+          + 'Drive file. Counters and dates only — no titles, no text. '
+          + 'Nothing is sent anywhere it was not already going.'),
+        el('button.btn.btn-quiet', {
+          style: { marginTop: '8px' },
+          onclick: async () => {
+            const ok = await confirmDialog({
+              title: 'Start counting again?',
+              message: 'Clears every count on every device you sync with. The app itself is unchanged.',
+              confirmLabel: 'Reset counts',
+              danger: true,
+            });
+            if (!ok) return;
+            usage.reset();
+            render();
+          },
+        }, 'Reset counts'),
+      ),
+  ));
+
   root.appendChild(el('div.stat-card',
     el('h3', 'By list'),
     listBars(store.state.lists.map((list) => {
@@ -887,6 +953,7 @@ function listContextMenu(list) {
 /* ------------------------------------------------------------------ */
 
 function openSettings(focusSection = null) {
+  usage.record('SETTINGS_OPEN');
   const cfg = settings();
 
   openModal({
@@ -1378,7 +1445,7 @@ function installKeyboard() {
       if (typing) return;
       e.preventDefault();
       if (e.shiftKey) { store.redo(); toast('Redone'); }
-      else if (store.canUndo()) { store.undo(); toast('Undone'); }
+      else if (store.canUndo()) { store.undo(); usage.record('UNDO'); toast('Undone'); }
       return;
     }
 

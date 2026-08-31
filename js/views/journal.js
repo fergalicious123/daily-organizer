@@ -17,6 +17,8 @@ import {
   journalSummaryFor, setJournalSummary, dayMaterial, hasDayMaterial,
 } from '../state.js';
 import { writeUpDay, plainSummary, materialToText, daylogConfigured } from '../daylog.js';
+import * as usage from '../usage.js';
+import { dateField } from './datepicker.js';
 import { todayKey, formatDayLong, formatRelativeDay, formatTime, addDays } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 
@@ -175,9 +177,15 @@ export function journalEditor(dateKey, { compact = false } = {}) {
   };
 
   const area = el('textarea.journal-text', {
+    // A day still to come has not happened, so asking what happened on it is
+    // the wrong question — and it is the question that decides whether this
+    // reads as a diary you can only look back through or one you can also
+    // leave yourself a note in.
     placeholder: dateKey === todayKey()
       ? 'How did today go? What happened, what got in the way…'
-      : 'What happened on this day…',
+      : dateKey > todayKey()
+        ? 'Notes for this day — what you want to remember, or to do…'
+        : 'What happened on this day…',
     value: entry?.text || '',
     rows: compact ? 8 : 14,
     dataset: { focusId: `journal-${dateKey}` },
@@ -357,6 +365,7 @@ function daySummary(dateKey) {
       busy.add(dateKey);
       rerender();
       try {
+        usage.record('DAYLOG_WRITE');
         const result = await writeUpDay(material, { hour12: settings().hour12 });
         if (result.text) {
           setJournalSummary(dateKey, result.text);
@@ -408,28 +417,86 @@ function daySummary(dateKey) {
 /* The diary view                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Which day the diary is open on. Null means today.
+ *
+ * Module-level, like the routine card's open notes and for the same reason:
+ * this view is rebuilt on every store change, and a day held on the element
+ * would snap back to today the moment anything saved — including the entry
+ * being typed.
+ */
+let focusDay = null;
+
+/** Repaint without routing it through the store: this is where you are looking,
+    not something to save and sync. */
+function refocus(key) {
+  focusDay = key;
+  document.dispatchEvent(new CustomEvent('organizer:rerender'));
+}
+
 export function journalView({ onNavigate }) {
   const root = el('div.journal-view.view-anim');
   const today = todayKey();
+  // A day that has been and gone stops being reachable through the list below
+  // after ninety days, and a day still to come was never reachable at all.
+  const open = focusDay || today;
 
   root.appendChild(el('header.journal-head',
     el('h1.journal-title', 'Diary'),
     el('p.journal-sub',
-      'What happened, and what you finished. Write it as you go, or dictate it.'),
+      'What happened, and what you finished. Write it as you go, or dictate it. '
+      + 'Move to any day — including one still to come — to leave a note on it.'),
   ));
 
-  // Today is always first and always open, written or not — the whole point is
-  // to make writing tonight's entry the path of least resistance.
+  /* ---- which day ----
+     The diary used to be today, then a list of days behind you. Fine for
+     writing up tonight, useless for "I know what I want to say about Friday".
+     Nothing in the data ever stopped it: entries are keyed by day and always
+     were. It was only the screen that had no way to ask for one.
+     The picker is the same rota-coloured grid as the item editor's, so
+     choosing the second of four nights to write about is a thing you can see
+     rather than work out. */
+  const picker = dateField({
+    value: open,
+    weekStart: settings().weekStart,
+    label: 'Which day',
+    onPick: (key) => refocus(key || today),
+  });
+
+  root.appendChild(el('div.journal-nav',
+    el('button.btn.btn-ghost.btn-icon', {
+      'aria-label': 'Previous day',
+      onclick: () => refocus(addDays(open, -1)),
+    }, icon('chevronLeft')),
+    picker.node,
+    el('button.btn.btn-ghost.btn-icon', {
+      'aria-label': 'Next day',
+      onclick: () => refocus(addDays(open, 1)),
+    }, icon('chevronRight')),
+    open === today
+      ? null
+      : el('button.btn.btn-quiet', { onclick: () => refocus(today) }, 'Today'),
+  ));
+
+  // The chosen day is always first and always open, written or not — the whole
+  // point is to make writing the entry the path of least resistance.
   root.appendChild(el('section.journal-entry.is-today',
     el('div.journal-entry-head',
       el('div',
-        el('span.journal-entry-day', 'Today'),
-        el('span.journal-entry-date', formatDayLong(today)),
+        el('span.journal-entry-day',
+          open === today ? 'Today' : formatRelativeDay(open)),
+        el('span.journal-entry-date', formatDayLong(open)),
       ),
+      open > today
+        ? el('span.journal-ahead', 'Still to come')
+        : null,
     ),
-    journalEditor(today),
-    doneList(today),
-    daySummary(today),
+    journalEditor(open),
+    doneList(open),
+    // Only a day that has happened can be written up from what the app
+    // recorded. Offering to summarise Thursday on Tuesday would be an
+    // invitation to invent one.
+    open > today ? null : daySummary(open),
   ));
 
   // Every other day that has something to show: a written entry, or things
@@ -440,7 +507,7 @@ export function journalView({ onNavigate }) {
     const key = addDays(today, -i);
     if (completedOn(key).length) days.add(key);
   }
-  days.delete(today);
+  days.delete(open);
 
   const past = [...days].sort().reverse();
   if (!past.length) {
@@ -456,8 +523,8 @@ export function journalView({ onNavigate }) {
     const entry = written.get(key);
     root.appendChild(el('section.journal-entry',
       el('button.journal-entry-head', {
-        title: 'Open this day',
-        onclick: () => onNavigate({ view: 'day', anchor: key }),
+        title: 'Write about this day',
+        onclick: () => refocus(key),
       },
         el('div',
           el('span.journal-entry-day', formatRelativeDay(key)),

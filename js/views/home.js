@@ -18,6 +18,7 @@ import {
   shiftOnDay, crewOnDay, liveItems, SHIFT,
 } from '../state.js';
 import { itemCountdowns } from '../countdown.js';
+import * as usage from '../usage.js';
 
 /** Said as a statement, because this is an answer, not a label. */
 const SHIFT_LABEL = {
@@ -93,6 +94,7 @@ function briefCard() {
 
   const send = el('button.btn.btn-primary.brief-send', {
     onclick: async () => {
+      usage.record('BRIEF_SEND');
       const text = body.textContent;
       // Auto-send only where it has been deliberately set up. Everyone else
       // gets the deep link, which needs nothing and works everywhere.
@@ -124,6 +126,7 @@ function briefCard() {
       onclick: async (e) => {
         const button = e.currentTarget;
         button.disabled = true;
+        usage.record('BRIEF_REWORD');
         status.textContent = 'Rewording…';
         const result = await polishBrief(brief);
         setText(result.text);

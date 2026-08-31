@@ -90,10 +90,10 @@ group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
   'brief', 'quotes', 'ai', 'reflect', 'daylog', 'triage', 'plan', 'dragdrop', 'shortcuts',
-  'countdown',
+  'countdown', 'usage',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
-    'clocks', 'shortcutsPanel', 'planpanel'].map((n) => `../js/views/${n}.js`),
+    'clocks', 'shortcutsPanel', 'planpanel', 'datepicker'].map((n) => `../js/views/${n}.js`),
 );
 
 const loaded = {};
@@ -297,6 +297,32 @@ if (state.makeItem) {
   // is the normal way to say "unscheduled".
   check('an explicit null is kept, not treated as unsaid', () => state.makeItem({ date: null }).date === null);
   check('a false is kept too', () => state.makeItem({ done: false }).done === false);
+}
+
+/* ------------------------------------------------------------------ */
+/* Usage counters                                                      */
+/* ------------------------------------------------------------------ */
+/* The merge is the whole risk here. Counts that are meant to answer "what do
+   I cut" are worthless if syncing two devices quietly loses or doubles them,
+   and neither failure is visible by looking. */
+group('usage — counts survive two devices');
+if (mergeDocuments) {
+  const base = { items: [], lists: [], journal: {}, routine: {} };
+  const A = { ...base, updatedAt: '2026-08-01T10:00:00.000Z',
+    usage: { phone: { VIEW_DAY: { n: 10, first: 'a', last: 'y' } }, laptop: { VIEW_DAY: { n: 3, first: 'b', last: 'x' } } } };
+  const B = { ...base, updatedAt: '2026-08-01T11:00:00.000Z',
+    usage: { phone: { VIEW_DAY: { n: 4, first: 'a', last: 'z' } }, desk: { REVIEW_RUN: { n: 2, first: 'c', last: 'w' } } } };
+  const out = mergeDocuments(A, B).document.usage;
+  // The phone's own count only ever goes up, so the higher number is the more
+  // recent truth. Taking the newer DOCUMENT would have thrown 10 away for 4.
+  check('a device’s higher count wins', () => out.phone.VIEW_DAY.n === 10);
+  check('counts are not added together', () => out.phone.VIEW_DAY.n !== 14);
+  check('a device only the local side knows survives', () => out.laptop.VIEW_DAY.n === 3);
+  check('a device only the remote side knows survives', () => out.desk.REVIEW_RUN.n === 2);
+  check('the later last-used is kept', () => out.phone.VIEW_DAY.last === 'z');
+  // Merging twice must not change the answer, or repeated syncs would drift.
+  const twice = mergeDocuments(mergeDocuments(A, B).document, B).document.usage;
+  check('merging again changes nothing', () => JSON.stringify(twice) === JSON.stringify(out));
 }
 
 /* ------------------------------------------------------------------ */

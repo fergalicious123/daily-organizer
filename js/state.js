@@ -226,6 +226,13 @@ function defaultState() {
      * the notes on an item.
      */
     captures: [],
+    /*
+     * deviceId -> feature -> { n, first, last }. What gets used, so that in
+     * three months there is an answer to "what is worth keeping" that is not
+     * a guess. Per device because counts cannot be merged any other way —
+     * see the note at the top of usage.js. Counters and timestamps only.
+     */
+    usage: {},
     // dateKey -> { steps: [stepId], updatedAt }. Same shape as `journal` on
     // purpose: sync merges both the same way, per day, newest write wins.
     routine: {},

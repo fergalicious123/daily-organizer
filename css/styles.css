@@ -45,6 +45,15 @@
      Every value below was checked with a WCAG contrast script, not chosen by
      eye — 44 pairs across both themes and both surfaces, zero failures. If you
      change one, re-run the check rather than trusting it to look fine. */
+  /* The banding on a day that has gone. It DARKENS rather than lightens, which
+     is the whole point: a pale stripe was invisible the moment a rota tint sat
+     under it, which is most of the days Ben cares about. Darkening works over
+     the plain surface and over every shift colour alike.
+     10% is the ceiling here, measured: any more and --text-muted on a tinted
+     cell drops under 4.5:1. On white that is still a luminance step of 0.17,
+     so it reads loudly at a tenth of the strength the dark theme needs. */
+  --past-band:     rgba(0, 0, 0, .10);
+
   --bg:            #f6f5f1;
   --surface:       #ffffff;
   --surface-2:     #fbfaf7;
@@ -145,6 +154,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    /* Far stronger than the light theme's, and it costs nothing: darkening an
+       already-dark cell RAISES the contrast of the text on it, from 6.25:1 to
+       7.3:1. The constraint that binds in light mode does not exist here. */
+    --past-band:     rgba(0, 0, 0, .45);
+
     --bg:            #1e1e1c;
     --surface:       #2a2a27;
     --surface-2:     #323230;
@@ -184,6 +198,7 @@
 
 /* Explicit override wins over the media query in both directions. */
 :root[data-theme="dark"] {
+  --past-band: rgba(0, 0, 0, .45);
   --bg: #1e1e1c; --surface: #2a2a27; --surface-2: #323230; --surface-sunk: #181817;
   --border: #3a3a36; --border-strong: #7e7d77;
   --text: #f0efe9; --text-muted: #adaba1; --text-faint: #93918a;
@@ -1035,10 +1050,14 @@ button {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  /* Wider and darker than the first attempt. That one was a 1px pale hairline
+     every 6px, which read beautifully on an empty cell and vanished entirely
+     on a cell carrying a shift — so the days most worth marking were the ones
+     it missed. 3 in 8, darkening. */
   background: repeating-linear-gradient(
     135deg,
     transparent 0 5px,
-    color-mix(in srgb, var(--text-faint) 14%, transparent) 5px 6px
+    var(--past-band) 5px 8px
   );
 }
 /* The cells' own content sits above the texture. */
@@ -2243,6 +2262,171 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
 }
 .editor-landing.is-past { color: var(--warning); font-weight: 600; }
+
+/* ---- the date picker ----
+   The month view's cell, shrunk. It reuses .on-night / .on-day / ... for the
+   rota tint and --past-band for a day that has gone, so the grid you pick a
+   date from is the grid you already know how to read. */
+.dp { position: relative; }
+.dp-trigger {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+}
+.dp-trigger:hover { border-color: var(--border-strong); }
+.dp-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dp-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-value.is-empty { color: var(--text-faint); }
+.dp-trigger .icon { flex-shrink: 0; opacity: .7; }
+.dp-trigger-shift:empty { display: none; }
+.dp-trigger-shift {
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--shift, var(--text-faint)) 26%, transparent);
+  color: var(--text);
+}
+
+.dp-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(320px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+}
+.dp-pop[hidden] { display: none; }
+.dp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.dp-month { flex: 1; text-align: center; font-size: 13.5px; font-weight: 600; }
+.dp-step {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.dp-step:hover { background: var(--surface-sunk); color: var(--text); }
+.dp-dow, .dp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.dp-dow span {
+  text-align: center;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  color: var(--text-faint);
+  padding-bottom: 4px;
+}
+.dp-day {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-num);
+}
+.dp-day:hover { border-color: var(--accent); }
+.dp-day.is-outside { opacity: .45; }
+.dp-day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.dp-day.is-selected { background: var(--accent); color: var(--accent-text); }
+.dp-day.is-selected .dp-shift, .dp-day.is-selected .dp-count { color: var(--accent-text); }
+.dp-num { font-size: 12.5px; font-weight: 600; line-height: 1; }
+.dp-shift {
+  font-size: 8.5px; font-weight: 800; letter-spacing: .06em;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.dp-count {
+  position: absolute; top: 2px; right: 3px;
+  font-size: 8.5px; font-weight: 700; line-height: 1;
+  color: var(--accent);
+}
+/* The rota tint, same tokens as the month grid. */
+.dp-day.on-night, .dp-day.on-day, .dp-day.on-oncall,
+.dp-day.on-training, .dp-day.on-other, .dp-day.on-off {
+  background: color-mix(in srgb, var(--shift) 20%, var(--surface-2));
+}
+/* And the same banding for a day that has gone — above the tint, below the
+   number, exactly as in the month grid. */
+.dp-day.is-past::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: repeating-linear-gradient(135deg, transparent 0 5px, var(--past-band) 5px 8px);
+}
+.dp-day.is-today::before { display: none; }
+.dp-foot { display: flex; align-items: center; margin-top: 8px; }
+
+/* The diary's day chooser: arrows either side of the picker, and a way back
+   to today once you have wandered off it. */
+.journal-nav {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.journal-nav .dp { flex: 1; min-width: 0; }
+.journal-ahead {
+  align-self: center;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  /* Thumbs. 44px cells and a popup that uses the width it has. */
+  .dp-day { min-height: 44px; }
+  .dp-pop { width: min(340px, calc(100vw - 24px)); }
+}
+
+/* ---- the usage report ----
+   A ranked list rather than a chart. The question it answers is "what comes
+   out", which is read down a list of names, not off a set of bars — the bar
+   is only there to make the shape of the ranking visible at a glance. */
+.usage-list { display: flex; flex-direction: column; gap: 2px; }
+.usage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 34px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12.5px;
+}
+.usage-label { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usage-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-sunk);
+  overflow: hidden;
+}
+.usage-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.usage-n {
+  text-align: right;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+/* Never used is the answer this list exists to give, so it is marked rather
+   than faded away — the row you most want to notice must not be the quietest. */
+.usage-row.is-unused .usage-label { color: var(--text-muted); }
+.usage-row.is-unused .usage-n { color: var(--warning); }
+@media (max-width: 760px) {
+  .usage-row { grid-template-columns: minmax(0, 1fr) 56px 30px; gap: 8px; }
+}
 .editor-more-toggle { align-self: flex-start; }
 .field-hint a { color: var(--accent); }
 

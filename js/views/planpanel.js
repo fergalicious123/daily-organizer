@@ -13,6 +13,7 @@
 
 import { el, icon, toast } from '../ui.js';
 import { makeTouchDraggable } from '../dragdrop.js';
+import * as usage from '../usage.js';
 import {
   overdueTasks, itemsOnDay, shiftOnDay, settings, addItem, itemLog,
 } from '../state.js';
@@ -190,6 +191,7 @@ async function run() {
   failure = '';
   rerender();
   try {
+    usage.record('PLAN_MAKE');
     plan = await makePlan(gather());
     used.clear();
     if (!plan.steps.length) failure = 'No plan came back. Try again.';
