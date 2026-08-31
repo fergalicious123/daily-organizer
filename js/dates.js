@@ -165,6 +165,24 @@ export function formatDayLong(key) {
   return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/**
+ * 'Tuesday 15 September' — the day, for the header crumb.
+ *
+ * Shorter than formatDayLong on purpose. That one is a caption with room to
+ * breathe; this one is competing for a fixed-height row against a week range,
+ * a month, three view buttons and Today, and it was losing — the crumb was
+ * being crushed to a single letter, so the header answered every question
+ * about the day except which one it was.
+ *
+ * The comma and the year are what went. The year is already sitting two
+ * crumbs to the left in 'September 2026', and a comma inside a date that is
+ * fighting for width is punctuation you can read from context.
+ */
+export function formatDayHeader(key) {
+  const d = fromKey(key);
+  return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+}
+
 /** 'August 2026' */
 export function formatMonthLong(key) {
   const d = fromKey(key);

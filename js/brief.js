@@ -25,7 +25,8 @@ import {
 } from './state.js';
 import { quoteFor } from './quotes.js';
 
-import { todayKey, formatDayLong, formatDayShort, formatTime, timeToMinutes, diffDays } from './dates.js';
+import { todayKey, formatDayLong, formatDayShort, formatTime, timeToMinutes } from './dates.js';
+import { daysUntil } from './countdown.js';
 
 /** Said the way you would say it out loud, not as a label. */
 const SHIFT_LINE = {
@@ -44,15 +45,15 @@ const SHIFT_HOURS = {
 };
 
 /**
- * "12 days", "tomorrow", "today" — or nothing once the date is behind us.
+ * "12 days", "tomorrow", "race TODAY" — or nothing once the date is behind us.
  *
- * Kept here rather than imported from the routine view so the brief does not
- * depend on a view module; both read the same `target` field on the step.
+ * The counting comes from countdown.js; only the phrasing is local. A brief
+ * is a sentence being read on a phone, so it says "tomorrow" in lower case
+ * and shouts the day itself, where the interface uses a chip.
  */
-function daysUntil(step, dateKey) {
-  if (!step?.target) return null;
-  const days = diffDays(dateKey, step.target);
-  if (days < 0) return null;
+function stepDaysUntil(step, dateKey) {
+  const days = daysUntil(step?.target, dateKey);
+  if (days == null) return null;
   if (days === 0) return `${step.targetLabel || 'race'} TODAY`;
   if (days === 1) return 'tomorrow';
   return `${days} days`;
@@ -129,7 +130,7 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
         // part that reaches his phone — "Para 10 training (12 days)" is a
         // different sentence from "Para 10 training", and the difference is
         // the whole reason for training today rather than tomorrow.
-        const left = daysUntil(step, dateKey);
+        const left = stepDaysUntil(step, dateKey);
         lines.push({
           kind: 'routine',
           text: left == null ? step.label : `${step.label} (${left})`,

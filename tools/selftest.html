@@ -90,6 +90,7 @@ group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
   'brief', 'quotes', 'ai', 'reflect', 'daylog', 'triage', 'plan', 'dragdrop', 'shortcuts',
+  'countdown',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
     'clocks', 'shortcutsPanel', 'planpanel'].map((n) => `../js/views/${n}.js`),
@@ -217,6 +218,71 @@ if (dates.addDays) {
   check('survives the spring clock change', () => dates.addDays('2026-03-28', 2) === '2026-03-30');
   check('survives the autumn clock change', () => dates.addDays('2026-10-24', 2) === '2026-10-26');
   check('diffDays agrees with addDays', () => dates.diffDays('2026-08-01', '2026-08-15') === 14);
+}
+
+/* ------------------------------------------------------------------ */
+/* Countdowns                                                          */
+/* ------------------------------------------------------------------ */
+/* The boundaries are the whole behaviour: a countdown that keeps counting
+   after the date has passed is the failure this is written to prevent, and
+   it is invisible until the day after something you cared about. */
+group('countdown — counts down, then stops');
+const cd = loaded['../js/countdown.js'] || {};
+if (cd.countdown) {
+  const from = '2026-08-31';
+  check('a future date gives the number of days', () => cd.countdown('2026-09-20', 'English course', from).days === 20);
+  check('and phrases it plainly', () => cd.countdown('2026-09-20', 'English course', from).text === '20 days');
+  check('the day itself is named', () => cd.countdown(from, 'English course', from).text === 'English course today');
+  check('tomorrow is said, not counted', () => cd.countdown('2026-09-01', 'x', from).text === 'Tomorrow');
+  check('a past date counts nothing at all', () => cd.countdown('2026-08-30', 'x', from) === null);
+  check('no target counts nothing', () => cd.countdown('', 'x', from) === null);
+  // Seven days is the line where a number becomes a deadline. Off by one here
+  // and the colour change lands on the wrong day.
+  check('seven days out is urgent', () => cd.countdown('2026-09-07', 'x', from).urgent === true);
+  check('eight days out is not', () => cd.countdown('2026-09-08', 'x', from).urgent === false);
+  check('the day itself is urgent', () => cd.countdown(from, 'x', from).urgent === true);
+}
+if (cd.itemCountdowns) {
+  const from = '2026-08-31';
+  const items = [
+    { id: 'a', title: 'Far', date: '2026-10-10', countdown: true },
+    { id: 'b', title: 'Near', date: '2026-09-02', countdown: true },
+    { id: 'c', title: 'Past', date: '2026-08-01', countdown: true },
+    { id: 'd', title: 'Unflagged', date: '2026-09-03' },
+    { id: 'e', title: 'Done', date: '2026-09-04', countdown: true, done: true },
+    { id: 'f', title: 'Undated', date: null, countdown: true },
+  ];
+  const list = cd.itemCountdowns(items, from);
+  check('only flagged, dated, live items count', () => list.length === 2);
+  check('soonest first', () => list[0].item.title === 'Near' && list[1].item.title === 'Far');
+  check('a past one drops out rather than going negative', () => !list.some((e) => e.item.title === 'Past'));
+  check('a completed one stops counting', () => !list.some((e) => e.item.title === 'Done'));
+  check('an undated one cannot count', () => !list.some((e) => e.item.title === 'Undated'));
+}
+
+/* ------------------------------------------------------------------ */
+/* makeItem                                                            */
+/* ------------------------------------------------------------------ */
+/* Two callers pass `undefined` deliberately, meaning "you choose". Object
+   spread copies undefined like any other value, so both were getting their
+   default wiped instead — and the one that hurt was the next occurrence of a
+   repeating task, created with NO id and therefore uneditable, undeletable
+   and unsyncable. Nothing in the app said so; the row simply did not respond.
+
+   These call the real makeItem against the real store, which is safe: it
+   builds an object and returns it, and nothing here is ever pushed. */
+group('makeItem — saying nothing and saying undefined are not the same');
+const state = loaded['../js/state.js'] || {};
+if (state.makeItem) {
+  check('an omitted id is generated', () => Boolean(state.makeItem({}).id));
+  check('an explicitly undefined id is still generated', () => Boolean(state.makeItem({ id: undefined }).id));
+  check('two items never share an id', () => state.makeItem({ id: undefined }).id !== state.makeItem({ id: undefined }).id);
+  check('an explicitly undefined list falls back to the default', () => Boolean(state.makeItem({ listId: undefined }).listId));
+  check('a real value still wins', () => state.makeItem({ listId: 'list-work' }).listId === 'list-work');
+  // null is a value someone chose, and it has to survive: a task with no date
+  // is the normal way to say "unscheduled".
+  check('an explicit null is kept, not treated as unsaid', () => state.makeItem({ date: null }).date === null);
+  check('a false is kept too', () => state.makeItem({ done: false }).done === false);
 }
 
 /* ------------------------------------------------------------------ */

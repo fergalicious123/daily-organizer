@@ -745,6 +745,11 @@ button {
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  /* Measured against THIS row, not the window. The header is only as wide as
+     the middle column, so a 1280px laptop with the sidebar and the notes rail
+     open leaves it 698px — and a viewport media query has no idea. */
+  container-type: inline-size;
+  container-name: header;
 }
 
 .breadcrumb { display: flex; align-items: center; gap: 5px; min-width: 0; }
@@ -753,16 +758,56 @@ button {
   border-radius: var(--radius-sm); white-space: nowrap;
 }
 .crumb:hover { background: var(--surface-sunk); color: var(--text); }
+
+/* WHICH CRUMB GIVES WAY WHEN THE HEADER IS TIGHT.
+ *
+ * It used to be the current one, every time, and by accident. A flex item's
+ * automatic minimum size is its content width — UNLESS its overflow is
+ * something other than visible, in which case it is zero. Only .is-current set
+ * `overflow: hidden`. So the trail was immovable and the current crumb was
+ * infinitely squashable, and 100% of any deficit landed on it: at 1280px wide
+ * the day view's header read "September 2026 › Week 38 · 14 – 20 Sep › T".
+ * The one crumb that says what you are looking at was the one being thrown
+ * away to make room for the two that say how you got here.
+ *
+ * Inverted. The trail truncates first and hard (shrink 200 against a ~130px
+ * basis swallows any realistic shortfall before the current crumb moves), and
+ * the current crumb keeps its ellipsis only as a genuine last resort.
+ */
+.crumb:not(.is-current) {
+  min-width: 0;
+  flex-shrink: 200;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* The one place the serif appears in the chrome, matching where Granola puts
    it: the name of what you are looking at, and nothing else. It is a display
-   face — at 16px it would just look like a mistake, so it is set larger. */
+   face — at 16px it would just look like a mistake, so it is set larger.
+   The tracking is not zero: Instrument Serif is drawn tight, and a long date
+   set solid in it reads as one crowded word rather than three. A fifth of a
+   point per letter is enough to separate them without loosening the face. */
 .crumb.is-current {
   color: var(--text);
   font-family: var(--font-display);
-  font-weight: 400; font-size: 25px; letter-spacing: 0;
+  font-weight: 400; font-size: 25px; letter-spacing: .018em;
+  flex-shrink: 1;
   overflow: hidden; text-overflow: ellipsis;
 }
 .crumb-sep { color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
+
+/* Below this the path and the answer cannot both fit, and squeezing them
+   produces neither: two 14px slivers of ellipsis and a clipped date. The
+   trail is how you got here and is duplicated by the Month/Week/Day control
+   sitting a few pixels to the right; the day is what you came to read. So
+   the trail goes and the day gets the room.
+   940px is measured, not guessed: with the trail shown the header wants 928px
+   of content (486 breadcrumb + 394 of controls + 48 of gaps). Just above the
+   cutoff a long week range — one straddling two months — can still overrun by
+   a few dozen pixels, and that is what the shrink weights above are for: the
+   trail gives up the tail of its text and the day is left whole. */
+@container header (max-width: 940px) {
+  .crumb:not(.is-current), .crumb-sep { display: none; }
+}
 
 .header-spacer { flex: 1; }
 
@@ -2103,6 +2148,24 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .field textarea { resize: vertical; min-height: 66px; font-family: inherit; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field-hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; }
+
+/* ---- the item editor's folded half ----
+   The dialog leads with the title and one sentence saying where the thing
+   will land; everything else lives behind the toggle. `hidden` does the
+   hiding, so the fields are genuinely out of the tab order rather than merely
+   invisible — and .modal-body is a flex column, whose `display: flex` on
+   children would otherwise override the [hidden] user-agent rule. */
+.editor-more[hidden] { display: none; }
+.editor-more {
+  display: flex; flex-direction: column; gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.editor-landing {
+  margin: -4px 0 0;
+  font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
+}
+.editor-more-toggle { align-self: flex-start; }
 .field-hint a { color: var(--accent); }
 
 .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2620,6 +2683,49 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   background: var(--danger-soft);
   color: var(--danger);
 }
+
+/* ---- countdowns on dated items ----
+   Same chip, same colours, same meaning as the one on a ritual step: the
+   number of days, going red inside the last week. Sharing the look is the
+   point — the switch in the editor is sold as "the thing the Para 10 has",
+   and it would be a poor showing if it then looked like something else. */
+.chip.is-countdown {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.chip.is-countdown.is-urgent { background: var(--danger-soft); color: var(--danger); }
+
+.countdown-strip { display: flex; flex-direction: column; gap: 4px; }
+.countdown-row {
+  display: flex; align-items: baseline; gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color .16s var(--ease), background .16s var(--ease);
+}
+.countdown-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.countdown-name {
+  flex: 1; min-width: 0;
+  font-size: 14px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.countdown-when { font-size: 11.5px; color: var(--text-faint); flex-shrink: 0; }
+.countdown-days {
+  flex-shrink: 0;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+}
+.countdown-row.is-urgent .countdown-days { background: var(--danger-soft); color: var(--danger); }
 .is-done .routine-countdown { opacity: .6; }
 
 /* ---- the two voices ----
@@ -3180,7 +3286,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   .mic-fab { display: grid; }
 
   .main-header { padding: 0 12px; gap: 8px; }
-  .crumb.is-current { font-size: 15px; }
+  /* Off the display serif here. The rule at the top of this file spells out
+     why: Instrument Serif is an optical-size face whose thin strokes thin out
+     to nothing below about 20px, and this was setting it at 15 — which is how
+     the date in the phone header came to look spindly and crowded at the one
+     size where it most needed to be plain. The body face at the same size is
+     more legible and, weighted up, still reads as the title of the view. */
+  .crumb.is-current {
+    font-family: var(--font);
+    font-size: 15.5px; font-weight: 600; letter-spacing: -0.011em;
+  }
 
   .month { padding: 10px 10px 14px; }
   .month-dow { grid-template-columns: 30px repeat(7, minmax(0, 1fr)); gap: 3px; }

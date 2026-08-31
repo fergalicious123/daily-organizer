@@ -26,7 +26,8 @@ import {
   routineSteps, routineStepDone, routineProgress, toggleRoutineStep, linkedTask,
 } from '../state.js';
 import { quoteFor } from '../quotes.js';
-import { todayKey, diffDays } from '../dates.js';
+import { todayKey } from '../dates.js';
+import { countdown } from '../countdown.js';
 
 /**
  * Which quotes are showing their note.
@@ -40,20 +41,15 @@ import { todayKey, diffDays } from '../dates.js';
 const openNotes = new Set();
 
 /**
- * How long until the thing a step is training for.
+ * How long until the thing a step is working towards.
  *
- * A daily habit with no horizon is easy to skip; the same habit with "40 days"
- * next to it is a different proposition. Returns null once the date is past,
- * so a finished race quietly stops counting rather than sitting there reading
- * "-12 days" until someone notices.
+ * The counting itself lives in countdown.js now, shared with the countdowns
+ * you can put on an item, so that a step and a task never phrase the same
+ * number two different ways.
  */
 export function countdownFor(step, dateKey) {
   if (!step?.target) return null;
-  const days = diffDays(dateKey, step.target);
-  if (days < 0) return null;
-  if (days === 0) return { days, text: `${step.targetLabel || 'Race'} today`, urgent: true };
-  if (days === 1) return { days, text: 'Tomorrow', urgent: true };
-  return { days, text: `${days} days`, urgent: days <= 7 };
+  return countdown(step.target, step.targetLabel || 'Race', dateKey);
 }
 
 /**

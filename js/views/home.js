@@ -15,8 +15,9 @@ import { aiConfigured, polishBrief } from '../ai.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
   currentStreak, completionHistory, settings, device, eventColorSlot,
-  shiftOnDay, crewOnDay, SHIFT,
+  shiftOnDay, crewOnDay, liveItems, SHIFT,
 } from '../state.js';
+import { itemCountdowns } from '../countdown.js';
 
 /** Said as a statement, because this is an answer, not a label. */
 const SHIFT_LABEL = {
@@ -189,6 +190,31 @@ export function homeView({ onNavigate }) {
      point is what the day is asking of Ben; this is the part he chose. */
   const routine = routineCard(today);
   if (routine) root.appendChild(routine);
+
+  /* ---- what you are counting down to ----
+     Sits under the ritual because the two say the same kind of thing: the
+     ritual's steps carry their own countdowns inline, where they argue for
+     doing the thing today, and these are the dated ones — an exam, a course
+     starting, a flight — which would otherwise be invisible until the week
+     they arrive, buried on a date you have no reason to scroll to.
+     Absent entirely when there is nothing to count. An empty panel headed
+     "Counting down" is a worse answer than no panel. */
+  const counts = itemCountdowns(liveItems(), today);
+  if (counts.length) {
+    const strip = el('section.countdown-strip',
+      el('div.task-group-label', 'Counting down'));
+    for (const { item, count } of counts) {
+      strip.appendChild(el('button.countdown-row', {
+        class: count.urgent ? 'is-urgent' : '',
+        onclick: () => onNavigate({ view: 'day', anchor: item.date }),
+      },
+        el('span.countdown-name', item.title || 'Untitled'),
+        el('span.countdown-when', formatRelativeDay(item.date)),
+        el('span.countdown-days', count.text),
+      ));
+    }
+    root.appendChild(strip);
+  }
 
   /* ---- the brief, and the button that sends it ---- */
   root.appendChild(briefCard());

@@ -153,8 +153,22 @@ class SyncEngine extends EventTarget {
       this.learnAccount();
       this.start();
       return true;
-    } catch {
-      // Expected when consent lapsed; the user reconnects from the sidebar.
+    } catch (err) {
+      /*
+       * The silent renewal did not work, so a click is needed. Why it did not
+       * work is worth keeping.
+       *
+       * Browser OAuth has no refresh token — the access token lasts an hour
+       * and the only way to get another without asking is prompt:'none',
+       * which Google answers from its own session cookie. In a third-party
+       * context Chrome increasingly does not send that cookie, and then this
+       * fails every time however long you leave it. Which is exactly what
+       * "it does not log in automatically" looks like from the outside, and
+       * the chip used to say only "Sign in to sync" — the same words whether
+       * the cause was a lapsed consent, a blocked cookie, or no network.
+       * Recording it means the chip's tooltip can say which.
+       */
+      this.lastError = err;
       this.setState(SyncState.IDLE, 'Sign in to sync');
       return false;
     }

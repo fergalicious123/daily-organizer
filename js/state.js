@@ -116,6 +116,12 @@ const DEFAULT_LISTS = [
 const DEFAULT_LIST_ID = 'list-personal';
 
 /**
+ * The shape of `routineSteps` this build expects. Bumping it runs the steps
+ * below that a saved document has not seen yet.
+ */
+const ROUTINE_VERSION = 3;
+
+/**
  * Bring an already-saved routine up to the current shape.
  *
  * Necessary because `routineSteps` lives in settings, and settings are merged
@@ -133,16 +139,57 @@ const DEFAULT_LIST_ID = 'list-personal';
  * change is worse than one that does nothing.
  */
 function migrateRoutine(state, saved) {
-  if (saved?.settings?.routineVersion >= 2) return state;
+  const version = saved?.settings?.routineVersion || 0;
+  if (version >= ROUTINE_VERSION) return state;
   const steps = Array.isArray(state.settings.routineSteps) ? state.settings.routineSteps : [];
-  const gym = steps.find((s) => s.id === 'gym');
-  if (gym && /^gym$/i.test(String(gym.label || '').trim())) {
-    gym.label = 'Para 10 training';
-    gym.match = '';
-    gym.target = '2026-09-26';
-    gym.targetLabel = 'Para 10';
+
+  if (version < 2) {
+    const gym = steps.find((s) => s.id === 'gym');
+    if (gym && /^gym$/i.test(String(gym.label || '').trim())) {
+      gym.label = 'Para 10 training';
+      gym.match = '';
+      gym.target = '2026-09-26';
+      gym.targetLabel = 'Para 10';
+    }
   }
-  state.settings.routineVersion = 2;
+
+  // v3: the studying gets a horizon of its own. The training step has had one
+  // since v2 and it is the half of the ritual that gets done; "20 days" next
+  // to Study English is the same argument made for the other half.
+  //
+  // Only when the step is not already counting down to something. If a target
+  // has been set by hand — through Settings, which can now do this — that is a
+  // decision, and a migration that overwrites a decision is worse than one
+  // that does nothing.
+  if (version < 3) {
+    const study = steps.find((s) => s.id === 'study');
+    if (study && !study.target) {
+      study.target = '2026-09-20';
+      study.targetLabel = 'English course';
+    }
+  }
+
+  state.settings.routineVersion = ROUTINE_VERSION;
+  return state;
+}
+
+/**
+ * Give an id to anything saved without one.
+ *
+ * Cleaning up after the makeItem bug documented above: for as long as that
+ * was live, ticking off a repeating task pushed its next occurrence into the
+ * document with `id: undefined`. Those are still sitting in saved data, and
+ * they are inert — every lookup in the app finds items by id, so the row is
+ * drawn but cannot be edited, completed, deleted or synced.
+ *
+ * Runs on every load rather than behind a version flag, because a document
+ * merged from a device still running the old code can bring fresh ones back.
+ * On clean data it does nothing.
+ */
+function repairIds(state) {
+  for (const item of state.items) {
+    if (!item.id) item.id = uid();
+  }
   return state;
 }
 
@@ -219,13 +266,13 @@ function defaultState() {
          step ticks the actual course task instead of tracking a second,
          parallel copy of the same thing. */
       routineSteps: [
-        { id: 'study', label: 'Study English', kind: 'study', match: 'online course' },
+        { id: 'study', label: 'Study English', kind: 'study', match: 'online course', target: '2026-09-20', targetLabel: 'English course' },
         // No `match`: there is no daily "training" task to tie this to, and
         // matching loosely on "para" would have latched onto "Sign up for
         // para 10" — ticking a session would have closed the sign-up.
         { id: 'gym', label: 'Para 10 training', kind: 'gym', match: '', target: '2026-09-26', targetLabel: 'Para 10' },
       ],
-      routineVersion: 2,
+      routineVersion: ROUTINE_VERSION,
       driveFileId: '',
       lastSyncAt: '',
     },
@@ -391,6 +438,7 @@ class Store {
     // left them in place permanently, because the document already claimed
     // to be repaired. Deduping is idempotent; on clean data it does nothing.
     repairLists(merged, { restructure: data.listsVersion !== 2 });
+    repairIds(merged);
     migrateRoutine(merged, data);
     return merged;
   }
@@ -422,10 +470,47 @@ class Store {
 
   saveNow() {
     clearTimeout(this._saveTimer);
+    // Nulled, not just cleared. adoptStored() below asks "is a write of mine
+    // still pending?" and a cleared-but-not-nulled timer id stays truthy for
+    // the life of the tab, so after the first save ever the answer would have
+    // been yes for ever.
+    this._saveTimer = null;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch (err) {
       console.error('Could not save. Storage may be full.', err);
+    }
+  }
+
+  /**
+   * Take on what another tab has just written to storage.
+   *
+   * Catch and the organizer share one document, so each has to notice when
+   * the other saves. Catch answered that with `location.reload()`, which is
+   * true to the data and brutal to the person: the organizer writes on every
+   * sync poll and every time it meets an event title it has not coloured yet,
+   * so a phone with both open reloaded the note app under your thumb, again
+   * and again, losing the half-sentence in the box each time. Re-reading the
+   * document and redrawing gets the same state without the page going away.
+   *
+   * If one of our own writes is still sitting in the 250ms debounce, that
+   * write wins and we adopt nothing: a line just caught here has not reached
+   * storage yet, and adopting a snapshot taken before it existed would delete
+   * it. Better to be a moment behind the other tab than to swallow the thing
+   * that was just said.
+   */
+  adoptStored() {
+    if (this._saveTimer) { this.saveNow(); return false; }
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      this.state = this._migrate(JSON.parse(raw));
+      this.dirty = false;
+      this.emit({ label: 'storage' });
+      return true;
+    } catch (err) {
+      console.error('Could not read the other tab’s save.', err);
+      return false;
     }
   }
 
@@ -492,6 +577,28 @@ export const store = new Store();
 /* Item helpers                                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Drop keys whose value is undefined.
+ *
+ * Spreading `fields` over the defaults below looks like "the caller wins where
+ * it said something", but object spread copies a key even when its value is
+ * undefined — so saying nothing and saying `undefined` were the same thing,
+ * and both wiped the default.
+ *
+ * That was not theoretical. Two callers pass undefined ON PURPOSE, meaning
+ * "you decide": sendCaptureToOrganizer passes `listId: listId || undefined`,
+ * which put every line sent from Catch into no list at all; and toggleDone
+ * spawns the next occurrence of a repeating task with `id: undefined` to ask
+ * for a fresh one — and got an item with NO id, which cannot be edited,
+ * deleted, merged or synced, because every one of those looks it up by id.
+ * Tick off a daily task and its replacement was born broken.
+ */
+function stated(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields)) if (v !== undefined) out[k] = v;
+  return out;
+}
+
 export function makeItem(fields = {}) {
   const s = store.state;
   return {
@@ -526,7 +633,7 @@ export function makeItem(fields = {}) {
     createdAt: nowISO(),
     updatedAt: nowISO(),
     deleted: false,
-    ...fields,
+    ...stated(fields),
   };
 }
 
@@ -1495,6 +1602,27 @@ export function reflectionMaterial(fromKey, untilKey) {
 /* ------------------------------------------------------------------ */
 
 /** The ritual, in the order it must be done. */
+/**
+ * Set (or clear) what a ritual step is counting down to.
+ *
+ * Writes through settings like every other routine field, so it syncs with
+ * the rest of the document. An empty date clears the countdown outright —
+ * including the name, because a name with nothing to count to would sit in
+ * the settings panel looking like it was still doing something.
+ */
+export function setRoutineTarget(stepId, { target, targetLabel } = {}) {
+  const steps = routineSteps().map((step) => {
+    if (step.id !== stepId) return step;
+    const next = { ...step };
+    if (target !== undefined) next.target = target || '';
+    if (targetLabel !== undefined) next.targetLabel = targetLabel || '';
+    if (!next.target) { next.target = ''; next.targetLabel = ''; }
+    return next;
+  });
+  updateSettings({ routineSteps: steps });
+  return steps;
+}
+
 export function routineSteps() {
   const steps = settings().routineSteps;
   return Array.isArray(steps) ? steps.filter((s) => s && s.id) : [];

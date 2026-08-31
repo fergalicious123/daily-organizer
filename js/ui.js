@@ -193,13 +193,19 @@ export function openModal({ title, render, footer = null, onClose = null, width 
   );
 
   modal.append(head, body);
+  // Node.append() STRINGIFIES what it is given, so a null in the list is not
+  // skipped — it is appended as the four letters "null". Every caller here
+  // builds its rows with `condition ? el(...) : null`, and the item editor's
+  // footer starts with `existing ? deleteButton : null`: the New item dialog
+  // has been showing the word "null" where Delete would be.
+  const keep = (v) => (Array.isArray(v) ? v : [v]).flat(Infinity)
+    .filter((n) => n != null && n !== false && n !== '');
   const content = render(close);
-  if (content) body.append(...(Array.isArray(content) ? content : [content]));
+  if (content) body.append(...keep(content));
 
   if (footer) {
     const foot = el('div.modal-foot');
-    const f = footer(close);
-    foot.append(...(Array.isArray(f) ? f : [f]));
+    foot.append(...keep(footer(close)));
     modal.appendChild(foot);
   }
 

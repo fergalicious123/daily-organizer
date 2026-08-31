@@ -235,16 +235,51 @@ function captureRow(capture) {
   return row;
 }
 
+/**
+ * A line that has been dealt with — and can still be undealt with.
+ *
+ * This used to be inert: text, a timestamp, a tag, and nothing you could
+ * press. Which made "Just a note" a one-way door. Say something, file it as a
+ * note, then realise an hour later it was actually a job — and there was no
+ * route from here to the organizer, no way back to the caught pile, and not
+ * even a way to bin it. The tag told you where it had gone and the row gave
+ * you no say in it.
+ *
+ * A note keeps every option it had while it was waiting. One that has already
+ * become a task does not: sending it twice would put two copies in the
+ * organizer, and binning the line here would not touch the task it made, so
+ * the row would appear to delete something it had no power over. That one
+ * says where it went and stops.
+ */
 function doneRow(capture) {
-  const tag = capture.itemId ? 'sent' : 'note';
-  return el('div.line',
-    el('span.line-when', whenLabel(capture.at)),
-    el('div.line-main',
-      el('p.line-text', capture.text),
-      el('p.line-why', capture.itemId ? 'In the organizer.' : 'Kept as a note.'),
-    ),
-    el('span.tag', { class: tag }, capture.itemId ? 'sent' : 'note'),
+  const sent = Boolean(capture.itemId);
+  const row = el('div.line', { class: 'is-settled' });
+  const main = el('div.line-main',
+    el('p.line-text', capture.text),
+    el('p.line-why', sent ? 'In the organizer.' : 'Kept as a note.'),
   );
+
+  if (!sent) {
+    main.appendChild(el('div.line-actions',
+      el('button', { onclick: () => {
+        sendCaptureToOrganizer(capture.id, { date: addDays(todayKey(), 1) });
+        render();
+      } }, 'Tomorrow'),
+      el('button', { onclick: () => { sendCaptureToOrganizer(capture.id, { date: null }); render(); } },
+        'Unscheduled'),
+      // Back to the top of the page, where the sort button can reach it again.
+      el('button', { onclick: () => { setCaptureKind(capture.id, CAPTURE.OPEN); render(); } },
+        'Back to caught'),
+      el('button.bin', { onclick: () => { removeCapture(capture.id); render(); } }, 'Bin'),
+    ));
+  }
+
+  row.append(
+    el('span.line-when', whenLabel(capture.at)),
+    main,
+    el('span.tag', { class: sent ? 'sent' : 'note' }, sent ? 'sent' : 'note'),
+  );
+  return row;
 }
 
 function render() {
@@ -287,8 +322,19 @@ function render() {
 // Another tab — the organizer, or a second copy of this — writing to the same
 // storage. Both apps share one document, so a note caught here while the
 // organizer is open must not be lost when that tab next saves over it.
+//
+// This used to call location.reload(), and on a phone that was miserable. The
+// organizer saves far more often than "when something changed": every sync
+// poll, and every time it meets an event title it has not assigned a colour
+// to. Each of those fired this listener and threw the page away mid-sentence
+// — the box emptied, the keyboard dropped, dictation stopped. Re-reading the
+// document and redrawing the list gets exactly the same result, and because
+// only the list is rebuilt, whatever is half-typed in the box stays put.
 window.addEventListener('storage', (e) => {
-  if (e.key && e.key.startsWith('daily-organizer')) location.reload();
+  // Same key, actually different content. A storage event can carry a write
+  // of identical bytes, and redrawing for that is pure churn.
+  if (e.key !== 'daily-organizer:v1' || e.newValue === e.oldValue) return;
+  store.adoptStored();
 });
 
 store.subscribe(() => render());

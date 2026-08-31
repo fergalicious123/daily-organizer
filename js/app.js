@@ -13,10 +13,12 @@ import {
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
   completedItems, rollOverdueTasks, rolloverDue, reviewDue, shiftBlock, openCaptures,
+  routineSteps, setRoutineTarget,
 } from './state.js';
+import { daysUntil } from './countdown.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
-  formatMonthLong, formatWeekRange, formatDayLong, formatDayShort,
+  formatMonthLong, formatWeekRange, formatDayLong, formatDayShort, formatDayHeader,
   isoWeekNumber, DAY_ABBR, monthGrid, isToday, sameMonth,
 } from './dates.js';
 import {
@@ -339,8 +341,14 @@ function syncStatusButton() {
   const offline = sync.state === SyncState.ERROR || sync.state === SyncState.IDLE;
 
   return el('button.sync-status', {
+    // Say why, when we know why. The reason a silent renewal failed is the
+    // difference between "click here" and "this will keep happening until you
+    // allow third-party cookies", and both used to read as "Connect".
     title: offline
-      ? 'Connect to Google and sync'
+      ? (sync.lastError?.message
+        ? `${sync.lastError.message}
+Click to connect.`
+        : 'Connect to Google and sync')
       : (sync.lastError?.message || sync.message),
     /*
      * One click, and it connects.
@@ -475,8 +483,20 @@ function breadcrumb() {
 
   if (route.view === 'day') {
     crumbs.appendChild(el('span.crumb-sep', '›'));
+    // 'Today' alone used to be the whole crumb, which is friendly and answers
+    // the wrong question: Ben's complaint was that he could not tell what day
+    // he was looking at, and on the one day where that is easiest to say the
+    // header was saying the least. The date rides along with it.
+    // On a phone the trail is hidden (see the crumb rules in styles.css) and
+    // the header is still only ~130px wide once the menu, the arrows either
+    // side of Today and New have taken their share — so the day is abbreviated
+    // there rather than truncated, which is the failure this is fixing.
     crumbs.appendChild(el('span.crumb.is-current',
-      route.anchor === todayKey() ? 'Today' : formatDayLong(route.anchor)));
+      isMobile()
+        ? formatDayShort(route.anchor)
+        : route.anchor === todayKey()
+          ? `Today · ${formatDayShort(route.anchor)}`
+          : formatDayHeader(route.anchor)));
   }
 
   return crumbs;
@@ -1108,6 +1128,48 @@ function openSettings(focusSection = null) {
           'In-app alerts fire while the organizer is open. For reminders that reach your phone with the app closed, ',
           'connect Google above — reminders ride on the calendar event and your phone’s Google Calendar app delivers them natively.'),
       ));
+
+      /* --- First things ---
+         The morning ritual's own countdowns, editable. The Para 10 one was
+         written into the app; this is how the next one gets set without me.
+         Label and date only — the order of the steps is the ritual and is not
+         something to fiddle with in a settings panel. */
+      fields.push(el('div.section-label', { style: { padding: '0' } }, 'First things'));
+      for (const step of routineSteps()) {
+        const days = daysUntil(step.target);
+        const hint = el('p.field-hint');
+        const describe = () => {
+          hint.textContent = !step.target
+            ? 'No countdown. Give it a date and the days remaining show beside the step.'
+            : days == null
+              ? 'That date has passed, so nothing is shown.'
+              : `${days} day${days === 1 ? '' : 's'} to go.`;
+        };
+        describe();
+        fields.push(el('div.field',
+          el('label', step.label),
+          el('div.field-row',
+            el('div.field',
+              el('input', {
+                type: 'date',
+                value: step.target || '',
+                'aria-label': `Counting down to, for ${step.label}`,
+                onchange: (e) => { setRoutineTarget(step.id, { target: e.target.value || '' }); render(); },
+              }),
+            ),
+            el('div.field',
+              el('input', {
+                type: 'text',
+                placeholder: 'What it is counting to',
+                value: step.targetLabel || '',
+                'aria-label': `Name of what ${step.label} is counting down to`,
+                onchange: (e) => { setRoutineTarget(step.id, { targetLabel: e.target.value.trim() }); render(); },
+              }),
+            ),
+          ),
+          hint,
+        ));
+      }
 
       /* --- Preferences --- */
       fields.push(el('div.section-label', { style: { padding: '0' } }, 'Preferences'));

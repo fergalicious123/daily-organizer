@@ -33,6 +33,11 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v35: countdowns on anything with a date, not just the Para 10; the day in
+// the header stops being crushed to one letter; New item asks for a title and
+// folds the rest away; Catch stops reloading itself and its filed notes can
+// still be moved. Two data bugs fixed: a repeating task's next occurrence was
+// born with no id, and a line sent from Catch landed in no list.
 // v34: Catch installs as its own app with its own icon; long-pressing either
 // icon offers shortcuts, and the URLs behind them actually route.
 // v33: the Overdue page can turn the pile into a plan, spread across the days
@@ -90,7 +95,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v34';
+const CACHE_VERSION = 'organizer-v35';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -120,6 +125,7 @@ const SHELL = [
   './js/triage.js',
   './js/plan.js',
   './js/daylog.js',
+  './js/countdown.js',
   './js/ai.js',
   './js/dragdrop.js',
   './js/shortcuts.js',

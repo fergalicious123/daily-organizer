@@ -13,6 +13,7 @@ import {
   todayKey, formatRelativeDay, formatTime, addDays, toKey, DAY_ABBR,
 } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
+import { countdown, daysUntil } from '../countdown.js';
 
 
 /* ------------------------------------------------------------------ */
@@ -58,6 +59,17 @@ function metaChips(item, { showDate = true, showList = true } = {}) {
   } else if (item.rollCount === 1 && item.rolledFrom) {
     chips.push(el('span.chip.is-rolled', { title: `Moved from ${formatRelativeDay(item.rolledFrom)}` },
       icon('undo', 'icon'), 'carried over'));
+  }
+
+  // The days left, on the row itself. Home lists these together, but a task
+  // you meet in a list should say it is being counted down to — otherwise the
+  // switch in the editor looks like it did nothing.
+  const count = item.countdown ? countdown(item.date, item.title) : null;
+  if (count) {
+    chips.push(el('span.chip.is-countdown', {
+      class: count.urgent ? 'is-urgent' : '',
+      title: 'Counting down to this',
+    }, count.text));
   }
 
   if (item.recur) {
@@ -571,6 +583,35 @@ export function openItemEditor(id, presets = {}) {
       });
       fields.push(el('div.field', el('label', 'Title'), titleInput));
 
+      /* ---- everything else, folded away ----
+         The dialog used to open with eleven controls on show: type, date,
+         time, four date shortcuts, duration, list, four priorities, six
+         reminders, five repeats, steps and notes. Almost all of it is a
+         decision you have not made yet at the moment you are trying to get a
+         sentence out of your head, and a form that asks twelve questions to
+         accept one is a form you stop opening.
+         So: the title, a line saying where it will land, and a way in to the
+         rest. Nothing has been removed — it is one press away, and an item
+         that already HAS these things set opens with them showing, so editing
+         never hides what you came to change. */
+      const more = [];
+      const moreBox = el('div.editor-more');
+
+      // Says what pressing Add will actually do. A dialog that has hidden its
+      // date field has to state the date somewhere, or "Add" becomes a guess.
+      const landing = el('p.editor-landing');
+      const describeLanding = () => {
+        if (!draft.date) {
+          landing.textContent = 'Goes to Unscheduled — drag it onto a day when you want it.';
+          return;
+        }
+        const when = formatRelativeDay(draft.date);
+        landing.textContent = draft.time
+          ? `Lands on ${when} at ${formatTime(draft.time, settings().hour12)}.`
+          : `Lands on ${when}, with no set time.`;
+      };
+
+
       // Kind — a task can be ticked off; an event just occupies time.
       // A recurring calendar entry arrives as dozens of separate items, so
       // changing the type one instance at a time is not realistic. If other
@@ -610,36 +651,79 @@ export function openItemEditor(id, presets = {}) {
         );
       }
 
-      fields.push(typeField);
+      more.push(typeField);
 
       // Date + time
       const dateInput = el('input', {
         type: 'date', value: draft.date || '',
-        oninput: (e) => { draft.date = e.target.value || null; },
+        oninput: (e) => { draft.date = e.target.value || null; describeLanding(); syncCountdown(); },
       });
       const timeInput = el('input', {
         type: 'time', value: draft.time || '',
-        oninput: (e) => { draft.time = e.target.value || null; },
+        oninput: (e) => { draft.time = e.target.value || null; describeLanding(); },
       });
-      fields.push(el('div.field-row',
+      more.push(el('div.field-row',
         el('div.field', el('label', 'Date'), dateInput),
         el('div.field', el('label', 'Time'), timeInput),
       ));
 
       // Quick date shortcuts — the common cases without opening a picker.
-      fields.push(el('div.pill-row',
+      more.push(el('div.pill-row',
         ...[
           ['Today', todayKey()],
           ['Tomorrow', addDays(todayKey(), 1)],
           ['Next week', addDays(todayKey(), 7)],
           ['No date', null],
         ].map(([label, value]) => el('button.pill', {
-          onclick: () => { draft.date = value; dateInput.value = value || ''; },
+          onclick: () => {
+            draft.date = value;
+            dateInput.value = value || '';
+            describeLanding();
+            syncCountdown();
+          },
         }, label)),
       ));
 
+      /* ---- count down to it ----
+         The same thing the training step does for the PARA 10, available on
+         anything with a date: an exam, a course starting, a flight. The date
+         is the target and the title is the name, so there is nothing extra to
+         fill in — which is the whole reason this is a switch and not a second
+         date field that could disagree with the first.
+         Meaningless without a date, so it says so rather than offering a
+         switch that silently does nothing. */
+      const countdownPill = el('button.pill', {
+        type: 'button',
+        class: draft.countdown ? 'is-active' : '',
+        onclick: (e) => {
+          draft.countdown = !draft.countdown;
+          e.currentTarget.classList.toggle('is-active', Boolean(draft.countdown));
+          e.currentTarget.setAttribute('aria-pressed', String(Boolean(draft.countdown)));
+          syncCountdown();
+        },
+        'aria-pressed': String(Boolean(draft.countdown)),
+      }, 'Count down to it');
+      const countdownHint = el('p.field-hint');
+      const syncCountdown = () => {
+        countdownPill.disabled = !draft.date;
+        const days = daysUntil(draft.date);
+        countdownHint.textContent = !draft.date
+          ? 'Give it a date first — a countdown needs something to count to.'
+          : days == null
+            ? 'That date has been and gone, so there is nothing left to count.'
+            : draft.countdown
+              ? `Shown on Home: ${days} day${days === 1 ? '' : 's'} to go.`
+              : 'Puts the days remaining on Home, and on this task wherever it appears.';
+      };
+      syncCountdown();
+      more.push(el('div.field',
+        el('label', 'Countdown'),
+        el('div.pill-row', countdownPill),
+        countdownHint,
+      ));
+
       // Duration
-      fields.push(el('div.field-row',
+      more.push(el('div.field-row',
         el('div.field',
           el('label', 'Duration (minutes)'),
           el('input', {
@@ -659,7 +743,7 @@ export function openItemEditor(id, presets = {}) {
       ));
 
       // Priority
-      fields.push(el('div.field',
+      more.push(el('div.field',
         el('label', 'Priority'),
         el('div.pill-row', PRIORITY_LABELS.map((p) => el('button.pill', {
           class: [`p-${p.value}`, draft.priority === p.value ? 'is-active' : ''].join(' '),
@@ -672,7 +756,7 @@ export function openItemEditor(id, presets = {}) {
       ));
 
       // Reminder
-      fields.push(el('div.field',
+      more.push(el('div.field',
         el('label', 'Remind me'),
         el('div.pill-row', REMINDER_OPTIONS.map((r) => el('button.pill', {
           class: draft.remindMin === r.value ? 'is-active' : '',
@@ -687,7 +771,7 @@ export function openItemEditor(id, presets = {}) {
       ));
 
       // Repeat
-      fields.push(el('div.field',
+      more.push(el('div.field',
         el('label', 'Repeat'),
         el('div.pill-row',
           ...[
@@ -736,10 +820,10 @@ export function openItemEditor(id, presets = {}) {
           renderSubs();
         },
       });
-      fields.push(el('div.field', el('label', 'Steps'), subHost, subInput));
+      more.push(el('div.field', el('label', 'Steps'), subHost, subInput));
 
       // Notes
-      fields.push(el('div.field',
+      more.push(el('div.field',
         el('label', 'Notes'),
         el('textarea', {
           value: draft.notes,
@@ -747,6 +831,30 @@ export function openItemEditor(id, presets = {}) {
           oninput: (e) => { draft.notes = e.target.value; },
         }),
       ));
+
+
+      describeLanding();
+      // Open on anything already carrying detail, so Edit never appears to
+      // have lost the fields you came for. `presets` count: clicking an empty
+      // hour in the day grid hands over a date AND a time, and that is a
+      // deliberate choice worth showing rather than burying.
+      const richPresets = Boolean(presets.time || presets.priority || presets.recur);
+      const startOpen = Boolean(existing) || richPresets;
+      moreBox.append(...more);
+      moreBox.hidden = !startOpen;
+
+      const moreToggle = el('button.btn.btn-quiet.editor-more-toggle', {
+        type: 'button',
+        'aria-expanded': startOpen ? 'true' : 'false',
+        onclick: (e) => {
+          const open = moreBox.hidden;
+          moreBox.hidden = !open;
+          e.currentTarget.setAttribute('aria-expanded', String(open));
+          e.currentTarget.textContent = open ? 'Fewer options' : 'Date, time, list and more';
+        },
+      }, startOpen ? 'Fewer options' : 'Date, time, list and more');
+
+      fields.push(landing, moreToggle, moreBox);
 
       // Notes as you go — only on something that already exists, because they
       // are saved the instant they are spoken rather than when the dialog is
