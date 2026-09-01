@@ -10,7 +10,8 @@ import {
   byUrgency, eventColorSlot, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
 import {
-  todayKey, formatRelativeDay, formatTime, addDays, toKey, isPast, DAY_ABBR,
+  todayKey, formatRelativeDay, formatTime, addDays, toKey, isPast,
+  formatDayHeader, fromKey, DAY_ABBR,
 } from '../dates.js';
 import { voice, speechSupported } from '../voice.js';
 import { countdown, daysUntil } from '../countdown.js';
@@ -643,7 +644,15 @@ export function openItemEditor(id, presets = {}) {
     ? JSON.parse(JSON.stringify(existing))
     : {
       kind: 'task', title: '', notes: '', listId: store.state.inboxListId,
-      date: null, time: null, durationMin: null, priority: 0,
+      /* TODAY, not null.
+         A new item used to land in Unscheduled unless you went looking for
+         the date field, which is the opposite of what typing a task into a
+         box called "What needs doing?" means. Ben typed one, expected it on
+         today, and it went somewhere he had to go and find.
+         `presets` still wins, so clicking an hour on the day grid or a day in
+         the month still puts it there. */
+      date: todayKey(),
+      time: null, durationMin: null, priority: 0,
       subtasks: [], recur: null, remindMin: null, ...presets,
     };
 
@@ -664,6 +673,52 @@ export function openItemEditor(id, presets = {}) {
         onkeydown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(close); } },
       });
       fields.push(el('div.field', el('label', 'Title'), titleInput));
+
+      /* ---- when ----
+         Five choices, in front of you, because "when" is the only thing you
+         almost always want to say about a new task and the only one that was
+         hidden. Everything else about an item can wait behind More; this
+         cannot, or the answer is decided by a default you never saw.
+         The next two days are named rather than counted -- "Wed" is the same
+         fact as "in 2 days" and is the one you can act on without doing the
+         arithmetic. The full date is in the title attribute and in the line
+         underneath. */
+      const whenChoices = [
+        { label: 'Today', value: todayKey() },
+        { label: 'Tomorrow', value: addDays(todayKey(), 1) },
+        { label: DAY_ABBR[fromKey(addDays(todayKey(), 2)).getDay()], value: addDays(todayKey(), 2), note: 'In 2 days' },
+        { label: DAY_ABBR[fromKey(addDays(todayKey(), 3)).getDay()], value: addDays(todayKey(), 3), note: 'In 3 days' },
+        { label: 'Unscheduled', value: null, note: 'No date \u2014 sits in Unscheduled until you give it one' },
+      ];
+
+      const whenRow = el('div.pill-row.when-row');
+      const paintWhen = () => {
+        for (const pill of whenRow.querySelectorAll('.pill')) {
+          const raw = pill.dataset.when;
+          const value = raw === '' ? null : raw;
+          pill.classList.toggle('is-active', value === draft.date);
+        }
+      };
+      for (const choice of whenChoices) {
+        whenRow.appendChild(el('button.pill', {
+          type: 'button',
+          dataset: { when: choice.value || '' },
+          title: choice.note || (choice.value ? formatDayHeader(choice.value) : ''),
+          onclick: () => setWhen(choice.value),
+        }, choice.label));
+      }
+      fields.push(el('div.field', el('label', 'When'), whenRow));
+
+      /* One route for a date change, whichever control caused it: the pills,
+         the grid in More, or a quick pill inside it. Four controls showing
+         four different answers is the failure this avoids. */
+      const setWhen = (value) => {
+        draft.date = value;
+        paintWhen();
+        picker.set(value);
+        describeLanding();
+        syncCountdown();
+      };
 
       /* ---- everything else, folded away ----
          The dialog used to open with eleven controls on show: type, date,
@@ -756,6 +811,7 @@ export function openItemEditor(id, presets = {}) {
         onPick: (key) => {
           usage.record('DATE_PICKER');
           draft.date = key;
+          paintWhen();
           describeLanding();
           syncCountdown();
         },
@@ -769,22 +825,6 @@ export function openItemEditor(id, presets = {}) {
         el('div.field', el('label', 'Time'), timeInput),
       ));
 
-      // Quick date shortcuts — the common cases without opening a picker.
-      more.push(el('div.pill-row',
-        ...[
-          ['Today', todayKey()],
-          ['Tomorrow', addDays(todayKey(), 1)],
-          ['Next week', addDays(todayKey(), 7)],
-          ['No date', null],
-        ].map(([label, value]) => el('button.pill', {
-          onclick: () => {
-            draft.date = value;
-            picker.set(value);
-            describeLanding();
-            syncCountdown();
-          },
-        }, label)),
-      ));
 
       /* ---- count down to it ----
          The same thing the training step does for the PARA 10, available on
@@ -937,6 +977,7 @@ export function openItemEditor(id, presets = {}) {
 
 
       describeLanding();
+      paintWhen();
       // Open on anything already carrying detail, so Edit never appears to
       // have lost the fields you came for. `presets` count: clicking an empty
       // hour in the day grid hands over a date AND a time, and that is a

@@ -2569,6 +2569,10 @@ h5.md-h, h6.md-h {
   .usage-row { grid-template-columns: minmax(0, 1fr) 56px 30px; gap: 8px; }
 }
 .editor-more-toggle { align-self: flex-start; }
+/* "When" leads the dialog with the title, so its pills read as a choice being
+   asked for rather than a row of shortcuts tucked under a field. */
+.when-row { gap: 7px; }
+.when-row .pill { font-size: 13px; }
 .field-hint a { color: var(--accent); }
 
 .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3908,6 +3912,9 @@ body.is-touch-dragging {
      device has no hover, so on a phone it was an invisible 22px target. */
   .hour-add { width: 40px; height: 40px; opacity: .55; font-size: 18px; }
   .group-bar .pill { min-height: 38px; }
+  /* The one control in the New item dialog you press every single time, so it
+     gets a full thumb target rather than the 32px the generic pill uses. */
+  .when-row .pill { min-height: 44px; padding: 9px 15px; }
   .done-tick::before { inset: -13px; }
   .checkbox svg { width: 15px; height: 15px; }
   .subtask .checkbox { width: 20px; height: 20px; }

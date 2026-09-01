@@ -33,6 +33,9 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v39: a new item lands on TODAY by default, with Today / Tomorrow / the next
+// two days / Unscheduled in front of you instead of a date field behind a
+// disclosure.
 // v38: pasted markdown renders — tables, headings, bold — with a line saying
 // when it was pasted and, where the clipboard says so, from where; the week
 // view says which shift you are on; a diary entry is marked on the calendar;
@@ -106,7 +109,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v38';
+const CACHE_VERSION = 'organizer-v39';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
