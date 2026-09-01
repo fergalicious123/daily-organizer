@@ -1346,7 +1346,6 @@ button {
   font-family: var(--font-num); font-size: 19px; font-weight: 650; letter-spacing: -.02em;
   display: flex; align-items: baseline; gap: 7px;
 }
-.week-col-meta { font-size: 10.5px; color: var(--text-faint); font-family: var(--font-num); font-weight: 500; }
 
 .week-col-body {
   flex: 1;
@@ -2058,10 +2057,6 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .subtask .checkbox::before { inset: -4px; border-radius: 6px; }
 .subtask .checkbox svg { width: 10px; height: 10px; }
 .subtask.is-done span { text-decoration: line-through; opacity: .6; }
-.subtask-progress {
-  font-size: 10px; font-family: var(--font-num); color: var(--text-faint);
-}
-
 .empty-state {
   text-align: center;
   padding: 34px 18px;
@@ -2075,60 +2070,12 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 /* Voice capture                                                       */
 /* ------------------------------------------------------------------ */
 
-.mic-btn {
-  position: relative;
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-text);
-  display: grid; place-items: center;
-  flex-shrink: 0;
-  box-shadow: var(--shadow);
-  transition: transform .12s var(--ease), background .12s var(--ease);
-}
-.mic-btn:hover { transform: scale(1.05); }
-.mic-btn .icon { width: 18px; height: 18px; }
-.mic-btn.is-listening { background: var(--danger); }
-.mic-btn.is-listening::after {
-  content: '';
-  position: absolute; inset: -4px;
-  border-radius: 50%;
-  border: 2px solid var(--danger);
-  animation: pulse 1.4s ease-out infinite;
-}
 @keyframes pulse {
   0%   { transform: scale(1);   opacity: .8; }
   100% { transform: scale(1.5); opacity: 0; }
 }
-.mic-btn:disabled { background: var(--border-strong); box-shadow: none; }
-
 /* Floating mic on mobile. */
-.mic-fab {
-  position: fixed;
-  right: 16px;
-  bottom: calc(var(--tabbar-h) + 16px + var(--safe-b));
-  width: 54px; height: 54px;
-  z-index: 40;
-  display: none;
-}
-.mic-fab .icon { width: 24px; height: 24px; }
 
-.voice-panel {
-  position: fixed;
-  left: 50%; bottom: 26px;
-  transform: translateX(-50%);
-  width: min(560px, calc(100vw - 32px));
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 16px 18px;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.voice-panel[hidden] { display: none; }
 .voice-status {
   display: flex; align-items: center; gap: 9px;
   font-size: 12px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
@@ -2955,7 +2902,6 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   flex-shrink: 0; min-width: 42px;
 }
 
-.day-journal { margin-top: 14px; }
 
 /* ------------------------------------------------------------------ */
 /* First things — the morning ritual                                   */
@@ -3690,7 +3636,6 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   .rail.is-open { width: 100vw; padding-bottom: var(--bottom-clearance); }
 
   .tabbar { display: flex; }
-  .mic-fab { display: grid; }
 
   .main-header { padding: 0 12px; gap: 8px; }
   /* Off the display serif here. The rule at the top of this file spells out
@@ -3761,7 +3706,6 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   .day-side { overflow: visible; }
   .day-grid-wrap { overflow: visible; }
 
-  .voice-panel { bottom: calc(var(--tabbar-h) + 12px + var(--safe-b)); }
   .toasts { bottom: calc(var(--tabbar-h) + 14px + var(--safe-b)); }
   .stats { padding: 12px; grid-template-columns: minmax(0, 1fr); }
 
@@ -3926,7 +3870,7 @@ body.is-touch-dragging {
 }
 
 @media print {
-  .sidebar, .rail, .tabbar, .mic-fab, .main-header .btn, .toasts { display: none !important; }
+  .sidebar, .rail, .tabbar, .main-header .btn, .toasts { display: none !important; }
   #app { grid-template-columns: 1fr; height: auto; }
   body { background: #fff; }
 }

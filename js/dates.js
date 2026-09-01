@@ -36,11 +36,6 @@ export function todayKey() {
   return toKey(new Date());
 }
 
-export function nowTimeKey() {
-  const d = new Date();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 /** Shift a dateKey by n days. */
 export function addDays(key, n) {
   const d = fromKey(key);
@@ -141,12 +136,6 @@ export function timeToMinutes(t) {
   if (!t) return null;
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
-}
-
-/** minutes since midnight -> 'HH:MM' (wraps within the day). */
-export function minutesToTime(min) {
-  const m = ((min % 1440) + 1440) % 1440;
-  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 }
 
 /* ---- formatting ---- */

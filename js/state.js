@@ -1100,17 +1100,6 @@ export function crewFrom(items) {
   return [...seen.values()];
 }
 
-/** Every distinct event kind and its colour — for a legend. */
-export function eventColorLegend() {
-  const map = store.state.eventColors || {};
-  const seen = new Map();
-  for (const item of liveItems()) {
-    const key = colorKeyFor(item.title);
-    if (key && !seen.has(key)) seen.set(key, { title: item.title, slot: map[key] ?? 0 });
-  }
-  return [...seen.values()];
-}
-
 /** Incomplete, dated before today — the stuff quietly rotting. */
 export function overdueTasks() {
   const today = todayKey();

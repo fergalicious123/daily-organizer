@@ -32,7 +32,7 @@ function cap(text) {
   return el('kbd.keycap', text);
 }
 
-export function openShortcutsPanel() {
+function openShortcutsPanel() {
   openModal({
     title: 'Keyboard shortcuts',
     width: '460px',

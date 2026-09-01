@@ -102,7 +102,7 @@ function zoneConfig() {
  * not just tidiness — the sidebar redraws on every store change, and a rebuilt
  * widget would reset a conversion you were in the middle of reading.
  */
-export function clockWidget() {
+function clockWidget() {
   const { home, away } = zoneConfig();
 
   // While converting, this holds the instant being represented. Null means
