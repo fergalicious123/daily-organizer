@@ -152,11 +152,14 @@ function accept(capture, suggestion) {
   if (kind === CAPTURE.NOTE) {
     setCaptureKind(capture.id, CAPTURE.NOTE);
   } else {
-    // `now` lands tomorrow rather than today for the same reason the review's
-    // does: you are usually sorting these at the end of a day that is already
-    // spoken for, and dating something to a day that is nearly over just makes
-    // it overdue before you have seen it.
-    const date = kind === CAPTURE.NOW ? addDays(todayKey(), 1) : null;
+    /* `now` means today.
+       It used to land tomorrow, on the reasoning that you sort these at the
+       end of a day already spoken for. Ben works 0630-1830 and catches lines
+       through the day, not after it — and he has since said plainly that what
+       he expects from this app is that things go to today unless he says
+       otherwise. A button that says NOW and quietly means tomorrow is the
+       app disagreeing with its own label. */
+    const date = kind === CAPTURE.NOW ? todayKey() : null;
     sendCaptureToOrganizer(capture.id, { date, title: suggestion?.title });
   }
   sorted.delete(capture.id);
@@ -218,7 +221,7 @@ function captureRow(capture) {
     main.appendChild(el('div.line-actions',
       el('button.primary', { onclick: () => accept(capture, suggestion) },
         suggestion.kind === CAPTURE.NOTE ? 'Keep as a note'
-          : suggestion.kind === CAPTURE.NOW ? 'Add for tomorrow' : 'Add to Unscheduled'),
+          : suggestion.kind === CAPTURE.NOW ? 'Add for today' : 'Add to Unscheduled'),
       suggestion.reworded
         ? el('button', {
           onclick: () => accept(capture, { ...suggestion, title: suggestion.original }),
@@ -229,6 +232,14 @@ function captureRow(capture) {
   } else {
     main.appendChild(el('p.line-text', capture.text));
     main.appendChild(el('div.line-actions',
+      // Today first, and it was missing entirely. A line caught at 10am that
+      // you want to do today had two ways out of here: tomorrow, or no date
+      // at all. The organizer's own New item defaults to today for exactly
+      // this reason, and Catch was the one place that could not say it.
+      el('button', { onclick: () => {
+        sendCaptureToOrganizer(capture.id, { date: todayKey() });
+        render();
+      } }, 'Today'),
       el('button', { onclick: () => {
         sendCaptureToOrganizer(capture.id, { date: addDays(todayKey(), 1) });
         render();
@@ -271,6 +282,8 @@ function doneRow(capture) {
 
   if (!sent) {
     main.appendChild(el('div.line-actions',
+      el('button', { onclick: () => { sendCaptureToOrganizer(capture.id, { date: todayKey() }); render(); } },
+        'Today'),
       el('button', { onclick: () => {
         sendCaptureToOrganizer(capture.id, { date: addDays(todayKey(), 1) });
         render();
