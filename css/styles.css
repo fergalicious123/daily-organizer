@@ -146,6 +146,31 @@
   --header-h:  66px;
   --tabbar-h:  60px;
 
+  /* Motion, as two decisions rather than fourteen. Fast is for a state
+     change you should barely notice; slow is for something that travels. */
+  /* ---- type scale ----
+     Twenty-five sizes became ten. The steps are the ones the app already
+     leaned on -- 10.5, 11.5, 12.5 and 13.5 account for a hundred declarations
+     between them -- so the sizes that carry the interface do not move at all
+     and only the strays do. 13 vs 13.5 vs 14 was three decisions producing
+     one appearance; now it is one decision. */
+  --fs-3xs: 9.5px;    /* shift codes in a 43px month cell */
+  --fs-2xs: 10.5px;   /* uppercase micro-labels, group headings */
+  --fs-xs: 11.5px;    /* meta, hints, chips */
+  --fs-sm: 12.5px;    /* secondary text, snippets */
+  --fs-base: 13.5px;  /* row titles, body */
+  --fs-md: 15px;      /* inputs, prominent rows */
+  --fs-lg: 18px;      /* card headings */
+  --fs-xl: 22px;      /* view titles on a phone */
+  --fs-2xl: 25px;     /* display: the greeting, the current crumb.
+                         25 and not 26 because the header was measured at
+                         this size: "Wednesday 30 September" needs 228px of
+                         the 228 it gets, and a point more clips it. */
+  --fs-3xl: 34px;     /* the one big number */
+
+  --t-fast: .14s;
+  --t-slow: .24s;
+
   --ease: cubic-bezier(.4, 0, .2, 1);
 
   /* Safe-area padding so the tab bar clears the iOS/Android gesture bar. */
@@ -225,7 +250,7 @@ html, body {
 
 body {
   font-family: var(--font);
-  font-size: 16px;
+  font-size: var(--fs-md);
   /* 1.62 rather than 1.55. The single cheapest thing that makes a dense list
      easier to read is the space between the lines, not the size of them. */
   line-height: 1.62;
@@ -256,11 +281,22 @@ body {
  * So: only things that are actually large. The measured sizes are in the
  * comments, because that is the whole criterion.
  */
-h1, h2,
+/* NOT `h1, h2`.
+ *
+ * Selecting by tag defeated the size criterion the paragraph above spends
+ * itself explaining. A heading is a heading whatever size it is, so the
+ * display face was landing on the routine card's 15px "First things", on
+ * every dialog title at 15px, and on the review's at 18px -- the exact
+ * spindly look that made the phone header unreadable, in three more places.
+ *
+ * Named individually now, so adding a heading does not silently opt it in and
+ * the list stays checkable against the sizes in the comments. */
 .home-greeting,        /* 25px */
 .done-title,           /* 22px */
+.journal-title,        /* 22px */
+.review-title,         /* 22px */
 .stat-big,             /* 34px */
-.ring-value,           /* 30px */
+.ring-value,           /* 34px */
 .crumb.is-current {    /* 25px */
   font-family: var(--font-display);
   font-weight: 400;    /* it has one weight; asking for 650 fakes a bold */
@@ -364,7 +400,7 @@ button {
   width: 100%;
   text-align: left;
   border-radius: var(--radius-sm);
-  transition: background .12s var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 .brand:hover { background: var(--surface-sunk); }
 .brand:active { transform: translateY(1px); }
@@ -373,12 +409,12 @@ button {
   border-radius: 8px;
   background: linear-gradient(140deg, var(--accent), var(--p-low));
   display: grid; place-items: center;
-  color: #fff; font-weight: 700; font-size: 15px;
+  color: #fff; font-weight: 700; font-size: var(--fs-md);
   flex-shrink: 0;
 }
-.brand-name { font-weight: 650; font-size: 15.5px; letter-spacing: -.01em; }
+.brand-name { font-weight: 600; font-size: var(--fs-md); letter-spacing: -.01em; }
 .brand-sub {
-  font-size: 11px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
   font-family: var(--font-num); letter-spacing: .04em;
 }
 
@@ -394,10 +430,10 @@ button {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--fs-base);
+  font-weight: 600;
   text-align: left;
-  transition: background .12s var(--ease), color .12s var(--ease);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .nav-item:hover { background: var(--surface-sunk); color: var(--text); }
 .nav-item.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -405,7 +441,7 @@ button {
 .nav-item .count {
   margin-left: auto;
   font-family: var(--font-num);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   background: var(--surface-sunk);
   padding: 1px 6px;
@@ -417,7 +453,7 @@ button {
 .nav-item .count.is-alert { color: var(--danger); background: var(--danger-soft); }
 
 .section-label {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -430,7 +466,7 @@ button {
 }
 .section-label button {
   color: var(--text-faint);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1;
   padding: 2px 4px;
   border-radius: 4px;
@@ -450,11 +486,11 @@ button {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 8px; padding: 0 6px;
 }
-.mini-title { font-size: 13px; font-weight: 650; }
+.mini-title { font-size: var(--fs-base); font-weight: 600; }
 .mini-nav { display: flex; gap: 2px; }
 .mini-nav button {
   width: 22px; height: 22px; border-radius: 4px;
-  color: var(--text-faint); display: grid; place-items: center; font-size: 13px;
+  color: var(--text-faint); display: grid; place-items: center; font-size: var(--fs-base);
 }
 .mini-nav button:hover { background: var(--surface-sunk); color: var(--text); }
 
@@ -464,14 +500,14 @@ button {
   gap: 1px;
 }
 .mini-dow {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .04em;
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .04em;
   color: var(--text-faint); text-align: center; padding-bottom: 4px;
   text-transform: uppercase;
 }
 .mini-day {
   aspect-ratio: 1;
   display: grid; place-items: center;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-family: var(--font-num);
   border-radius: 5px;
   color: var(--text-muted);
@@ -554,21 +590,21 @@ button {
   flex-wrap: wrap;
 }
 .clock-zone {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .clock-time {
   font-family: var(--font-num);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   font-variant-numeric: tabular-nums;   /* two clocks side by side must align */
   color: var(--text);
 }
 .clock-sep { color: var(--border-strong); }
-.clock-day { font-size: 9.5px; color: var(--warning); font-weight: 600; }
+.clock-day { font-size: var(--fs-3xs); color: var(--warning); font-weight: 600; }
 .clock-chevron {
   width: 14px; height: 14px; color: var(--text-faint); flex-shrink: 0;
-  transition: transform .15s var(--ease);
+  transition: transform var(--t-fast) var(--ease);
 }
 
 .clock-body {
@@ -583,14 +619,14 @@ button {
 
 .clock-row { display: flex; align-items: center; gap: 8px; }
 .clock-row label {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--text-muted); width: 26px; flex-shrink: 0; margin: 0;
 }
 .clock-row input {
   flex: 1; min-width: 0;
   padding: 5px 8px;
   font-family: var(--font-num);
-  font-size: 13px;
+  font-size: var(--fs-base);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -603,15 +639,15 @@ button {
 
 .clock-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  font-size: 10.5px; color: var(--text-faint);
+  font-size: var(--fs-2xs); color: var(--text-faint);
 }
 .clock-gap { font-family: var(--font-num); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .clock-now {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11.5px; font-weight: 650;
+  font-size: var(--fs-xs); font-weight: 600;
   color: var(--accent-text); background: var(--accent);
   padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
-  transition: background .12s var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 .clock-now:hover { background: var(--accent-hover); }
 .clock-now .icon { width: 12px; height: 12px; }
@@ -650,11 +686,11 @@ button {
   box-shadow: var(--shadow-lg);
   color: var(--text-muted);
   font-family: var(--font-num);
-  font-size: 15px; font-weight: 700;
+  font-size: var(--fs-md); font-weight: 700;
   line-height: 1;
   display: grid; place-items: center;
   cursor: pointer;
-  transition: color .12s var(--ease), border-color .12s var(--ease), background .12s var(--ease);
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .shortcuts-fab:hover {
   color: var(--accent);
@@ -670,7 +706,7 @@ button {
 .shortcut-groups { display: flex; flex-direction: column; gap: 16px; }
 .shortcut-group-title {
   margin: 0 0 7px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .shortcut-list {
@@ -681,10 +717,10 @@ button {
   align-items: baseline;
 }
 .shortcut-keys { margin: 0; display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-.shortcut-label { margin: 0; font-size: 13px; }
+.shortcut-label { margin: 0; font-size: var(--fs-base); }
 .shortcut-note {
   display: block;
-  font-size: 11.5px; color: var(--text-faint); margin-top: 2px;
+  font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px;
 }
 
 .keycap {
@@ -696,36 +732,36 @@ button {
   border-radius: 5px;
   background: var(--surface-sunk);
   font-family: var(--font-num);
-  font-size: 11.5px; font-weight: 600;
+  font-size: var(--fs-xs); font-weight: 600;
   color: var(--text);
 }
-.keycap-plus { color: var(--text-faint); font-size: 11px; }
+.keycap-plus { color: var(--text-faint); font-size: var(--fs-xs); }
 
 .shortcut-caveats { margin-top: 18px; }
 .shortcut-caveats ul {
   margin: 0; padding-left: 17px;
   display: flex; flex-direction: column; gap: 5px;
 }
-.shortcut-caveats li { font-size: 12.5px; color: var(--text-muted); }
+.shortcut-caveats li { font-size: var(--fs-sm); color: var(--text-muted); }
 
 .shortcut-touch {
   display: flex; align-items: flex-start; gap: 7px;
   margin: 16px 0 0;
   padding-top: 13px;
   border-top: 1px solid var(--border);
-  font-size: 12.5px; color: var(--text-muted);
+  font-size: var(--fs-sm); color: var(--text-muted);
 }
 .shortcut-touch .icon { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
 
 .build-stamp {
   margin: 10px 0 0;
   font-family: var(--font-num);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
 }
 .version-stamp {
   font-family: var(--font-num);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .version-stamp.is-stale { color: var(--warning); font-weight: 600; }
@@ -744,8 +780,8 @@ button {
 .progress-card-head {
   display: flex; align-items: baseline; justify-content: space-between;
 }
-.progress-card-title { font-size: 12px; font-weight: 650; color: var(--text-muted); }
-.progress-card-scope { font-size: 10.5px; color: var(--text-faint); font-family: var(--font-num); }
+.progress-card-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); }
+.progress-card-scope { font-size: var(--fs-2xs); color: var(--text-faint); font-family: var(--font-num); }
 
 /* ------------------------------------------------------------------ */
 /* Main header                                                         */
@@ -774,7 +810,7 @@ button {
 
 .breadcrumb { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .crumb {
-  font-size: 13px; color: var(--text-muted); padding: 3px 7px;
+  font-size: var(--fs-base); color: var(--text-muted); padding: 3px 7px;
   border-radius: var(--radius-sm); white-space: nowrap;
 }
 .crumb:hover { background: var(--surface-sunk); color: var(--text); }
@@ -809,14 +845,14 @@ button {
 .crumb.is-current {
   color: var(--text);
   font-family: var(--font-display);
-  font-weight: 400; font-size: 25px; letter-spacing: .018em;
+  font-weight: 400; font-size: var(--fs-2xl); letter-spacing: .018em;
   /* No side padding: this one is a label, not a hover target like the crumbs
      behind it, so the 7px each side was pure cost against the width it needs. */
   padding-left: 2px; padding-right: 2px;
   flex-shrink: 1;
   overflow: hidden; text-overflow: ellipsis;
 }
-.crumb-sep { color: var(--text-faint); font-size: 11px; flex-shrink: 0; }
+.crumb-sep { color: var(--text-faint); font-size: var(--fs-xs); flex-shrink: 0; }
 
 /* Below this the path and the answer cannot both fit, and squeezing them
    produces neither: two 14px slivers of ellipsis and a clipped date. The
@@ -841,8 +877,8 @@ button {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 13.5px; font-weight: 500;
-  transition: background .12s var(--ease), border-color .12s var(--ease), transform .06s var(--ease);
+  font-size: var(--fs-base); font-weight: 600;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform .06s var(--ease);
 }
 .btn:hover { background: var(--surface-sunk); border-color: var(--border-strong); }
 .btn:active { transform: translateY(1px); }
@@ -868,10 +904,10 @@ button {
 .segmented button {
   padding: 5px 13px;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 550;
+  font-size: var(--fs-base);
+  font-weight: 600;
   color: var(--text-muted);
-  transition: background .12s var(--ease), color .12s var(--ease);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .segmented button:hover { color: var(--text); }
 .segmented button.is-active {
@@ -892,7 +928,7 @@ button {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-.view-anim { animation: view-in .18s var(--ease); }
+.view-anim { animation: view-in var(--t-fast) var(--ease); }
 @media (prefers-reduced-motion: reduce) {
   .view-anim { animation: none; }
   * { transition-duration: .01ms !important; }
@@ -917,7 +953,7 @@ button {
   padding-right: 2px;
 }
 .month-dow span {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--text-faint); text-align: center; padding-bottom: 2px;
 }
 
@@ -935,7 +971,7 @@ button {
   grid-template-columns: 44px repeat(7, minmax(0, 1fr));
   gap: 6px;
   border-radius: var(--radius);
-  transition: box-shadow .13s var(--ease), transform .13s var(--ease);
+  transition: box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
   cursor: pointer;
   min-height: 0;
 }
@@ -958,11 +994,11 @@ button {
   border-radius: 4px;
   background: var(--ev, var(--accent));
   color: #fff;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-align: left;
   box-shadow: 0 1px 2px rgba(16, 20, 28, .18);
-  transition: filter .12s var(--ease);
+  transition: filter var(--t-fast) var(--ease);
 }
 .span-bar:hover { filter: brightness(1.08); }
 .span-bar-text {
@@ -987,7 +1023,7 @@ button {
 @media (max-width: 760px) {
   /* Bars survive on a phone where chips cannot: a full-width block still
      reads even when a single cell is only ~45px across. */
-  .span-bar { font-size: 10px; padding: 0 4px; }
+  .span-bar { font-size: var(--fs-2xs); padding: 0 4px; }
 }
 .week-row:hover .week-num { background: var(--accent); color: var(--accent-text); }
 
@@ -1004,10 +1040,10 @@ button {
   border-radius: var(--radius-sm);
   color: var(--text-faint);
   font-family: var(--font-num);
-  transition: background .13s var(--ease), color .13s var(--ease);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
-.week-num .wk-label { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
-.week-num .wk-value { font-size: 14px; font-weight: 700; }
+.week-num .wk-label { font-size: var(--fs-3xs); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.week-num .wk-value { font-size: var(--fs-base); font-weight: 700; }
 
 .month-day {
   background: var(--surface);
@@ -1019,7 +1055,7 @@ button {
   gap: 3px;
   min-height: 0;
   overflow: hidden;
-  transition: border-color .12s var(--ease), background .12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .month-day:hover { border-color: var(--accent); background: var(--surface-2); }
 .month-day.is-outside { background: var(--surface-sunk); opacity: .6; }
@@ -1124,7 +1160,7 @@ button {
 .span-bar.is-shift {
   background: var(--shift, var(--accent));
   font-weight: 800;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: .06em;
   justify-content: center;
 }
@@ -1147,7 +1183,7 @@ button {
 .month-shift-label {
   background: var(--shift, var(--accent));
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   letter-spacing: .08em;
   line-height: 1.5;
@@ -1158,7 +1194,7 @@ button {
 /* Who you were on with. Inside the block so it can never be crowded out of
    the cell by chips the way a free-floating line at the bottom was. */
 .month-shift-crew {
-  font-size: 9.5px;
+  font-size: var(--fs-3xs);
   line-height: 1.25;
   padding: 1px 3px 2px;
   text-align: center;
@@ -1176,7 +1212,7 @@ button {
    actually be read. */
 .month-day-num {
   font-family: var(--font-num);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-muted);
   display: flex;
@@ -1186,7 +1222,7 @@ button {
   flex-shrink: 0;
 }
 .month-day.is-today .month-day-num { color: var(--accent); }
-.month-day-date { font-size: 12.5px; }
+.month-day-date { font-size: var(--fs-sm); }
 .month-day.is-today .month-day-date { font-weight: 700; }
 
 /* How many are still to do. A count answers the question a row of dots only
@@ -1200,7 +1236,7 @@ button {
   border-radius: 20px;
   background: var(--accent);
   color: var(--accent-text);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -1243,8 +1279,8 @@ button {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   height: var(--month-chip-h);
   padding: 2px 5px;
   border-radius: 4px;
@@ -1290,7 +1326,7 @@ button {
    consumed exactly the room a chip needed, so cells with a spanning bar showed
    "+3 more" and nothing else. */
 .month-more {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-faint);
   padding-left: 4px;
@@ -1323,7 +1359,7 @@ button {
   overflow: hidden;
   min-height: 0;
   position: relative;
-  transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .week-col:hover { border-color: var(--border-strong); }
 .week-col.is-today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -1334,16 +1370,16 @@ button {
   background: var(--surface-2);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background .12s var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 .week-col-head:hover { background: var(--accent-soft); }
 .week-col-dow {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .week-col.is-today .week-col-dow { color: var(--accent); }
 .week-col-date {
-  font-family: var(--font-num); font-size: 19px; font-weight: 650; letter-spacing: -.02em;
+  font-family: var(--font-num); font-size: var(--fs-lg); font-weight: 600; letter-spacing: -.02em;
   display: flex; align-items: baseline; gap: 7px;
 }
 
@@ -1358,7 +1394,7 @@ button {
 }
 .week-col-body:empty::after {
   content: 'Nothing planned';
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   text-align: center;
   padding-top: 18px;
@@ -1372,7 +1408,7 @@ button {
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--ev, var(--accent)) 13%, transparent);
   border-left: 3px solid var(--ev, var(--accent));
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.35;
   cursor: pointer;
   transition: filter .1s var(--ease);
@@ -1381,7 +1417,7 @@ button {
 .week-item.is-done { opacity: .55; }
 .week-item.is-done .week-item-title { text-decoration: line-through; }
 .week-item-time {
-  font-family: var(--font-num); font-size: 10.5px; color: var(--text-muted);
+  font-family: var(--font-num); font-size: var(--fs-2xs); color: var(--text-muted);
   flex-shrink: 0; padding-top: 1px;
 }
 .week-item-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -1420,13 +1456,13 @@ button {
 }
 .day-allday-label {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .day-allday:empty { display: none; }
 .day-allday-more {
   display: inline-flex; align-items: center; gap: 3px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   background: none; border: none; padding: 2px 4px;
   border-radius: var(--radius-sm);
@@ -1448,7 +1484,7 @@ button {
   color: var(--text-muted);
 }
 .quiet-band-line { flex: 1; border-top: 1px dashed var(--border); }
-.quiet-band-text { font-size: 11px; white-space: nowrap; }
+.quiet-band-text { font-size: var(--fs-xs); white-space: nowrap; }
 .quiet-band:hover { color: var(--text); }
 .quiet-band:hover .quiet-band-line { border-top-color: var(--accent); }
 .quiet-band:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -1469,16 +1505,16 @@ button {
   margin-bottom: 5px;
 }
 .day-status-label {
-  font-size: 10.5px; font-weight: 700;
+  font-size: var(--fs-2xs); font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-muted);
 }
 .day-status-count {
-  font-family: var(--font-num); font-size: 11.5px;
+  font-family: var(--font-num); font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums; color: var(--text-muted);
 }
 .day-status-next {
-  font-size: 13px; line-height: 1.4; color: var(--text);
+  font-size: var(--fs-base); line-height: 1.4; color: var(--text);
   margin-bottom: 9px;
 }
 .day-status-bar {
@@ -1489,7 +1525,7 @@ button {
 .day-status-bar > span {
   display: block; height: 100%;
   background: var(--accent);
-  transition: width .3s var(--ease);
+  transition: width var(--t-slow) var(--ease);
 }
 
 /* Time grid. Events are absolutely positioned by start minute and sized by
@@ -1548,10 +1584,10 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   background: var(--warning-soft);
 }
 .day-gone-label {
-  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font-size: var(--fs-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   color: var(--warning);
 }
-.day-gone-note { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; }
+.day-gone-note { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.45; }
 .hour-line.is-drop-target {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 2px var(--accent);
@@ -1562,7 +1598,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   width: 50px;
   text-align: right;
   font-family: var(--font-num);
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-faint);
   user-select: none;
   background: var(--surface);
@@ -1576,10 +1612,10 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   width: 22px; height: 22px;
   border-radius: 50%;
   color: var(--text-faint);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1;
   display: grid; place-items: center;
-  transition: opacity .12s var(--ease), background .12s var(--ease);
+  transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .hour-line:hover .hour-add { opacity: 1; }
 .hour-add:hover { background: var(--accent); color: var(--accent-text); }
@@ -1611,7 +1647,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   box-shadow: 0 1px 2px rgba(16, 20, 28, .08);
 }
 .day-block .day-event-title {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.3;
   overflow: hidden;
   display: -webkit-box;
@@ -1622,7 +1658,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
    line box, three of which were the pixels that pushed the time out of every
    hour-long block. Tight leading is also simply right for a caption. */
 .day-block .day-event-meta {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
   display: block;
   margin-top: 1px;
@@ -1702,7 +1738,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1727,7 +1763,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   border-left: 3px solid var(--ev, var(--accent));
   border-radius: 4px;
   padding: 5px 9px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   display: flex;
   align-items: flex-start;
@@ -1737,9 +1773,9 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .day-event:hover { filter: brightness(.96); }
 .day-event.is-done { opacity: .55; }
 .day-event.is-done .day-event-title { text-decoration: line-through; }
-.day-event-title { font-weight: 550; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.day-event-title { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .day-event-meta {
-  font-family: var(--font-num); font-size: 10.5px; color: var(--text-muted); flex-shrink: 0;
+  font-family: var(--font-num); font-size: var(--fs-2xs); color: var(--text-muted); flex-shrink: 0;
 }
 
 .day-side {
@@ -1760,10 +1796,10 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   flex-shrink: 0;
 }
 .rail-title {
-  font-size: 14px; font-weight: 650; display: flex; align-items: center;
+  font-size: var(--fs-base); font-weight: 600; display: flex; align-items: center;
   justify-content: space-between; gap: 8px;
 }
-.rail-sub { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; font-family: var(--font-num); }
+.rail-sub { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; font-family: var(--font-num); }
 
 .rail-body { flex: 1; overflow-y: auto; padding: 10px 11px calc(14px + var(--safe-b)); }
 
@@ -1774,19 +1810,19 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   margin-bottom: 11px;
-  transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .quick-add:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .quick-add input {
-  flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: 13.5px;
+  flex: 1; min-width: 0; border: none; background: none; outline: none; font-size: var(--fs-base);
 }
 .quick-add input::placeholder { color: var(--text-faint); }
 
 .task-group-label {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-faint); margin: 14px 4px 7px;
   display: flex; align-items: center; gap: 7px;
 }
@@ -1896,7 +1932,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
    * which says the same thing in one place instead of across the whole row.
    */
   background: transparent;
-  transition: background .1s var(--ease), border-color .15s var(--ease);
+  transition: background .1s var(--ease), border-color var(--t-fast) var(--ease);
   position: relative;
   cursor: grab;
 }
@@ -1927,7 +1963,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   margin-top: 1px;
   position: relative;
   display: grid; place-items: center;
-  transition: background .12s var(--ease), border-color .12s var(--ease);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
 
 /* The hit area, which is deliberately bigger than the circle.
@@ -1958,7 +1994,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
 .task-main { flex: 1; min-width: 0; }
 .task-title {
-  font-size: 15px; line-height: 1.45; overflow-wrap: anywhere;
+  font-size: var(--fs-md); line-height: 1.45; overflow-wrap: anywhere;
   display: flex; align-items: baseline; gap: 7px;
 }
 /* The kind-colour dot, matched to the calendar chips. */
@@ -1981,7 +2017,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
  * information is unchanged; only the ones that MEAN something keep a fill.
  */
 .chip {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-family: var(--font);
   font-variant-numeric: tabular-nums;
   padding: 0;
@@ -2012,7 +2048,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
 .task-actions {
   display: flex; gap: 2px; opacity: 0; flex-shrink: 0;
-  transition: opacity .12s var(--ease);
+  transition: opacity var(--t-fast) var(--ease);
 }
 .task-actions button {
   width: 24px; height: 24px; border-radius: 4px; color: var(--text-faint);
@@ -2028,7 +2064,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 .subtask {
   display: flex; align-items: center; gap: 7px;
-  font-size: 12.5px; color: var(--text-muted);
+  font-size: var(--fs-sm); color: var(--text-muted);
 }
 .subtask .checkbox { width: 16px; height: 16px; margin-top: 0; border-radius: 4px; }
 /* Subtask rows sit 3px apart, so the ring is smaller than the one on a main
@@ -2041,9 +2077,9 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   padding: 34px 18px;
   color: var(--text-faint);
 }
-.empty-state .empty-icon { font-size: 26px; opacity: .5; margin-bottom: 8px; }
-.empty-state p { margin: 0; font-size: 13px; }
-.empty-state .empty-hint { font-size: 11.5px; margin-top: 5px; opacity: .8; }
+.empty-state .empty-icon { font-size: var(--fs-2xl); opacity: .5; margin-bottom: 8px; }
+.empty-state p { margin: 0; font-size: var(--fs-base); }
+.empty-state .empty-hint { font-size: var(--fs-xs); margin-top: 5px; opacity: .8; }
 
 /* ------------------------------------------------------------------ */
 /* Voice capture                                                       */
@@ -2057,7 +2093,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
 .voice-status {
   display: flex; align-items: center; gap: 9px;
-  font-size: 12px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+  font-size: var(--fs-sm); font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .voice-status .dot {
@@ -2066,11 +2102,11 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 @keyframes blink { 50% { opacity: .25; } }
 .voice-transcript {
-  font-size: 17px; line-height: 1.45; min-height: 26px; overflow-wrap: anywhere;
+  font-size: var(--fs-lg); line-height: 1.45; min-height: 26px; overflow-wrap: anywhere;
 }
 .voice-transcript .interim { color: var(--text-faint); }
 .voice-transcript:empty::after {
-  content: 'Listening…'; color: var(--text-faint); font-size: 15px;
+  content: 'Listening…'; color: var(--text-faint); font-size: var(--fs-md);
 }
 
 .voice-input {
@@ -2091,14 +2127,14 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   padding: 12px 14px;
   display: flex; flex-direction: column; gap: 9px;
 }
-.voice-preview-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.voice-preview-title { font-size: var(--fs-md); font-weight: 600; overflow-wrap: anywhere; }
 .voice-preview-meta { display: flex; flex-wrap: wrap; gap: 6px; }
 .voice-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .voice-examples {
-  font-size: 11.5px; color: var(--text-faint); line-height: 1.6;
+  font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.6;
 }
 .voice-examples code {
-  font-family: var(--font-num); font-size: 11px;
+  font-family: var(--font-num); font-size: var(--fs-xs);
   background: var(--surface-sunk); padding: 1px 5px; border-radius: 3px;
 }
 
@@ -2126,7 +2162,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: view-in .16s var(--ease);
+  animation: view-in var(--t-fast) var(--ease);
 }
 .modal-head {
   padding: 15px 18px;
@@ -2134,7 +2170,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   flex-shrink: 0;
 }
-.modal-head h2 { margin: 0; font-size: 16px; font-weight: 650; }
+.modal-head h2 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
 .modal-body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .modal-foot {
   padding: 13px 18px;
@@ -2146,7 +2182,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label {
-  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
   color: var(--text-muted);
 }
 .field input, .field select, .field textarea {
@@ -2155,7 +2191,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   outline: none;
-  transition: border-color .12s var(--ease), box-shadow .12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
   width: 100%;
 }
 .field input:focus, .field select:focus, .field textarea:focus {
@@ -2169,7 +2205,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
    ancestor — `.field .some-input` — when overriding anything here. */
 .field textarea { resize: vertical; min-height: 66px; font-family: inherit; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.field-hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; }
+.field-hint { font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.5; }
 
 /* ---- the item editor's folded half ----
    The dialog leads with the title and one sentence saying where the thing
@@ -2185,7 +2221,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 .editor-landing {
   margin: -4px 0 0;
-  font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
+  font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5;
 }
 .editor-landing.is-past { color: var(--warning); font-weight: 600; }
 
@@ -2203,7 +2239,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-base);
   text-align: left;
 }
 .dp-trigger:hover { border-color: var(--border-strong); }
@@ -2214,7 +2250,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .dp-trigger-shift:empty { display: none; }
 .dp-trigger-shift {
   flex-shrink: 0;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 20px;
   background: color-mix(in srgb, var(--shift, var(--text-faint)) 26%, transparent);
@@ -2235,7 +2271,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 .dp-pop[hidden] { display: none; }
 .dp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.dp-month { flex: 1; text-align: center; font-size: 13.5px; font-weight: 600; }
+.dp-month { flex: 1; text-align: center; font-size: var(--fs-base); font-weight: 600; }
 .dp-step {
   width: 34px; height: 34px;
   display: grid; place-items: center;
@@ -2246,7 +2282,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .dp-dow, .dp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .dp-dow span {
   text-align: center;
-  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .05em;
   color: var(--text-faint);
   padding-bottom: 4px;
 }
@@ -2268,15 +2304,15 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .dp-day.is-today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .dp-day.is-selected { background: var(--accent); color: var(--accent-text); }
 .dp-day.is-selected .dp-shift, .dp-day.is-selected .dp-count { color: var(--accent-text); }
-.dp-num { font-size: 12.5px; font-weight: 600; line-height: 1; }
+.dp-num { font-size: var(--fs-sm); font-weight: 600; line-height: 1; }
 .dp-shift {
-  font-size: 8.5px; font-weight: 800; letter-spacing: .06em;
+  font-size: var(--fs-3xs); font-weight: 800; letter-spacing: .06em;
   line-height: 1;
   color: var(--text-muted);
 }
 .dp-count {
   position: absolute; top: 2px; right: 3px;
-  font-size: 8.5px; font-weight: 700; line-height: 1;
+  font-size: var(--fs-3xs); font-weight: 700; line-height: 1;
   color: var(--accent);
 }
 /* The rota tint, same tokens as the month grid. */
@@ -2309,7 +2345,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
    the odd code span. Sized to sit INSIDE a diary entry or a note rather than
    to be a document of its own — the heading levels are already shifted down
    by two in markdown.js, and these sizes finish that job. */
-.md { font-size: 13.5px; line-height: 1.55; color: var(--text); }
+.md { font-size: var(--fs-base); line-height: 1.55; color: var(--text); }
 .md > *:first-child { margin-top: 0; }
 .md > *:last-child { margin-bottom: 0; }
 .md-p { margin: 0 0 9px; }
@@ -2320,10 +2356,10 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   line-height: 1.3;
   color: var(--text);
 }
-h3.md-h { font-size: 15.5px; font-weight: 700; }
-h4.md-h { font-size: 14px; font-weight: 700; }
+h3.md-h { font-size: var(--fs-md); font-weight: 700; }
+h4.md-h { font-size: var(--fs-base); font-weight: 700; }
 h5.md-h, h6.md-h {
-  font-size: 11.5px; font-weight: 700;
+  font-size: var(--fs-xs); font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -2346,13 +2382,13 @@ h5.md-h, h6.md-h {
   background: var(--surface-sunk);
   overflow-x: auto;
 }
-.md-pre code { background: none; padding: 0; font-size: 12px; }
+.md-pre code { background: none; padding: 0; font-size: var(--fs-sm); }
 .md-quote {
   margin: 0 0 9px;
   padding: 2px 0 2px 11px;
   border-left: 2px solid var(--border-strong);
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .md-hr { margin: 14px 0; border: 0; border-top: 1px solid var(--border); }
 
@@ -2365,7 +2401,7 @@ h5.md-h, h6.md-h {
   border-collapse: collapse;
   width: 100%;
   min-width: max-content;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .md-table th, .md-table td {
   padding: 6px 10px;
@@ -2374,7 +2410,7 @@ h5.md-h, h6.md-h {
   white-space: nowrap;
 }
 .md-table th {
-  font-size: 10.5px; font-weight: 700;
+  font-size: var(--fs-2xs); font-weight: 700;
   letter-spacing: .05em; text-transform: uppercase;
   color: var(--text-muted);
   background: var(--surface-sunk);
@@ -2383,8 +2419,8 @@ h5.md-h, h6.md-h {
 .md-table tbody tr:last-child td { border-bottom: 0; }
 .md-table tbody tr:hover { background: var(--surface-2); }
 
-.journal-md { font-size: 14px; }
-.note-md { font-size: 13px; }
+.journal-md { font-size: var(--fs-base); }
+.note-md { font-size: var(--fs-base); }
 
 /* ---- the rota, in the week view ----
    The month grid has carried this since v7; the week view never did, so the
@@ -2402,7 +2438,7 @@ h5.md-h, h6.md-h {
   border-radius: 4px;
   background: var(--shift, var(--accent));
   color: var(--accent-text);
-  font-size: 9.5px; font-weight: 800; letter-spacing: .07em;
+  font-size: var(--fs-3xs); font-weight: 800; letter-spacing: .07em;
 }
 /* Off is the absence of a shift and must not shout like one. */
 .week-col.on-off .week-col-shift-label {
@@ -2410,7 +2446,7 @@ h5.md-h, h6.md-h {
   color: var(--text);
 }
 .week-col-crew {
-  font-size: 9.5px; color: var(--text-muted);
+  font-size: var(--fs-3xs); color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -2442,7 +2478,7 @@ h5.md-h, h6.md-h {
    the one with nothing in it. */
 .task-group-label.is-droppable {
   border-radius: var(--radius-sm);
-  transition: background .14s var(--ease), box-shadow .14s var(--ease), color .14s var(--ease);
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 .task-group-label.is-empty { color: var(--text-faint); }
 .task-group-label.is-drop-target {
@@ -2452,7 +2488,7 @@ h5.md-h, h6.md-h {
 }
 .journal-ahead {
   align-self: center;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
   padding: 3px 9px;
   border-radius: 20px;
   background: var(--accent-soft);
@@ -2476,7 +2512,7 @@ h5.md-h, h6.md-h {
   align-items: center;
   gap: 10px;
   padding: 4px 0;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
 }
 .usage-label { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .usage-bar {
@@ -2507,7 +2543,7 @@ h5.md-h, h6.md-h {
 .search-box {
   width: 100%;
   padding: 11px 13px;
-  font-size: 15px;
+  font-size: var(--fs-md);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -2527,17 +2563,17 @@ h5.md-h, h6.md-h {
 .search-hit:hover, .search-hit:focus-visible { background: var(--surface-2); border-color: var(--border); }
 .search-hit-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .search-hit-title {
-  font-size: 13.5px; color: var(--text);
+  font-size: var(--fs-base); color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .search-hit-title.is-done { color: var(--text-muted); text-decoration: line-through; }
 .search-hit-snippet {
-  font-size: 11.5px; color: var(--text-muted); line-height: 1.4;
+  font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .search-hit-meta {
   flex: 0 0 auto; display: flex; align-items: center; gap: 7px;
-  font-size: 10.5px; color: var(--text-faint);
+  font-size: var(--fs-2xs); color: var(--text-faint);
 }
 .search-hit-kind {
   font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
@@ -2552,7 +2588,7 @@ h5.md-h, h6.md-h {
 /* "When" leads the dialog with the title, so its pills read as a choice being
    asked for rather than a row of shortcuts tucked under a field. */
 .when-row { gap: 7px; }
-.when-row .pill { font-size: 13px; }
+.when-row .pill { font-size: var(--fs-base); }
 .field-hint a { color: var(--accent); }
 
 .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2561,9 +2597,9 @@ h5.md-h, h6.md-h {
   border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
-  transition: all .12s var(--ease);
+  transition: all var(--t-fast) var(--ease);
 }
 .pill:hover { border-color: var(--border-strong); color: var(--text); }
 .pill.is-active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
@@ -2587,8 +2623,8 @@ h5.md-h, h6.md-h {
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   text-align: left;
-  font-size: 13.5px;
-  transition: border-color .12s var(--ease), background .12s var(--ease);
+  font-size: var(--fs-base);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .cal-option:hover { border-color: var(--border-strong); }
 .cal-option.is-on { border-color: var(--accent); background: var(--accent-soft); }
@@ -2608,7 +2644,7 @@ h5.md-h, h6.md-h {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .cal-ro {
-  font-size: 10px; font-family: var(--font-num);
+  font-size: var(--fs-2xs); font-family: var(--font-num);
   color: var(--text-faint); background: var(--surface-sunk);
   padding: 1px 6px; border-radius: 20px; flex-shrink: 0;
 }
@@ -2618,16 +2654,16 @@ h5.md-h, h6.md-h {
   padding: 9px 0;
 }
 .switch-row + .switch-row { border-top: 1px solid var(--border); }
-.switch-label { font-size: 13.5px; }
-.switch-desc { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
+.switch-label { font-size: var(--fs-base); }
+.switch-desc { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; }
 .switch {
   width: 40px; height: 23px; border-radius: 20px; background: var(--border-strong);
-  position: relative; flex-shrink: 0; transition: background .15s var(--ease);
+  position: relative; flex-shrink: 0; transition: background var(--t-fast) var(--ease);
 }
 .switch::after {
   content: ''; position: absolute; top: 2.5px; left: 2.5px;
   width: 18px; height: 18px; border-radius: 50%; background: #fff;
-  transition: transform .15s var(--ease);
+  transition: transform var(--t-fast) var(--ease);
   box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 .switch.is-on { background: var(--accent); }
@@ -2650,7 +2686,7 @@ h5.md-h, h6.md-h {
   color: var(--bg);
   padding: 10px 16px;
   border-radius: var(--radius);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   box-shadow: var(--shadow-lg);
   display: flex; align-items: center; gap: 12px;
   pointer-events: auto;
@@ -2658,8 +2694,8 @@ h5.md-h, h6.md-h {
   max-width: min(460px, calc(100vw - 32px));
 }
 .toast button {
-  color: inherit; font-weight: 650; text-decoration: underline;
-  text-underline-offset: 2px; font-size: 13px; flex-shrink: 0;
+  color: inherit; font-weight: 600; text-decoration: underline;
+  text-underline-offset: 2px; font-size: var(--fs-base); flex-shrink: 0;
 }
 .toast.is-error { background: var(--danger); color: #fff; }
 @keyframes toast-in {
@@ -2673,7 +2709,7 @@ h5.md-h, h6.md-h {
 
 .sync-status {
   display: flex; align-items: center; gap: 7px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   padding: 7px 10px;
   border-radius: var(--radius-sm);
@@ -2706,13 +2742,14 @@ h5.md-h, h6.md-h {
 }
 
 .home-head { display: flex; flex-direction: column; gap: 2px; }
+/* Weight and tracking come from the display rule above. A 600 here asked the
+   browser to fake a bold on a face that has exactly one weight, and the
+   negative tracking was tightening a face already drawn tight. */
 .home-greeting {
   margin: 0;
-  font-size: 25px;
-  font-weight: 650;
-  letter-spacing: -.02em;
+  font-size: var(--fs-2xl);
 }
-.home-date { margin: 0; font-size: 13.5px; color: var(--text-muted); }
+.home-date { margin: 0; font-size: var(--fs-base); color: var(--text-muted); }
 
 /* The one thing worth reading first, so it gets the weight. */
 .home-focus {
@@ -2726,7 +2763,7 @@ h5.md-h, h6.md-h {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: border-color .12s var(--ease), transform .06s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), transform .06s var(--ease);
 }
 .home-focus:hover { border-color: var(--border-strong); }
 .home-focus:active { transform: translateY(1px); }
@@ -2742,15 +2779,15 @@ h5.md-h, h6.md-h {
 
 .home-focus-caption {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .home-focus.is-now .home-focus-caption { color: var(--accent); }
 .home-focus-caption .icon { width: 13px; height: 13px; }
 .home-focus-title {
-  font-size: 18px; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere;
+  font-size: var(--fs-lg); font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere;
 }
-.home-focus-meta { font-family: var(--font-num); font-size: 12px; color: var(--text-muted); }
+.home-focus-meta { font-family: var(--font-num); font-size: var(--fs-sm); color: var(--text-muted); }
 
 .home-alert {
   display: flex; align-items: center; gap: 9px;
@@ -2759,11 +2796,11 @@ h5.md-h, h6.md-h {
   border-radius: var(--radius);
   background: var(--danger-soft);
   color: var(--danger);
-  font-size: 13.5px; font-weight: 550;
+  font-size: var(--fs-base); font-weight: 600;
 }
 .home-alert .icon { width: 17px; height: 17px; flex-shrink: 0; }
 .home-alert-go {
-  margin-left: auto; font-size: 12px; font-weight: 650;
+  margin-left: auto; font-size: var(--fs-sm); font-weight: 600;
   text-decoration: underline; text-underline-offset: 2px;
 }
 
@@ -2786,21 +2823,21 @@ h5.md-h, h6.md-h {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   text-align: left;
-  transition: border-color .12s var(--ease);
+  transition: border-color var(--t-fast) var(--ease);
 }
 .home-strip-cell.is-clickable:hover { border-color: var(--accent); }
 .home-strip-label {
-  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--text-faint);
 }
 .home-strip-value {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 21px; font-weight: 700; line-height: 1;
+  font-size: var(--fs-xl); font-weight: 700; line-height: 1;
   color: var(--text);
 }
 .home-strip-note {
-  font-size: 11px; color: var(--text-muted);
+  font-size: var(--fs-xs); color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .home-strip-bar {
@@ -2813,7 +2850,7 @@ h5.md-h, h6.md-h {
   display: block; height: 100%;
   background: var(--accent);
   border-radius: 2px;
-  transition: width .3s var(--ease);
+  transition: width var(--t-slow) var(--ease);
 }
 .home-strip-cell .spark { width: 100%; height: 18px; }
 
@@ -2827,7 +2864,7 @@ h5.md-h, h6.md-h {
 .home-shift-hours {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 15px; font-weight: 600;
+  font-size: var(--fs-md); font-weight: 600;
   opacity: .85;
 }
 
@@ -2845,25 +2882,25 @@ h5.md-h, h6.md-h {
   border-radius: var(--radius);
   background: var(--surface);
   text-align: left;
-  transition: border-color .16s var(--ease), background .16s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .together-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
 .together-when {
   flex: 0 0 auto; min-width: 74px;
-  font-size: 12.5px; color: var(--text-muted);
+  font-size: var(--fs-sm); color: var(--text-muted);
 }
 .together-hours {
   flex: 1 1 auto;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 14px; font-weight: 700;
+  font-size: var(--fs-base); font-weight: 700;
   color: var(--text);
 }
 .together-theirs {
   flex: 0 0 auto;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -2879,17 +2916,17 @@ h5.md-h, h6.md-h {
 }
 .together-panel-head {
   display: flex; align-items: center; gap: 7px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--accent);
 }
 .together-panel-head .icon { width: 13px; height: 13px; }
 .together-day-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .together-day-row .together-hours { flex: 0 0 auto; }
 .together-day-row .together-theirs { flex: 1 1 auto; }
-.together-book { flex: 0 0 auto; padding: 5px 10px; font-size: 12px; min-height: 36px; }
+.together-book { flex: 0 0 auto; padding: 5px 10px; font-size: var(--fs-sm); min-height: 36px; }
 .together-booked {
   flex: 0 0 auto;
-  font-size: 11px; color: var(--success);
+  font-size: var(--fs-xs); color: var(--success);
   font-weight: 600;
 }
 @media (max-width: 760px) { .together-book { min-height: 44px; } }
@@ -2910,7 +2947,7 @@ h5.md-h, h6.md-h {
 
 @media (max-width: 760px) {
   .home { padding: 14px 12px 20px; gap: 14px; }
-  .home-greeting { font-size: 21px; }
+  .home-greeting { font-size: var(--fs-xl); }
   /* Three across still fits at 375px once the cards are a row high. */
   /* Title and count on one line, the buttons on their own, rather than four
      lines of broken phrases squeezed side by side. */
@@ -2922,8 +2959,8 @@ h5.md-h, h6.md-h {
 
   .home-strip { gap: 7px; }
   .home-strip-cell { padding: 9px 10px; }
-  .home-strip-value { font-size: 18px; }
-  .home-focus-title { font-size: 16px; }
+  .home-strip-value { font-size: var(--fs-lg); }
+  .home-focus-title { font-size: var(--fs-md); }
 }
 
 /* ------------------------------------------------------------------ */
@@ -2936,8 +2973,10 @@ h5.md-h, h6.md-h {
 
 .journal-view { padding: 20px 24px 28px; max-width: 780px; }
 .journal-head { margin-bottom: 14px; }
-.journal-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
-.journal-sub { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); }
+/* No weight and no tracking of its own: the display rule above sets both,
+   and a 600 here made the browser fake a bold on a face that has one. */
+.journal-title { margin: 0; font-size: var(--fs-xl); }
+.journal-sub { margin: 3px 0 0; font-size: var(--fs-base); color: var(--text-muted); }
 
 .journal-entry {
   background: var(--surface);
@@ -2963,23 +3002,23 @@ button.journal-entry-head { cursor: pointer; }
 button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .journal-entry-day {
   display: block;
-  font-size: 14px; font-weight: 650;
-  transition: color .12s var(--ease);
+  font-size: var(--fs-base); font-weight: 600;
+  transition: color var(--t-fast) var(--ease);
 }
 .journal-entry-date {
   display: block;
-  font-size: 11.5px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
   font-family: var(--font-num);
 }
 .journal-entry-text {
   margin: 0;
-  font-size: 13.5px; line-height: 1.6;
+  font-size: var(--fs-base); line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .journal-entry-empty {
   margin: 0;
-  font-size: 12.5px; color: var(--text-faint); font-style: italic;
+  font-size: var(--fs-sm); color: var(--text-faint); font-style: italic;
 }
 
 .journal-bullets {
@@ -2988,7 +3027,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   display: flex; flex-direction: column; gap: 4px;
 }
 .journal-bullets li {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -3003,7 +3042,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
      no bar appears, but a very long entry hits the cap and must stay readable. */
   overflow-y: auto;
   font: inherit;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   line-height: 1.65;
   /* A floor, not a size. It used to be a fixed 240px with the overflow
      scrolling inside, which meant every entry longer than the box was written
@@ -3022,7 +3061,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .journal-tools {
   display: flex; align-items: center; gap: 9px;
   margin-top: 7px;
-  font-size: 11.5px; color: var(--text-faint);
+  font-size: var(--fs-xs); color: var(--text-faint);
 }
 .journal-mic .icon { width: 14px; height: 14px; }
 /* Recording is a state you must not be able to miss — leaving a phone
@@ -3042,7 +3081,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .journal-done { margin-top: 11px; }
 .journal-done-head {
   display: flex; align-items: center; gap: 6px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
   color: var(--success);
   margin-bottom: 5px;
 }
@@ -3053,10 +3092,10 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 .journal-done-list li {
   display: flex; gap: 7px;
-  font-size: 12.5px; color: var(--text-muted);
+  font-size: var(--fs-sm); color: var(--text-muted);
 }
 .journal-done-time {
-  font-family: var(--font-num); font-size: 11px; color: var(--text-faint);
+  font-family: var(--font-num); font-size: var(--fs-xs); color: var(--text-faint);
   flex-shrink: 0; min-width: 42px;
 }
 
@@ -3083,14 +3122,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 .routine-title {
   margin: 0;
-  font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+  font-size: var(--fs-md); font-weight: 700; letter-spacing: -.01em;
   color: var(--text);
 }
 /* --text-muted, not --text-faint: faint measures 3.7:1 on this surface, and
    this is the one number on the card you are meant to watch change. */
 .routine-count {
   font-family: var(--font-num);
-  font-size: 11.5px; color: var(--text-muted);
+  font-size: var(--fs-xs); color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3117,7 +3156,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   width: 2px;
   border-radius: 2px;
   background: var(--border);
-  transition: background .3s var(--ease);
+  transition: background var(--t-slow) var(--ease);
 }
 /* Nothing to join below the last step — a line running into empty space
    would read as an unfinished third step. */
@@ -3158,16 +3197,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border: 2px solid var(--border);
   background: var(--surface);
   color: var(--accent-text);
-  transition: background .18s var(--ease), border-color .18s var(--ease);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
 .routine-tick:hover .routine-node { border-color: var(--accent); }
 .routine-node .icon { width: 12px; height: 12px; stroke-width: 3; }
 .is-done .routine-node { background: var(--accent); border-color: var(--accent); }
 
 .routine-label {
-  font-size: 14.5px; font-weight: 620; letter-spacing: -.005em;
+  font-size: var(--fs-md); font-weight: 600; letter-spacing: -.005em;
   color: var(--text);
-  transition: color .18s var(--ease);
+  transition: color var(--t-fast) var(--ease);
 }
 /* Done steps recede rather than strike through — the ritual is a record of
    the morning, and a struck-out line reads as cancelled, not completed. */
@@ -3181,7 +3220,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   margin-left: auto;
   flex-shrink: 0;
   font-family: var(--font-num);
-  font-size: 10.5px; font-weight: 700;
+  font-size: var(--fs-2xs); font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: .02em;
   padding: 2px 7px;
@@ -3217,20 +3256,20 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border-radius: var(--radius);
   background: var(--surface);
   text-align: left;
-  transition: border-color .16s var(--ease), background .16s var(--ease);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .countdown-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
 .countdown-name {
   flex: 1; min-width: 0;
-  font-size: 14px; color: var(--text);
+  font-size: var(--fs-base); color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.countdown-when { font-size: 11.5px; color: var(--text-faint); flex-shrink: 0; }
+.countdown-when { font-size: var(--fs-xs); color: var(--text-faint); flex-shrink: 0; }
 .countdown-days {
   flex-shrink: 0;
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
-  font-size: 12.5px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;
   padding: 2px 8px;
   border-radius: 20px;
   background: var(--surface-sunk);
@@ -3264,7 +3303,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
      thumb. The padding is invisible; only the target grows. */
   padding: 9px 5px;
   margin: -9px -5px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -3283,14 +3322,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 .routine-note-text {
   margin: 0;
-  font-size: 12.5px; line-height: 1.55;
+  font-size: var(--fs-sm); line-height: 1.55;
   color: var(--text-muted);
 }
 /* Where it came from, set apart from what it means — the first is checkable,
    the second is a reading, and they should not look like the same claim. */
 .routine-note-source {
   margin: 6px 0 0;
-  font-size: 11.5px; line-height: 1.5;
+  font-size: var(--fs-xs); line-height: 1.5;
   color: var(--text-muted);
   padding-left: 9px;
   border-left: 2px solid var(--border);
@@ -3304,7 +3343,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
    toggle — a margin-top here would push the name off the button's baseline. */
 .routine-quote-by {
   font-family: var(--font-num);
-  font-size: 10.5px; font-style: normal; font-weight: 700;
+  font-size: var(--fs-2xs); font-style: normal; font-weight: 700;
   letter-spacing: .11em; text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -3312,12 +3351,12 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .tone-considered .routine-quote-text {
   font-family: Georgia, 'Times New Roman', serif;
   font-style: italic;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-muted);
 }
 .tone-blunt .routine-quote-text {
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -.005em;
@@ -3329,14 +3368,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .routine-linked {
   display: block;
   margin-top: 6px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .routine-done-note {
   margin: 0 0 10px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 .routine-card.is-complete { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
@@ -3371,13 +3410,13 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   flex-shrink: 0;
 }
 .brief-peek {
-  font-size: 12px; color: var(--text-muted);
+  font-size: var(--fs-sm); color: var(--text-muted);
   padding: 6px 10px; border-radius: var(--radius-sm);
 }
 .brief-peek:hover { background: var(--surface-sunk); color: var(--text); }
 .brief-text-wrap { display: flex; flex-direction: column; gap: 10px; margin-top: 11px; }
 .brief-text-wrap[hidden] { display: none; }
-.brief-send-small { padding: 7px 12px; font-size: 12.5px; }
+.brief-send-small { padding: 7px 12px; font-size: var(--fs-sm); }
 
 .brief-card {
   border: 1px solid var(--border);
@@ -3391,18 +3430,18 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   margin-bottom: 9px;
 }
 .brief-title {
-  font-size: 12px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;
   letter-spacing: .07em; text-transform: uppercase;
   color: var(--text-muted);
 }
-.brief-sub { font-size: 11.5px; color: var(--text-faint); font-family: var(--font-num); }
+.brief-sub { font-size: var(--fs-xs); color: var(--text-faint); font-family: var(--font-num); }
 
 /* A <pre> so the composed line breaks survive, but wearing the body font —
    the brief is prose that happens to be pre-wrapped, not code. */
 .brief-text {
   margin: 0;
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -3414,7 +3453,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   margin-top: 12px;
 }
 .brief-send .icon { width: 15px; height: 15px; }
-.brief-status { font-size: 11.5px; color: var(--text-faint); }
+.brief-status { font-size: var(--fs-xs); color: var(--text-faint); }
 
 /* The rota answer, at the top of Home. Loud on purpose: it is the one thing
    on this screen you must not misread, and a four-night block looks exactly
@@ -3433,16 +3472,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border-left: 5px solid var(--shift, var(--accent));
   background: color-mix(in srgb, var(--shift, var(--accent)) 18%, var(--surface));
   cursor: pointer;
-  transition: background .12s var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 .home-shift:hover { background: color-mix(in srgb, var(--shift, var(--accent)) 26%, var(--surface)); }
 .home-shift-kind {
-  font-size: 16px;
+  font-size: var(--fs-md);
   font-weight: 700;
   letter-spacing: -.01em;
   color: var(--text);
 }
-.home-shift-crew { font-size: 12.5px; color: var(--text-muted); }
+.home-shift-crew { font-size: var(--fs-sm); color: var(--text-muted); }
 
 /* The "off the calendar" tile at the head of the day strip. Dashed, because
    it is a destination rather than a date, and the border says so before the
@@ -3478,16 +3517,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   background: color-mix(in srgb, var(--shift) 14%, var(--surface));
 }
 .shift-card-kind {
-  font-size: 13.5px; font-weight: 650;
+  font-size: var(--fs-base); font-weight: 600;
   color: var(--text);
 }
-.shift-card-crew { font-size: 12px; color: var(--text-muted); }
+.shift-card-crew { font-size: var(--fs-sm); color: var(--text-muted); }
 .shift-card-crew.is-empty { color: var(--text-faint); font-style: italic; }
 
 .done-view { padding: 20px 24px 28px; max-width: 780px; }
 .done-head { margin-bottom: 6px; }
-.done-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
-.done-sub { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); }
+.done-title { margin: 0; font-size: var(--fs-xl); }
+.done-sub { margin: 3px 0 0; font-size: var(--fs-base); color: var(--text-muted); }
 
 .done-row {
   display: flex;
@@ -3510,7 +3549,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   background: var(--success);
   position: relative;
   display: grid; place-items: center;
-  transition: background .12s var(--ease);
+  transition: background var(--t-fast) var(--ease);
 }
 /* Same trick as the row checkbox: an invisible ring makes the target a
    fingertip's worth without making an 18px dot into a button. This one
@@ -3521,7 +3560,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .done-main { flex: 1; min-width: 0; }
 .done-row-title {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text-muted);
   text-decoration: line-through;
   overflow-wrap: anywhere;
@@ -3534,7 +3573,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .done-comment-box textarea {
   width: 100%;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   padding: 7px 9px;
   border: 1px solid var(--border);
@@ -3551,7 +3590,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 
 .done-actions {
   display: flex; gap: 2px; flex-shrink: 0;
-  opacity: 0; transition: opacity .12s var(--ease);
+  opacity: 0; transition: opacity var(--t-fast) var(--ease);
 }
 .done-actions button {
   width: 26px; height: 26px; border-radius: 4px; color: var(--text-faint);
@@ -3596,14 +3635,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   display: flex; flex-direction: column; gap: 12px;
 }
 .stat-card h3 {
-  margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  margin: 0; font-size: var(--fs-sm); font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; color: var(--text-muted);
 }
 .stat-big {
-  font-family: var(--font-num); font-size: 34px; font-weight: 700;
+  font-family: var(--font-num); font-size: var(--fs-3xl); font-weight: 700;
   letter-spacing: -.03em; line-height: 1;
 }
-.stat-sub { font-size: 12.5px; color: var(--text-faint); }
+.stat-sub { font-size: var(--fs-sm); color: var(--text-faint); }
 .stat-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 /* ------------------------------------------------------------------ */
@@ -3617,7 +3656,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   justify-self: center;
 }
 .ring { display: block; }
-.ring-arc { transition: stroke-dasharray .5s var(--ease), stroke .3s var(--ease); }
+.ring-arc { transition: stroke-dasharray .5s var(--ease), stroke var(--t-slow) var(--ease); }
 
 .ring-center {
   position: absolute;
@@ -3629,18 +3668,17 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 /* Hero number: proportional figures on purpose — tabular-nums makes a value
    like 121 look loose at display sizes. */
 .ring-value {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -.035em;
+  font-size: var(--fs-3xl);
+  letter-spacing: -.02em;
   line-height: 1;
   color: var(--text);
 }
-.ring-pct { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 1px;
+.ring-pct { font-size: var(--fs-md); font-weight: 600; color: var(--text-muted); margin-left: 1px;
   font-family: var(--font);
 }
-.ring-empty { font-size: 26px; color: var(--text-faint); line-height: 1; }
+.ring-empty { font-size: var(--fs-2xl); color: var(--text-faint); line-height: 1; }
 .ring-caption {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   font-family: var(--font-num);
   letter-spacing: .02em;
@@ -3674,7 +3712,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 .column-value {
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-muted);
   line-height: 1;
@@ -3686,13 +3724,13 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   max-width: 24px;              /* cap the mark; let the band's leftover be air */
   background: var(--chart-fill);
   border-radius: 4px 4px 0 0;   /* rounded data-end, square at the baseline */
-  transition: height .35s var(--ease);
+  transition: height var(--t-slow) var(--ease);
 }
 .column-bar.is-zero { background: var(--chart-track); border-radius: 2px; }
 .column-label {
   position: absolute;
   bottom: 0;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-family: var(--font-num);
   color: var(--text-faint);
 }
@@ -3705,11 +3743,11 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .bar-row { display: flex; flex-direction: column; gap: 4px; }
 .bar-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .bar-name {
-  font-size: 12.5px; color: var(--text); min-width: 0;
+  font-size: var(--fs-sm); color: var(--text); min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .bar-value {
-  font-family: var(--font-num); font-size: 11px; color: var(--text-muted);
+  font-family: var(--font-num); font-size: var(--fs-xs); color: var(--text-muted);
   font-variant-numeric: tabular-nums;   /* a column of numbers, so align them */
   flex-shrink: 0;
 }
@@ -3749,8 +3787,8 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px;
   color: var(--text-faint);
-  font-size: 10.5px; font-weight: 600;
-  transition: color .12s var(--ease);
+  font-size: var(--fs-2xs); font-weight: 600;
+  transition: color var(--t-fast) var(--ease);
 }
 .tab .icon { width: 21px; height: 21px; }
 .tab.is-active { color: var(--accent); }
@@ -3798,7 +3836,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
     z-index: 47;
     transform: translateX(-102%);
     visibility: hidden;
-    transition: transform .22s var(--ease);
+    transition: transform var(--t-slow) var(--ease);
     box-shadow: var(--shadow-lg);
   }
   .sidebar.is-open {
@@ -3826,7 +3864,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
      more legible and, weighted up, still reads as the title of the view. */
   .crumb.is-current {
     font-family: var(--font);
-    font-size: 15.5px; font-weight: 600; letter-spacing: -0.011em;
+    font-size: var(--fs-md); font-weight: 600; letter-spacing: -0.011em;
   }
 
   .month { padding: 10px 10px 14px; }
@@ -3834,7 +3872,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   .month-weeks { gap: 4px; }
   .week-row { grid-template-columns: 30px repeat(7, minmax(0, 1fr)); gap: 3px; }
   .week-num .wk-label { display: none; }
-  .week-num .wk-value { font-size: 11px; }
+  .week-num .wk-value { font-size: var(--fs-xs); }
   .month-day { padding: 4px 3px; }
   /* A month cell is ~45px wide here, so a chip's text is unreadable no matter
      how it is styled. The count becomes the whole signal and is centred and
@@ -3845,11 +3883,11 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
     justify-content: flex-start;
     gap: 3px;
   }
-  .month-day-date { font-size: 12px; }
+  .month-day-date { font-size: var(--fs-sm); }
   .month-count {
     min-width: 19px;
     height: 19px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
   }
   .month-chip { display: none; }
   .month-more { display: none; }
@@ -3858,7 +3896,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   /* A month cell is 43px wide here with 3px of padding each side, and
      "TRAINING" wanted 38 of the 37 that leaves -- so the longest badge, on the
      one day it marks, lost its last letter. Tighter padding, and it fits. */
-  .month-shift-label { font-size: 8px; letter-spacing: 0; padding: 1px 3px; }
+  .month-shift-label { font-size: var(--fs-3xs); letter-spacing: 0; padding: 1px 3px; }
   .month-shift-crew { display: none; }
   /* Two initials and an ellipsis is not information. The shift colour still
      shows, and tapping the day gives the names in full. */
@@ -3913,7 +3951,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   margin: 2px 0 6px;
 }
 .group-bar-label {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--text-faint);
 }
 @media (max-width: 760px) {
@@ -3932,7 +3970,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   margin-bottom: 4px;
 }
 .day-strip-hint {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -3962,7 +4000,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  transition: border-color .12s var(--ease), background .12s var(--ease),
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease),
               transform .1s var(--ease);
 }
 .day-strip-day:hover { border-color: var(--border-strong); transform: translateY(-1px); }
@@ -3970,16 +4008,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .day-strip-day.is-today { border-color: var(--accent); }
 
 .day-strip-dow {
-  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
   color: var(--text-faint);
 }
 .day-strip-day.is-today .day-strip-dow { color: var(--accent); }
 .day-strip-num {
-  font-family: var(--font-num); font-size: 17px; font-weight: 650; line-height: 1.1;
+  font-family: var(--font-num); font-size: var(--fs-lg); font-weight: 600; line-height: 1.1;
   color: var(--text);
 }
 .day-strip-count {
-  font-family: var(--font-num); font-size: 9.5px; color: var(--text-muted);
+  font-family: var(--font-num); font-size: var(--fs-3xs); color: var(--text-muted);
   background: var(--surface-sunk); border-radius: 20px; padding: 0 5px; min-width: 16px;
   text-align: center;
 }
@@ -4037,7 +4075,7 @@ body.is-touch-dragging {
   /* The add-an-hour button is 22px, which is under the 24px floor even before
      you consider a thumb. It is also opacity:0 until hover — and a touch
      device has no hover, so on a phone it was an invisible 22px target. */
-  .hour-add { width: 40px; height: 40px; opacity: .55; font-size: 18px; }
+  .hour-add { width: 40px; height: 40px; opacity: .55; font-size: var(--fs-lg); }
   .group-bar .pill { min-height: 38px; }
   /* The one control in the New item dialog you press every single time, so it
      gets a full thumb target rather than the 32px the generic pill uses. */
@@ -4048,7 +4086,7 @@ body.is-touch-dragging {
   .subtask .checkbox::before { inset: -6px; }
   .crumb { padding: 7px 9px; }
   .hour-add { padding: 8px 10px; }
-  .mini-day { font-size: 13px; }
+  .mini-day { font-size: var(--fs-base); }
   .clock-row input { padding: 8px 9px; }
 }
 
@@ -4081,12 +4119,12 @@ body.is-touch-dragging {
 @keyframes tick-pop {
   50% { transform: scale(1.18); }
 }
-.checkbox.is-checked { animation: tick-pop .22s var(--ease); }
+.checkbox.is-checked { animation: tick-pop var(--t-slow) var(--ease); }
 
 /* A day you can drop onto should look ready for it, not merely highlighted. */
 .day-strip-day.is-drop-target,
 .month-day.is-drop-target { transform: translateY(-2px); }
-.day-strip-day, .month-day { transition: transform .12s var(--ease), background .12s var(--ease); }
+.day-strip-day, .month-day { transition: transform var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
 
 /* ---- quality floor ----
    Every animation in this file, not the two that happened to get it. Someone
@@ -4130,14 +4168,14 @@ body.is-touch-dragging {
   background: var(--surface);
   box-shadow: var(--shadow-lg);
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-base);
   font-weight: 600;
 
   opacity: 0;
   pointer-events: none;
-  transition: opacity .16s var(--ease), transform .16s var(--ease),
-              background .12s var(--ease), border-color .12s var(--ease),
-              color .12s var(--ease);
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease),
+              background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              color var(--t-fast) var(--ease);
 }
 .bin .icon { width: 17px; height: 17px; }
 
@@ -4214,7 +4252,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 }
 /* Muted rather than faint: --text-faint is 3.2:1, which does not clear AA,
    and a timestamp you cannot read is the one thing a note log must not have. */
-.note-when { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.note-when { font-size: var(--fs-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .note-src { width: 12px; height: 12px; color: var(--text-muted); }
 .note-del {
   margin-left: auto;
@@ -4229,7 +4267,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 /* Touch has no hover, so the control would never appear at all. */
 @media (hover: none) { .note-del { opacity: 1; } }
 
-.note-text { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+.note-text { margin: 0; font-size: var(--fs-base); line-height: 1.45; white-space: pre-wrap; }
 
 .note-compose { display: flex; flex-direction: column; gap: 6px; }
 /* `.field .note-input`, not `.note-input`. This box lives inside a .field, so
@@ -4240,7 +4278,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 .field .note-input { resize: vertical; min-height: 44px; }
 .note-compose-actions { display: flex; align-items: center; gap: 7px; }
 .note-mic .icon, .note-compose-actions .btn .icon { width: 14px; height: 14px; }
-.note-status { font-size: 11.5px; color: var(--text-muted); }
+.note-status { font-size: var(--fs-xs); color: var(--text-muted); }
 
 /* Same treatment as the diary mic, and for the same reason: a phone left
    listening by accident is worse than any styling concern. */
@@ -4260,9 +4298,11 @@ body:has(.bin-docked) .bin-float { display: none; }
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 14px; flex-wrap: wrap;
 }
-.review-title { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
-.review-dates { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
-.review-counts { margin: 0; font-size: 12px; color: var(--text-muted); }
+/* 22px, joining the other two view titles. It was 18px, which is both
+   below the size this face needs and a third value for one job. */
+.review-title { margin: 0; font-size: var(--fs-xl); }
+.review-dates { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
+.review-counts { margin: 0; font-size: var(--fs-sm); color: var(--text-muted); }
 .review-ranges { flex-shrink: 0; }
 
 .review-empty {
@@ -4273,7 +4313,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 }
 .review-empty-icon { width: 26px; height: 26px; color: var(--text-muted); }
 .review-empty-title { margin: 4px 0 0; font-weight: 600; }
-.review-empty-body { margin: 0; font-size: 13px; color: var(--text-muted); max-width: 42ch; }
+.review-empty-body { margin: 0; font-size: var(--fs-base); color: var(--text-muted); max-width: 42ch; }
 
 .review-body { display: flex; flex-direction: column; gap: 18px; }
 
@@ -4284,14 +4324,14 @@ body:has(.bin-docked) .bin-float { display: none; }
   padding: 15px 17px;
 }
 .review-section-title {
-  margin: 0 0 11px; font-size: 11px; font-weight: 650;
+  margin: 0 0 11px; font-size: var(--fs-xs); font-weight: 600;
   text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted);
 }
 
 .review-entry + .review-entry {
   margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--border);
 }
-.review-entry-day { margin: 0 0 5px; font-size: 12.5px; font-weight: 600; }
+.review-entry-day { margin: 0 0 5px; font-size: var(--fs-sm); font-weight: 600; }
 /* Negative margin cancels the padding, so the touch target grows to a
    comfortable 32px without moving anything on the page. At 24px it cleared the
    AA minimum by exactly nothing, which on a phone in gloves is not a margin. */
@@ -4301,14 +4341,14 @@ body:has(.bin-docked) .bin-float { display: none; }
   color: var(--accent); text-align: left; font: inherit; font-weight: 600;
 }
 .review-entry-link:hover { text-decoration: underline; }
-.review-entry-text { margin: 0; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+.review-entry-text { margin: 0; font-size: var(--fs-base); line-height: 1.55; white-space: pre-wrap; }
 
 .review-note {
-  margin: 0 0 5px; font-size: 13px; line-height: 1.5;
+  margin: 0 0 5px; font-size: var(--fs-base); line-height: 1.5;
   display: flex; align-items: baseline; gap: 7px;
 }
 .review-note-when {
-  flex-shrink: 0; font-size: 11px; color: var(--text-muted);
+  flex-shrink: 0; font-size: var(--fs-xs); color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 .review-note-src { width: 12px; height: 12px; color: var(--text-muted); align-self: center; }
@@ -4316,16 +4356,16 @@ body:has(.bin-docked) .bin-float { display: none; }
 .review-list { margin: 0; padding: 0; list-style: none; }
 .review-list-item {
   display: flex; align-items: baseline; gap: 8px;
-  font-size: 13px; padding: 3px 0;
+  font-size: var(--fs-base); padding: 3px 0;
 }
 .review-tick { color: var(--success); font-weight: 700; }
 .review-when {
-  font-size: 11px; color: var(--text-muted);
+  font-size: var(--fs-xs); color: var(--text-muted);
   font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
 .review-list-item.is-slipped { color: var(--text-muted); }
 
-.review-hint { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+.review-hint { margin: 0 0 10px; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.55; }
 .review-size { font-variant-numeric: tabular-nums; }
 
 /* Notes on a row. Same weight as the other chips - it is a fact about the
@@ -4340,20 +4380,20 @@ body:has(.bin-docked) .bin-float { display: none; }
   margin: 12px 0 0; padding: 11px 13px;
   background: var(--surface-sunk); border-radius: var(--radius);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11.5px; line-height: 1.55; color: var(--text-muted);
+  font-size: var(--fs-xs); line-height: 1.55; color: var(--text-muted);
   max-height: 260px; overflow: auto; white-space: pre-wrap;
 }
 
 .review-pending {
   display: flex; align-items: center; gap: 9px;
-  font-size: 13px; color: var(--text-muted);
+  font-size: var(--fs-base); color: var(--text-muted);
 }
-.review-error { margin: 0; font-size: 13px; color: var(--danger); }
+.review-error { margin: 0; font-size: var(--fs-base); color: var(--danger); }
 
 .review-reflection {
   margin: 0 0 14px; padding: 2px 0 2px 14px;
   border-left: 2px solid var(--accent);
-  font-size: 14px; line-height: 1.6;
+  font-size: var(--fs-base); line-height: 1.6;
 }
 
 .spinner {
@@ -4381,17 +4421,17 @@ body:has(.bin-docked) .bin-float { display: none; }
    it has to LOOK different or the badge is doing all the work by itself. */
 .proposal.is-unverified { border-left-color: var(--warning); background: var(--surface); }
 
-.proposal-title { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
-.proposal-why { margin: 0 0 9px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+.proposal-title { margin: 0 0 3px; font-size: var(--fs-base); font-weight: 600; }
+.proposal-why { margin: 0 0 9px; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; }
 
 .proposal-quote {
   margin: 0; display: flex; flex-direction: column; gap: 4px;
-  font-size: 12.5px; line-height: 1.5;
+  font-size: var(--fs-sm); line-height: 1.5;
 }
 .proposal-quote-text { color: var(--text-muted); font-style: italic; }
 .proposal-badge {
   align-self: flex-start;
-  font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em;
+  font-size: var(--fs-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
   padding: 2px 6px; border-radius: 999px;
   background: var(--success-soft); color: var(--success);
 }
@@ -4399,7 +4439,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 
 .proposal-actions { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
 .proposal-urgency {
-  flex: 1; font-size: 11px; color: var(--text-muted);
+  flex: 1; font-size: var(--fs-xs); color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .05em;
 }
 
@@ -4425,27 +4465,27 @@ body:has(.bin-docked) .bin-float { display: none; }
 }
 .day-summary-head { display: flex; align-items: baseline; gap: 9px; }
 .day-summary-label {
-  font-size: 10.5px; font-weight: 650;
+  font-size: var(--fs-2xs); font-weight: 600;
   letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
 }
-.day-summary-when { font-size: 11px; color: var(--text-muted); }
+.day-summary-when { font-size: var(--fs-xs); color: var(--text-muted); }
 
-.day-summary-text { margin: 0; font-size: 14.5px; line-height: 1.65; }
+.day-summary-text { margin: 0; font-size: var(--fs-md); line-height: 1.65; }
 /* What it would say before anything is spent on wording it. Set apart so a
    preview is never mistaken for a saved entry. */
 .day-summary-preview {
-  margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted);
+  margin: 0; font-size: var(--fs-base); line-height: 1.6; color: var(--text-muted);
   padding-left: 11px; border-left: 2px solid var(--border);
 }
 .day-summary-working {
   margin: 0; display: flex; align-items: center; gap: 9px;
-  font-size: 13.5px; color: var(--text-muted);
+  font-size: var(--fs-base); color: var(--text-muted);
 }
 .day-summary-actions { display: flex; flex-wrap: wrap; gap: 7px; }
 .day-summary-source {
   margin: 0; padding: 10px 12px;
   background: var(--surface); border-radius: var(--radius-sm);
-  font-family: var(--font-num); font-size: 11.5px; line-height: 1.55;
+  font-family: var(--font-num); font-size: var(--fs-xs); line-height: 1.55;
   color: var(--text-muted);
   max-height: 240px; overflow: auto; white-space: pre-wrap;
 }
@@ -4469,23 +4509,23 @@ a.nav-external:hover { background: var(--surface-sunk); color: var(--text); }
 .plan-head { display: flex; align-items: center; gap: 8px; }
 .plan-head-icon { width: 15px; height: 15px; color: var(--accent); }
 .plan-head-label {
-  font-size: 10.5px; font-weight: 650; letter-spacing: .08em;
+  font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .08em;
   text-transform: uppercase; color: var(--text-muted);
 }
 .plan-hint, .plan-drag-hint {
-  margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.55;
+  margin: 0; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.55;
 }
 .plan-approach {
-  margin: 0; font-size: 14px; line-height: 1.6;
+  margin: 0; font-size: var(--fs-base); line-height: 1.6;
   padding-left: 12px; border-left: 2px solid var(--accent);
 }
 .plan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.plan-working, .plan-error { margin: 0; font-size: 13.5px; display: flex; align-items: center; gap: 9px; }
+.plan-working, .plan-error { margin: 0; font-size: var(--fs-base); display: flex; align-items: center; gap: 9px; }
 .plan-error { color: var(--danger); }
 .plan-source {
   margin: 0; padding: 11px 13px;
   background: var(--surface-sunk); border-radius: var(--radius);
-  font-family: var(--font-num); font-size: 11.5px; line-height: 1.55;
+  font-family: var(--font-num); font-size: var(--fs-xs); line-height: 1.55;
   color: var(--text-muted); max-height: 260px; overflow: auto; white-space: pre-wrap;
 }
 
@@ -4501,13 +4541,13 @@ a.nav-external:hover { background: var(--surface-sunk); color: var(--text); }
 .plan-step:active { cursor: grabbing; }
 .plan-step.is-dragging { opacity: .5; }
 .plan-step-main { flex: 1; min-width: 0; }
-.plan-step-title { margin: 0; font-size: 14.5px; font-weight: 500; line-height: 1.4; }
-.plan-step-why { margin: 3px 0 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+.plan-step-title { margin: 0; font-size: var(--fs-md); font-weight: 600; line-height: 1.4; }
+.plan-step-why { margin: 3px 0 0; font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; }
 .plan-step-side {
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;
 }
 .plan-step-day {
-  font-size: 11px; font-weight: 650; color: var(--accent);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--accent);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .plan-step-day.is-loose { color: var(--text-muted); font-weight: 400; }

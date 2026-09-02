@@ -51,16 +51,22 @@ const SHIFT_BADGE = {
 };
 
 /*
- * The long words, on a phone.
+ * The roster's own codes, on a phone.
  *
- * A month cell is 43px wide at 375px, which leaves 35 for the badge, and
- * "TRAINING" wants 44 even at 8px with the padding trimmed — so the longest
- * badge, on the one day it marks, was losing its last letters. These are the
- * roster's own codes rather than invented shortenings: TRG and OC are what is
- * written on the board, so they need no learning.
+ * A month cell is 43px wide at 375px, which leaves 35 for the badge, and at a
+ * legible size that is about five characters. "NIGHTS" wants 44 and "TRAINING"
+ * more; both were losing their ends.
+ *
+ * So the phone shows what is written on the board — D, N, TRG, OC — rather
+ * than words trimmed to fit. Nothing to learn, and it is consistent: spelling
+ * DAYS out because it happens to fit while abbreviating NIGHTS because it does
+ * not would be the odd choice, not this one. The word is still in the tooltip
+ * and the aria-label, and the desktop cell has room for it.
  */
 const SHIFT_BADGE_TIGHT = {
   ...SHIFT_BADGE,
+  [SHIFT.NIGHT]: 'N',
+  [SHIFT.DAY]: 'D',
   [SHIFT.TRAINING]: 'TRG',
   [SHIFT.ONCALL]: 'OC',
 };
