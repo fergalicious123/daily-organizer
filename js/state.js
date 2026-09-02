@@ -15,6 +15,22 @@
 import { todayKey, diffDays, addDays, toKey } from './dates.js';
 
 const STORAGE_KEY = 'daily-organizer:v1';
+/*
+ * How much of the past to keep, in bytes rather than in steps.
+ *
+ * Undo works by snapshotting the whole document, so what one step costs
+ * depends entirely on how much you have. Forty steps was fine when that meant
+ * forty copies of a short list. Measured against a 481KB document -- his is
+ * 309KB and growing -- forty edits grew the heap by 18MB, which is a lot to
+ * ask of a phone for an undo nobody uses past the second step.
+ *
+ * A byte budget adapts instead: a small document keeps its forty, a large one
+ * keeps fewer, and neither has a number in it that someone guessed. UNDO_MIN
+ * is the floor, so even a document larger than the whole budget can still be
+ * undone a few times.
+ */
+const UNDO_BUDGET_BYTES = 4 * 1024 * 1024;
+const UNDO_MIN = 5;
 const UNDO_LIMIT = 40;
 
 /**
@@ -529,7 +545,7 @@ class Store {
   mutate(fn, { undoable = true, label = '', silent = false } = {}) {
     if (undoable) {
       this._undo.push({ snapshot: JSON.stringify(this.state), label });
-      if (this._undo.length > UNDO_LIMIT) this._undo.shift();
+      this._trimUndo();
       this._redo.length = 0;
     }
     const result = fn(this.state);
@@ -540,6 +556,21 @@ class Store {
     return result;
   }
 
+  /** What the undo history is currently costing. */
+  undoBytes() {
+    let bytes = 0;
+    for (const entry of this._undo) bytes += entry.snapshot.length;
+    return bytes;
+  }
+
+  /** Drop the oldest steps until the stack fits its budget. */
+  _trimUndo() {
+    while (this._undo.length > UNDO_LIMIT) this._undo.shift();
+    while (this._undo.length > UNDO_MIN && this.undoBytes() > UNDO_BUDGET_BYTES) {
+      this._undo.shift();
+    }
+  }
+
   canUndo() { return this._undo.length > 0; }
   canRedo() { return this._redo.length > 0; }
 
@@ -547,6 +578,10 @@ class Store {
     const entry = this._undo.pop();
     if (!entry) return null;
     this._redo.push({ snapshot: JSON.stringify(this.state), label: entry.label });
+    // Redo is the same snapshots pointing the other way, so it needs the same
+    // ceiling; without one, undoing forty times rebuilt the stack we just
+    // spent the trouble bounding.
+    while (this._redo.length > UNDO_LIMIT) this._redo.shift();
     this.state = JSON.parse(entry.snapshot);
     this.dirty = true;
     this.save();
