@@ -2763,6 +2763,8 @@ h5.md-h, h6.md-h {
 }
 .home-strip-cell .spark { width: 100%; height: 18px; }
 
+.done-more { align-self: flex-start; margin: 8px 0 4px; }
+
 .home-list { display: flex; flex-direction: column; }
 .home-list .task-group-label { margin-top: 0; }
 
