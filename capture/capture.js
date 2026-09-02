@@ -128,8 +128,14 @@ function setStatus(text) { statusEl.textContent = text || ''; }
 /* Sorting                                                             */
 /* ------------------------------------------------------------------ */
 
+/* The same reasoning as the plan's cap: what this costs was however many
+   lines happened to be waiting, and nobody sorts sixty things at once anyway.
+   Oldest first, so the backlog drains from the bottom rather than the top. */
+const TRIAGE_MAX = 40;
+
 async function runTriage() {
-  const open = openCaptures();
+  const all = openCaptures();
+  const open = all.slice(0, TRIAGE_MAX);
   if (!open.length) return;
   sorting = true;
   failure = '';
@@ -138,6 +144,9 @@ async function runTriage() {
     usage.record('TRIAGE_RUN');
     const result = await triage(open.map((c) => ({ id: c.id, text: c.text })));
     sorted = new Map(result.map((r) => [r.id, r]));
+    if (all.length > open.length) {
+      failure = `Sorted the oldest ${open.length}. Run it again for the other ${all.length - open.length}.`;
+    }
   } catch (err) {
     failure = err?.message || 'Could not sort these.';
   } finally {

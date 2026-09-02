@@ -426,6 +426,10 @@ function daySummary(dateKey) {
   actions.appendChild(el('button.btn.btn-quiet', {
     disabled: working,
     onclick: async () => {
+      // `disabled` above is the state of the LAST render; it does not stop a
+      // second press arriving before the next one. Checked here, where it is
+      // actually true, because each press is a paid request.
+      if (busy.has(dateKey)) return;
       busy.add(dateKey);
       rerender();
       try {

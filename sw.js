@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v48: the paid requests cannot be fired twice by a double press, and what
+// they send is bounded rather than however far behind you happen to be.
 // v47: deletions older than 90 days stop being carried around for ever, and
 // a save that fails now says so on screen instead of only in the console.
 // v46: undo keeps a budget in bytes rather than a fixed forty snapshots of
@@ -126,7 +128,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v47';
+const CACHE_VERSION = 'organizer-v48';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not

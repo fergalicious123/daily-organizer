@@ -28,6 +28,8 @@ const HORIZON = 10;
 
 let plan = null;
 let working = false;
+/** How many overdue items the last request had to leave out. */
+let lastLeftOut = 0;
 let failure = '';
 let showSource = false;
 /** Steps already dealt with, by index, so an accepted one stops offering. */
@@ -46,15 +48,38 @@ function reset() {
 }
 
 /** The pile and the days available, as the planner needs them. */
+/*
+ * What goes to Claude, and what does not.
+ *
+ * The whole overdue pile used to go, with every note on every item. Nothing
+ * capped it, so the size of the request -- and the cost of it, on Ben's own
+ * key -- was however far behind he happened to be. A hundred overdue tasks
+ * with a few dictated notes each is a very large prompt to ask a plan out of,
+ * and a worse plan than a short one: a list of fourteen steps is not a plan
+ * you will do, it is the same pile in a different order.
+ *
+ * The MOST overdue are sent, because those are what a catch-up plan is for,
+ * and the panel says plainly when it has left some out.
+ */
+const PLAN_MAX_ITEMS = 30;
+const PLAN_MAX_NOTES = 3;
+
 function gather() {
   const today = todayKey();
 
-  const overdue = overdueTasks().map((item) => ({
+  const all = overdueTasks();
+  const chosen = [...all]
+    .sort((a, b) => diffDays(b.date, today) - diffDays(a.date, today))
+    .slice(0, PLAN_MAX_ITEMS);
+
+  const overdue = chosen.map((item) => ({
     id: item.id,
     title: item.title || 'Untitled',
     daysLate: Math.max(1, diffDays(item.date, today)),
     rollCount: item.rollCount || 0,
-    notes: itemLog(item).map((n) => n.text).concat(item.notes ? [item.notes] : []),
+    notes: itemLog(item).map((n) => n.text)
+      .concat(item.notes ? [item.notes] : [])
+      .slice(0, PLAN_MAX_NOTES),
   }));
 
   const days = [];
@@ -69,7 +94,7 @@ function gather() {
     });
   }
 
-  return { overdue, days };
+  return { overdue, days, totalOverdue: all.length, left: all.length - chosen.length };
 }
 
 function stepRow(step) {
@@ -172,6 +197,15 @@ export function planPanel() {
 
   if (plan.approach) box.appendChild(el('p.plan-approach', plan.approach));
 
+  // Said out loud, because a plan that quietly covers thirty of your ninety
+  // overdue tasks and does not mention it is a plan you would wrongly believe
+  // was the whole answer.
+  if (lastLeftOut > 0) {
+    box.appendChild(el('p.field-hint',
+      `Planned the ${PLAN_MAX_ITEMS} furthest behind. `
+      + `${lastLeftOut} more are still overdue — clear these, then run it again.`));
+  }
+
   const live = plan.steps.filter((s) => !used.has(s.index) && !isPlanStepConsumed(s.index));
   if (!live.length) {
     box.appendChild(el('p.plan-hint', 'That is the plan dealt with.'));
@@ -187,12 +221,18 @@ export function planPanel() {
 }
 
 async function run() {
+  // The same window review.js guards: the button is disabled by the NEXT
+  // render, and the render is asynchronous, so a second press before it lands
+  // is a second request to Claude and a second charge on his key.
+  if (working) return;
   working = true;
   failure = '';
   rerender();
   try {
     usage.record('PLAN_MAKE');
-    plan = await makePlan(gather());
+    const input = gather();
+    lastLeftOut = input.left;
+    plan = await makePlan(input);
     used.clear();
     if (!plan.steps.length) failure = 'No plan came back. Try again.';
   } catch (err) {
