@@ -294,6 +294,40 @@ if (cd.itemCountdowns) {
    Ninety days, and the edges are what matter: a live item must never be
    caught by it, and a tombstone with no date must be kept rather than
    guessed at. */
+/* "None" in the reminder picker stored null, and null already meant "nothing
+   chosen, use the default" to both the notifier and the calendar writer. So
+   choosing None on an 07:00 task still notified at 06:50, and still told
+   Google to apply the calendar's own defaults. The round trip is the half
+   that matters most: a reminder turned off has to STAY off through a sync. */
+group('reminders — None means none, and survives a sync');
+const gcal = loaded['../js/google.js'] || {};
+const stateMod = loaded['../js/state.js'] || {};
+if (gcal.itemToEvent && gcal.eventToItem && stateMod.REMINDER_NONE !== undefined) {
+  const NONE = stateMod.REMINDER_NONE;
+  const item = (remindMin) => ({
+    id: 'x', kind: 'task', title: 'Probe', date: '2026-09-02', time: '07:00',
+    durationMin: 30, remindMin, notes: '', subtasks: [],
+  });
+  const sent = (r) => gcal.itemToEvent(item(r)).reminders;
+  const trip = (r) => gcal.eventToItem({
+    ...gcal.itemToEvent(item(r)), id: 'g1', status: 'confirmed',
+    updated: '2026-09-02T06:00:00.000Z',
+  }).remindMin;
+
+  check('None switches Google defaults OFF', () => sent(NONE).useDefault === false);
+  // An EMPTY overrides list is how Google is told "no reminder at all";
+  // omitting the field hands it back to the calendar's defaults.
+  check('and sends no override at all', () => sent(NONE).overrides.length === 0);
+  check('a real lead is sent as an override', () => sent(10).overrides[0].minutes === 10);
+  check('nothing chosen still uses the calendar default', () => sent(null).useDefault === true);
+
+  check('None survives the round trip', () => trip(NONE) === NONE);
+  check('a lead survives the round trip', () => trip(10) === 10);
+  check('nothing chosen stays nothing chosen', () => trip(null) === null);
+  // 0 is "at the time", which is a real reminder and must not read as none.
+  check('at-the-time is not none', () => trip(0) === 0 && 0 > NONE);
+}
+
 group('purgeTombstones — old deletions go, nothing else does');
 const state = loaded['../js/state.js'] || {};
 if (state.purgeTombstones) {

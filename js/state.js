@@ -97,6 +97,26 @@ export function updateDevice(patch) {
 const DEFAULT_CLIENT_ID =
   '866873823601-a6bojdgs4gqbmufvcd20lb7lh1h1cbfi.apps.googleusercontent.com';
 
+/*
+ * "No reminder", as a value you can actually store.
+ *
+ * `null` already means something else: "nothing chosen, use the default". Both
+ * the notifier and the calendar writer read it that way -- `remindMin ??
+ * defaultRemindMin`, and `useDefault: true` on the Google event -- which is
+ * what makes the default reminder setting work at all.
+ *
+ * So the picker's "None" option, which stored null, did not turn a reminder
+ * off. It asked for the default one. Choosing None on a 07:00 task still
+ * notified at 06:50, on the phone as well, because Google was told to use the
+ * calendar's own defaults. A distinct value is the only way to say the thing
+ * the button claims to say.
+ *
+ * Negative rather than a string so every existing comparison keeps working,
+ * and existing items with null keep their current meaning untouched -- no
+ * migration, no change to anything already saved.
+ */
+export const REMINDER_NONE = -1;
+
 export const PRIORITY = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3 };
 
 export const LIST_COLORS = [

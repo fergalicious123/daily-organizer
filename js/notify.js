@@ -18,7 +18,7 @@
  * wasteful. We re-arm the next hour's worth every few minutes.
  */
 
-import { liveItems, settings } from './state.js';
+import { liveItems, settings, REMINDER_NONE } from './state.js';
 import { todayKey } from './dates.js';
 
 const LOOKAHEAD_MS = 60 * 60 * 1000;   // arm anything due within the next hour
@@ -85,6 +85,9 @@ class NotificationManager {
       if (item.done || !item.date || !item.time) continue;
 
       const lead = item.remindMin ?? cfg.defaultRemindMin;
+      // Asked for no reminder, so give none. null still means "use the
+      // default", which is how the Settings figure reaches anything at all.
+      if (lead <= REMINDER_NONE) continue;
       const due = new Date(`${item.date}T${item.time}:00`).getTime() - lead * 60_000;
       const delay = due - now;
       if (delay < 0 || delay > LOOKAHEAD_MS) continue;

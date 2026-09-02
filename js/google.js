@@ -12,6 +12,8 @@
  *    (per-file access to files this app creates) rather than whole-Drive.
  */
 
+import { REMINDER_NONE } from './state.js';
+
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
@@ -470,7 +472,13 @@ export function itemToEvent(item, { defaultDurationMin = 60 } = {}) {
     body.end = { date: `${end.getFullYear()}-${p2(end.getMonth() + 1)}-${p2(end.getDate())}` };
   }
 
-  if (item.remindMin != null) {
+  if (item.remindMin != null && item.remindMin <= REMINDER_NONE) {
+    // Explicitly none. An EMPTY overrides list with useDefault off is how
+    // Google is told "no reminder at all"; omitting the field or leaving
+    // useDefault on hands the job to the calendar's own defaults, which is
+    // how "None" used to notify anyway.
+    body.reminders = { useDefault: false, overrides: [] };
+  } else if (item.remindMin != null) {
     body.reminders = {
       useDefault: false,
       overrides: [{ method: 'popup', minutes: Math.max(0, item.remindMin) }],
@@ -566,7 +574,11 @@ export function eventToItem(event) {
     seriesId: event.recurringEventId || null,
     done,
     doneAt: done ? (event.updated || new Date().toISOString()) : null,
-    remindMin: reminder ? reminder.minutes : null,
+    // No override AND defaults switched off is Google saying "no reminder",
+    // which is different from "nothing set here" and has to survive the round
+    // trip or a turned-off reminder comes back on at the next sync.
+    remindMin: reminder ? reminder.minutes
+      : (event.reminders && event.reminders.useDefault === false ? REMINDER_NONE : null),
     gcalId: event.id,
     // An undated event is a contradiction; anything from the inbox is a task.
     kind: inbox ? 'task' : inferKind(event),

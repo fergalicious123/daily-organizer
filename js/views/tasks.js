@@ -5,7 +5,7 @@
 import { el, icon, toast, openModal, confirmDialog, haptic, clear as clearNode } from '../ui.js';
 import { makeTouchDraggable, registerDropZone } from '../dragdrop.js';
 import {
-  store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
+  store, PRIORITY, REMINDER_NONE, getList, getItem, addItem, updateItem, removeItem,
   toggleDone, toggleSubtask, addSubtask, settings, liveItems,
   byUrgency, eventColorSlot, titleCount, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
@@ -80,7 +80,9 @@ function metaChips(item, { showDate = true, showList = true } = {}) {
   if (item.recur) {
     chips.push(el('span.chip.is-recur', icon('repeat', 'icon'), recurLabel(item.recur)));
   }
-  if (item.remindMin != null) {
+  // A chip for a reminder that exists. "None" is the absence of one, so it
+  // gets no chip rather than a bell reading "-1m".
+  if (item.remindMin != null && item.remindMin > REMINDER_NONE) {
     chips.push(el('span.chip.is-remind', icon('bell', 'icon'), `${item.remindMin}m`));
   }
   if (item.subtasks?.length) {
@@ -501,7 +503,9 @@ const PRIORITY_LABELS = [
 ];
 
 const REMINDER_OPTIONS = [
-  { value: null, label: 'None' },
+  // Not null: null means "nothing chosen, use the default", which is what
+  // this option used to store and why it never turned anything off.
+  { value: REMINDER_NONE, label: 'None' },
   { value: 0, label: 'At time' },
   { value: 10, label: '10 min' },
   { value: 30, label: '30 min' },
