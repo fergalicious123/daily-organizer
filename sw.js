@@ -33,6 +33,10 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v40: a lighter home screen — the brief folds, the donut is a strip, and row
+// colour means your list rather than a hue per title; Completed no longer
+// draws everything you have ever finished; the phone stops clipping the month
+// header and the TRAINING badge; dead code removed.
 // v39: a new item lands on TODAY by default, with Today / Tomorrow / the next
 // two days / Unscheduled in front of you instead of a date field behind a
 // disclosure.
@@ -109,7 +113,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v39';
+const CACHE_VERSION = 'organizer-v40';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
