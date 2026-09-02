@@ -1205,15 +1205,6 @@ export function toggleSubtask(itemId, subId) {
   }, { label: 'toggle subtask' });
 }
 
-export function removeSubtask(itemId, subId) {
-  store.mutate((s) => {
-    const item = s.items.find((i) => i.id === itemId);
-    if (!item) return;
-    item.subtasks = item.subtasks.filter((x) => x.id !== subId);
-    item.updatedAt = nowISO();
-  }, { label: 'delete subtask' });
-}
-
 /* ---- settings ---- */
 
 export function updateSettings(patch) {

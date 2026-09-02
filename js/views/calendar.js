@@ -71,7 +71,6 @@ import { reopenOnDay } from './done.js';
 import { journalEditor } from './journal.js';
 import { PLAN_PREFIX, takePlanStep } from '../plan.js';
 import { registerDropZone, makeTouchDraggable } from '../dragdrop.js';
-import { progressRing } from '../chart.js';
 import { parseCommand } from '../voice.js';
 
 /* Two, not three. A month cell cannot fit three chips plus the day number at

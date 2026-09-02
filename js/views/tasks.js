@@ -6,7 +6,7 @@ import { el, icon, toast, openModal, confirmDialog, haptic, clear as clearNode }
 import { makeTouchDraggable, registerDropZone } from '../dragdrop.js';
 import {
   store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
-  toggleDone, toggleSubtask, addSubtask, removeSubtask, settings, liveItems,
+  toggleDone, toggleSubtask, addSubtask, settings, liveItems,
   byUrgency, eventColorSlot, titleCount, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
 import {
