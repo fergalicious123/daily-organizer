@@ -46,6 +46,26 @@ const SHIFT_BADGE = {
   [SHIFT.OFF]: 'OFF',
   [SHIFT.OTHER]: 'SHIFT',
 };
+
+/*
+ * The long words, on a phone.
+ *
+ * A month cell is 43px wide at 375px, which leaves 35 for the badge, and
+ * "TRAINING" wants 44 even at 8px with the padding trimmed — so the longest
+ * badge, on the one day it marks, was losing its last letters. These are the
+ * roster's own codes rather than invented shortenings: TRG and OC are what is
+ * written on the board, so they need no learning.
+ */
+const SHIFT_BADGE_TIGHT = {
+  ...SHIFT_BADGE,
+  [SHIFT.TRAINING]: 'TRG',
+  [SHIFT.ONCALL]: 'OC',
+};
+
+/** The badge for a month cell, which is the narrowest place one appears. */
+function shiftBadge(shift) {
+  return (isMobile() ? SHIFT_BADGE_TIGHT : SHIFT_BADGE)[shift] || 'SHIFT';
+}
 import { taskList, quickAdd, openItemEditor } from './tasks.js';
 import { reopenOnDay } from './done.js';
 import { journalEditor } from './journal.js';
@@ -355,7 +375,7 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
     // changes. The crew does change, so that is what the cell spends its
     // space on; the hours live on the day view and the cell's tooltip.
     cell.appendChild(el('div.month-shift',
-      el('span.month-shift-label', SHIFT_BADGE[shift] || 'SHIFT'),
+      el('span.month-shift-label', shiftBadge(shift)),
       crew.length ? el('span.month-shift-crew', crew.join(', ')) : null,
     ));
   }
@@ -927,7 +947,13 @@ export function dayView(dayKey, { onOpenItem } = {}) {
     // single most useful line on the screen, and on a phone the month cell's
     // fine print is too small to carry the names.
     dayShift ? el('div.shift-card', { class: `on-${dayShift}` },
-      el('span.shift-card-kind', `On ${SHIFT_LABEL[dayShift]}`),
+      el('span.shift-card-kind',
+        `On ${SHIFT_LABEL[dayShift]}`,
+        // The hours, here as on the home banner. This card is the answer to
+        // "what is this day" and it knew 0630-1830 without saying it, so the
+        // one place that spelled the hours out was the brief, on another page.
+        SHIFT_HOURS[dayShift] ? el('span.shift-card-hours', SHIFT_HOURS[dayShift]) : null,
+      ),
       dayCrew.length
         ? el('span.shift-card-crew', `With ${dayCrew.join(', ')}`)
         : el('span.shift-card-crew.is-empty', 'No crew recorded'),

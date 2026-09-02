@@ -2763,6 +2763,20 @@ h5.md-h, h6.md-h {
 }
 .home-strip-cell .spark { width: 100%; height: 18px; }
 
+.shift-card-hours {
+  margin-left: 8px;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  opacity: .8;
+}
+.home-shift-hours {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px; font-weight: 600;
+  opacity: .85;
+}
+
 .done-more { align-self: flex-start; margin: 8px 0 4px; }
 
 .home-list { display: flex; flex-direction: column; }
@@ -2772,6 +2786,14 @@ h5.md-h, h6.md-h {
   .home { padding: 14px 12px 20px; gap: 14px; }
   .home-greeting { font-size: 21px; }
   /* Three across still fits at 375px once the cards are a row high. */
+  /* Title and count on one line, the buttons on their own, rather than four
+     lines of broken phrases squeezed side by side. */
+  .brief-head { align-items: center; }
+  .brief-title { flex: 1 1 auto; }
+  .brief-head-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+  .brief-peek { min-height: 40px; display: inline-flex; align-items: center; }
+  .brief-send-small { min-height: 40px; }
+
   .home-strip { gap: 7px; }
   .home-strip-cell { padding: 9px 10px; }
   .home-strip-value { font-size: 18px; }
@@ -3214,7 +3236,14 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
    It is a message to be sent, not a page to be read, and every line of it is
    built from something already on this screen. Open by default it ran to two
    screens of WhatsApp markup restating the day. */
-.brief-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.brief-head-actions {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  /* Never the thing that wraps. At 375px "MORNING BRIEF", "2 overdue" and
+     "Read it" were all breaking mid-phrase into a four-line tangle; the label
+     is the part that can afford to give way, not the buttons. */
+  flex-shrink: 0;
+}
 .brief-peek {
   font-size: 12px; color: var(--text-muted);
   padding: 6px 10px; border-radius: var(--radius-sm);
@@ -3231,7 +3260,8 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   padding: 14px 16px;
 }
 .brief-head {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 9px;
 }
 .brief-title {
@@ -3699,7 +3729,10 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   .month-more { display: none; }
   /* Still the most important thing in the cell on a phone, so it keeps its
      place even though the chips go. Shortened, because 43px holds little. */
-  .month-shift-label { font-size: 8px; letter-spacing: 0; }
+  /* A month cell is 43px wide here with 3px of padding each side, and
+     "TRAINING" wanted 38 of the 37 that leaves -- so the longest badge, on the
+     one day it marks, lost its last letter. Tighter padding, and it fits. */
+  .month-shift-label { font-size: 8px; letter-spacing: 0; padding: 1px 3px; }
   .month-shift-crew { display: none; }
   /* Two initials and an ellipsis is not information. The shift colour still
      shows, and tapping the day gives the names in full. */

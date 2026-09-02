@@ -218,6 +218,10 @@ if (dates.addDays) {
   check('survives the spring clock change', () => dates.addDays('2026-03-28', 2) === '2026-03-30');
   check('survives the autumn clock change', () => dates.addDays('2026-10-24', 2) === '2026-10-26');
   check('diffDays agrees with addDays', () => dates.diffDays('2026-08-01', '2026-08-15') === 14);
+  // The short month form exists because "September 2026" does not fit a phone
+  // header; it has to stay short for the longest month there is.
+  check('the short month form is short', () => dates.formatMonthShort('2026-09-15') === 'Sep 2026');
+  check('and keeps the year', () => dates.formatMonthShort('2027-01-01') === 'Jan 2027');
 }
 /* The boundary that matters: TODAY IS NOT PAST. Every day cell in the app is a
    drop target, and getting this off by one either hatches today — telling you

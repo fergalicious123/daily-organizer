@@ -19,7 +19,8 @@ import { daysUntil } from './countdown.js';
 import * as usage from './usage.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
-  formatMonthLong, formatWeekRange, formatDayLong, formatDayShort, formatDayHeader,
+  formatMonthLong, formatMonthShort, formatWeekRange, formatDayLong, formatDayShort,
+  formatDayHeader,
   isoWeekNumber, DAY_ABBR, monthGrid, isToday, isPast, sameMonth,
 } from './dates.js';
 import {
@@ -484,10 +485,17 @@ function breadcrumb() {
   }
 
   // The drill-down path is always visible and always clickable back up.
+  /* Short on a phone, and only when it is the CURRENT crumb -- as a trail
+     link it is hidden there anyway. "September 2026" wanted 120px of the 112
+     the month header has once the menu, the arrows either side of Today and
+     New have taken theirs, so it was being clipped to "September 2...". */
+  const monthIsCurrent = route.view === 'month';
   crumbs.appendChild(el('button.crumb', {
-    class: route.view === 'month' ? 'is-current' : '',
+    class: monthIsCurrent ? 'is-current' : '',
     onclick: () => navigate({ view: 'month' }),
-  }, formatMonthLong(route.anchor)));
+  }, monthIsCurrent && isMobile()
+    ? formatMonthShort(route.anchor)
+    : formatMonthLong(route.anchor)));
 
   if (route.view === 'week' || route.view === 'day') {
     crumbs.appendChild(el('span.crumb-sep', '›'));
@@ -497,7 +505,11 @@ function breadcrumb() {
       // "Wk" rather than "Week": this is the current crumb in week view, and
       // spelling it out cost the ~14px that pushed the date range into an
       // ellipsis. The month grid labels its rows the same way.
-    }, `Wk ${isoWeekNumber(route.anchor)} · ${formatWeekRange(route.anchor, cfg.weekStart)}`));
+      // Same reasoning as the month above: on a phone the range alone
+      // identifies the week, and the number is one the header has no room for.
+    }, isMobile() && route.view === 'week'
+      ? formatWeekRange(route.anchor, cfg.weekStart)
+      : `Wk ${isoWeekNumber(route.anchor)} · ${formatWeekRange(route.anchor, cfg.weekStart)}`));
   }
 
   if (route.view === 'day') {

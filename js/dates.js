@@ -186,6 +186,12 @@ export function formatDayHeader(key) {
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 }
 
+/** 'Aug 2026' — for the phone header, where the long form does not fit. */
+export function formatMonthShort(key) {
+  const d = fromKey(key);
+  return `${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 /** 'August 2026' */
 export function formatMonthLong(key) {
   const d = fromKey(key);
