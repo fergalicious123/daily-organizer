@@ -115,9 +115,22 @@
 
   /* Granola's cards are noticeably rounder than the old 9px, and that
      roundness is a large part of why it reads as calm. */
+  /* Corners, as four shapes rather than eleven values. -xs is for something
+     only a few pixels tall -- a progress bar, a 3px row edge -- where 7 would
+     round it into a lozenge; -pill is any fully-rounded chip, which was
+     written as both 20px and 999px depending on who wrote it. */
+  /* One inset for a content card, so the left edge of the text is in the same
+     place down a whole page. The five cards on Home had 16, 18, 16, 17 and 15
+     -- nobody chose that, it accreted, and the effect is a column of text that
+     does not quite line up. Vertical padding stays free to express density:
+     an alert is meant to be tighter than a card you read. */
+  --pad-card: 16px;
+
+  --radius-xs: 4px;
   --radius-sm: 7px;
   --radius:    12px;
   --radius-lg: 18px;
+  --radius-pill: 999px;
 
   /* Layered rather than single-blur: a tight contact shadow plus a wide soft
      one. That is what stops a raised surface looking like a grey smudge. */
@@ -340,7 +353,7 @@ button {
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-sm); border: 3px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 .visually-hidden {
@@ -406,7 +419,7 @@ button {
 .brand:active { transform: translateY(1px); }
 .brand-mark {
   width: 30px; height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(140deg, var(--accent), var(--p-low));
   display: grid; place-items: center;
   color: #fff; font-weight: 700; font-size: var(--fs-md);
@@ -445,7 +458,7 @@ button {
   color: var(--text-faint);
   background: var(--surface-sunk);
   padding: 1px 6px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   min-width: 22px;
   text-align: center;
 }
@@ -469,7 +482,7 @@ button {
   font-size: var(--fs-md);
   line-height: 1;
   padding: 2px 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 .section-label button:hover { color: var(--accent); background: var(--surface-sunk); }
 
@@ -489,7 +502,7 @@ button {
 .mini-title { font-size: var(--fs-base); font-weight: 600; }
 .mini-nav { display: flex; gap: 2px; }
 .mini-nav button {
-  width: 22px; height: 22px; border-radius: 4px;
+  width: 22px; height: 22px; border-radius: var(--radius-xs);
   color: var(--text-faint); display: grid; place-items: center; font-size: var(--fs-base);
 }
 .mini-nav button:hover { background: var(--surface-sunk); color: var(--text); }
@@ -509,7 +522,7 @@ button {
   display: grid; place-items: center;
   font-size: var(--fs-xs);
   font-family: var(--font-num);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   position: relative;
   transition: background .1s var(--ease);
@@ -646,7 +659,7 @@ button {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: var(--fs-xs); font-weight: 600;
   color: var(--accent-text); background: var(--accent);
-  padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
+  padding: 4px 10px; border-radius: var(--radius-pill); flex-shrink: 0;
   transition: background var(--t-fast) var(--ease);
 }
 .clock-now:hover { background: var(--accent-hover); }
@@ -729,7 +742,7 @@ button {
   padding: 2px 6px;
   border: 1px solid var(--border-strong);
   border-bottom-width: 2px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: var(--surface-sunk);
   font-family: var(--font-num);
   font-size: var(--fs-xs); font-weight: 600;
@@ -903,7 +916,7 @@ button {
 }
 .segmented button {
   padding: 5px 13px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-muted);
@@ -991,7 +1004,7 @@ button {
   align-items: center;
   min-width: 0;
   padding: 0 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--ev, var(--accent));
   color: #fff;
   font-size: var(--fs-xs);
@@ -1174,7 +1187,7 @@ button {
 .month-shift {
   flex-shrink: 0;
   margin-bottom: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
   background: color-mix(in srgb, var(--shift, var(--accent)) 22%, transparent);
   display: flex;
@@ -1233,7 +1246,7 @@ button {
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   color: var(--accent-text);
   font-size: var(--fs-2xs);
@@ -1283,7 +1296,7 @@ button {
   font-weight: 600;
   height: var(--month-chip-h);
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--ev, var(--accent)) 12%, transparent);
   color: var(--text);
   white-space: nowrap;
@@ -1518,7 +1531,7 @@ button {
   margin-bottom: 9px;
 }
 .day-status-bar {
-  height: 4px; border-radius: 2px;
+  height: 4px; border-radius: var(--radius-xs);
   background: var(--surface-sunk);
   overflow: hidden;
 }
@@ -1638,7 +1651,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   z-index: 2;
   display: block;
   overflow: hidden;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   /* 3px, not 4: an hour is 54px here, and two clamped title lines plus the
      time come to 53.9px at 4px padding — one pixel of overflow that clipped
      the time off every hour-long block. The real headroom comes from giving
@@ -1743,7 +1756,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   font-variant-numeric: tabular-nums;
   line-height: 1;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: var(--danger);
   color: #fff;
   white-space: nowrap;
@@ -1761,7 +1774,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 .day-event {
   background: color-mix(in srgb, var(--ev, var(--accent)) 9%, var(--surface));
   border-left: 3px solid var(--ev, var(--accent));
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 5px 9px;
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -1791,7 +1804,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 /* ------------------------------------------------------------------ */
 
 .rail-header {
-  padding: 13px 15px;
+  padding: 13px var(--pad-card);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -1906,7 +1919,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   content: '';
   position: absolute;
   left: 0; top: 7px; bottom: 7px;
-  width: 3px; border-radius: 3px;
+  width: 3px; border-radius: var(--radius-xs);
   background: var(--ev, var(--accent));
   opacity: .85;
 }
@@ -2021,7 +2034,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   font-family: var(--font);
   font-variant-numeric: tabular-nums;
   padding: 0;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   display: inline-flex; align-items: center; gap: 4px;
@@ -2051,7 +2064,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   transition: opacity var(--t-fast) var(--ease);
 }
 .task-actions button {
-  width: 24px; height: 24px; border-radius: 4px; color: var(--text-faint);
+  width: 24px; height: 24px; border-radius: var(--radius-xs); color: var(--text-faint);
   display: grid; place-items: center;
 }
 .task-actions button:hover { background: var(--surface); color: var(--text); }
@@ -2066,10 +2079,10 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   display: flex; align-items: center; gap: 7px;
   font-size: var(--fs-sm); color: var(--text-muted);
 }
-.subtask .checkbox { width: 16px; height: 16px; margin-top: 0; border-radius: 4px; }
+.subtask .checkbox { width: 16px; height: 16px; margin-top: 0; border-radius: var(--radius-xs); }
 /* Subtask rows sit 3px apart, so the ring is smaller than the one on a main
    row — enough to help, not enough for one subtask's target to reach another. */
-.subtask .checkbox::before { inset: -4px; border-radius: 6px; }
+.subtask .checkbox::before { inset: -4px; border-radius: var(--radius-sm); }
 .subtask .checkbox svg { width: 10px; height: 10px; }
 .subtask.is-done span { text-decoration: line-through; opacity: .6; }
 .empty-state {
@@ -2135,7 +2148,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
 }
 .voice-examples code {
   font-family: var(--font-num); font-size: var(--fs-xs);
-  background: var(--surface-sunk); padding: 1px 5px; border-radius: 3px;
+  background: var(--surface-sunk); padding: 1px 5px; border-radius: var(--radius-xs);
 }
 
 /* ------------------------------------------------------------------ */
@@ -2252,7 +2265,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   flex-shrink: 0;
   font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   padding: 2px 7px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--shift, var(--text-faint)) 26%, transparent);
   color: var(--text);
 }
@@ -2372,7 +2385,7 @@ h5.md-h, h6.md-h {
   font-family: var(--font-num);
   font-size: .92em;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--surface-sunk);
 }
 .md-pre {
@@ -2435,7 +2448,7 @@ h5.md-h, h6.md-h {
 .week-col-shift-label {
   align-self: flex-start;
   padding: 2px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--shift, var(--accent));
   color: var(--accent-text);
   font-size: var(--fs-3xs); font-weight: 800; letter-spacing: .07em;
@@ -2490,7 +2503,7 @@ h5.md-h, h6.md-h {
   align-self: center;
   font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
   padding: 3px 9px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -2517,11 +2530,11 @@ h5.md-h, h6.md-h {
 .usage-label { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .usage-bar {
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: var(--surface-sunk);
   overflow: hidden;
 }
-.usage-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.usage-bar > span { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-xs); }
 .usage-n {
   text-align: right;
   font-family: var(--font-num);
@@ -2594,7 +2607,7 @@ h5.md-h, h6.md-h {
 .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .pill {
   padding: 5px 11px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface-2);
   font-size: var(--fs-sm);
@@ -2631,7 +2644,7 @@ h5.md-h, h6.md-h {
 
 .cal-tick {
   width: 18px; height: 18px; flex-shrink: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   border: 1.5px solid var(--border-strong);
   display: grid; place-items: center;
 }
@@ -2646,7 +2659,7 @@ h5.md-h, h6.md-h {
 .cal-ro {
   font-size: var(--fs-2xs); font-family: var(--font-num);
   color: var(--text-faint); background: var(--surface-sunk);
-  padding: 1px 6px; border-radius: 20px; flex-shrink: 0;
+  padding: 1px 6px; border-radius: var(--radius-pill); flex-shrink: 0;
 }
 
 .switch-row {
@@ -2657,7 +2670,7 @@ h5.md-h, h6.md-h {
 .switch-label { font-size: var(--fs-base); }
 .switch-desc { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; }
 .switch {
-  width: 40px; height: 23px; border-radius: 20px; background: var(--border-strong);
+  width: 40px; height: 23px; border-radius: var(--radius-pill); background: var(--border-strong);
   position: relative; flex-shrink: 0; transition: background var(--t-fast) var(--ease);
 }
 .switch::after {
@@ -2759,7 +2772,7 @@ h5.md-h, h6.md-h {
   align-items: flex-start;
   text-align: left;
   width: 100%;
-  padding: 15px 17px;
+  padding: 14px var(--pad-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -2792,7 +2805,7 @@ h5.md-h, h6.md-h {
 .home-alert {
   display: flex; align-items: center; gap: 9px;
   width: 100%; text-align: left;
-  padding: 11px 15px;
+  padding: 11px var(--pad-card);
   border-radius: var(--radius);
   background: var(--danger-soft);
   color: var(--danger);
@@ -2841,7 +2854,7 @@ h5.md-h, h6.md-h {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .home-strip-bar {
-  height: 4px; border-radius: 2px;
+  height: 4px; border-radius: var(--radius-xs);
   background: var(--surface-sunk);
   overflow: hidden;
   margin-top: 2px;
@@ -2849,7 +2862,7 @@ h5.md-h, h6.md-h {
 .home-strip-bar > span {
   display: block; height: 100%;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transition: width var(--t-slow) var(--ease);
 }
 .home-strip-cell .spark { width: 100%; height: 18px; }
@@ -2982,7 +2995,7 @@ h5.md-h, h6.md-h {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 14px var(--pad-card);
   margin-bottom: 12px;
 }
 /* Today leads and is the only one open for writing, so it earns the accent. */
@@ -3113,7 +3126,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  padding: 16px 18px 6px;
+  padding: 14px var(--pad-card) 6px;
 }
 
 .routine-head {
@@ -3154,7 +3167,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   top: 28px;
   bottom: 0;
   width: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--border);
   transition: background var(--t-slow) var(--ease);
 }
@@ -3224,7 +3237,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   font-variant-numeric: tabular-nums;
   letter-spacing: .02em;
   padding: 2px 7px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: var(--surface-sunk);
   color: var(--text-muted);
   white-space: nowrap;
@@ -3271,7 +3284,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm); font-weight: 700;
   padding: 2px 8px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   background: var(--surface-sunk);
   color: var(--text-muted);
 }
@@ -3311,7 +3324,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   cursor: pointer;
 }
 .routine-why:hover { color: var(--text); text-decoration-color: currentColor; }
-.routine-why:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.routine-why:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
 
 /* The note sits under a rule rather than in a box: a bordered panel inside a
    bordered card inside a bordered page is one frame too many. */
@@ -3422,7 +3435,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  padding: 14px 16px;
+  padding: 14px var(--pad-card);
 }
 .brief-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -3464,7 +3477,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   gap: 3px;
   width: 100%;
   text-align: left;
-  padding: 13px 16px;
+  padding: 13px var(--pad-card);
   /* No margin: .home is a flex column with its own gap, and adding one here
      stacked on top of it — a 32px hole under the banner where every other
      gap was 18px. */
@@ -3593,7 +3606,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   opacity: 0; transition: opacity var(--t-fast) var(--ease);
 }
 .done-actions button {
-  width: 26px; height: 26px; border-radius: 4px; color: var(--text-faint);
+  width: 26px; height: 26px; border-radius: var(--radius-xs); color: var(--text-faint);
   display: grid; place-items: center;
 }
 .done-actions button:hover { background: var(--surface); color: var(--accent); }
@@ -3726,7 +3739,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   border-radius: 4px 4px 0 0;   /* rounded data-end, square at the baseline */
   transition: height var(--t-slow) var(--ease);
 }
-.column-bar.is-zero { background: var(--chart-track); border-radius: 2px; }
+.column-bar.is-zero { background: var(--chart-track); border-radius: var(--radius-xs); }
 .column-label {
   position: absolute;
   bottom: 0;
@@ -3754,13 +3767,13 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 .bar-track {
   height: 7px;
   background: var(--chart-track);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 .bar-fill {
   height: 100%;
   background: var(--chart-fill);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: width .4s var(--ease);
   min-width: 0;
 }
@@ -4018,7 +4031,7 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
 }
 .day-strip-count {
   font-family: var(--font-num); font-size: var(--fs-3xs); color: var(--text-muted);
-  background: var(--surface-sunk); border-radius: 20px; padding: 0 5px; min-width: 16px;
+  background: var(--surface-sunk); border-radius: var(--radius-pill); padding: 0 5px; min-width: 16px;
   text-align: center;
 }
 .day-strip-count.is-empty { background: transparent; color: var(--text-faint); }
@@ -4162,7 +4175,7 @@ body.is-touch-dragging {
   align-items: center;
   gap: 9px;
   padding: 11px 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 
   border: 1px dashed var(--border-strong, var(--border));
   background: var(--surface);
@@ -4321,7 +4334,7 @@ body:has(.bin-docked) .bin-float { display: none; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 15px 17px;
+  padding: 14px var(--pad-card);
 }
 .review-section-title {
   margin: 0 0 11px; font-size: var(--fs-xs); font-weight: 600;
@@ -4432,7 +4445,7 @@ body:has(.bin-docked) .bin-float { display: none; }
 .proposal-badge {
   align-self: flex-start;
   font-size: var(--fs-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
-  padding: 2px 6px; border-radius: 999px;
+  padding: 2px 6px; border-radius: var(--radius-pill);
   background: var(--success-soft); color: var(--success);
 }
 .proposal-badge.is-warn { background: var(--warning-soft); color: var(--warning); }
