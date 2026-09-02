@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v50: a worked shift is no longer treated as an overdue task — it was being
+// listed as one, planned around, moved to today, then stripped of its date.
 // v49: "None" on a reminder now means none — it was storing the same value as
 // "nothing chosen", so it asked for the default reminder instead.
 // v48: the paid requests cannot be fired twice by a double press, and what
@@ -130,7 +132,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v49';
+const CACHE_VERSION = 'organizer-v50';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not

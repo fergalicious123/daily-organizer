@@ -972,10 +972,10 @@ export function rollOverdueTasks({ today = todayKey() } = {}) {
 
   store.mutate((s) => {
     for (const item of s.items) {
-      if (item.deleted || item.done) continue;
-      if (item.kind !== 'task') continue;
+      if (!isSlippedTask(item, today)) continue;
+      // A repeating entry and one occurrence of a Google series are both real
+      // calendar records that are meant to stay where they are.
       if (item.recur || item.seriesId) continue;
-      if (!item.date || item.date >= today) continue;
 
       const rolls = item.rollCount || 0;
       if (rolls === 0) {
@@ -1246,10 +1246,36 @@ export function titleCount(title) {
 }
 
 /** Incomplete, dated before today — the stuff quietly rotting. */
+/**
+ * Is this a job that has slipped, or just a day that has been?
+ *
+ * A rota entry is something you were INSIDE of, not something you complete.
+ * A worked shift is not an outstanding task and must never be treated as one.
+ *
+ * This matters more than it looks. inferKind() files a single all-day Google
+ * entry as a TASK -- which is what keeps a recurring "Wedding Planning"
+ * reminder tickable, and is also exactly the shape of one day of a rota. So
+ * an imported "Day Shift" arrives as an undone, dated task, and without this
+ * guard it would: appear in the Overdue list; be sent to Claude as something
+ * to catch up on, asking for a plan to re-work a shift already worked; be
+ * moved to today by the rollover; and then, the day after, be stripped of its
+ * date entirely -- with every one of those changes written back to the real
+ * calendar it came from.
+ *
+ * Five other places in this file already exclude shift-shaped items. These
+ * two did not.
+ */
+export function isSlippedTask(item, today = todayKey()) {
+  if (!item || item.deleted || item.done) return false;
+  if (item.kind !== 'task') return false;
+  if (!item.date || item.date >= today) return false;
+  return !shiftKindOf(item);
+}
+
 export function overdueTasks() {
   const today = todayKey();
   return liveItems()
-    .filter((i) => i.kind === 'task' && !i.done && i.date && i.date < today)
+    .filter((i) => isSlippedTask(i, today))
     .sort(sortByTimeThenPriority);
 }
 

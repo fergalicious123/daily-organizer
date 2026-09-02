@@ -299,6 +299,37 @@ if (cd.itemCountdowns) {
    choosing None on an 07:00 task still notified at 06:50, and still told
    Google to apply the calendar's own defaults. The round trip is the half
    that matters most: a reminder turned off has to STAY off through a sync. */
+/* inferKind() files a single all-day Google entry as a TASK -- which is what
+   keeps a recurring "Wedding Planning" reminder tickable, and is also exactly
+   the shape of one day of a rota. So an imported "Day Shift" arrives as an
+   undone, dated task. Without a guard it appears in Overdue, gets sent to
+   Claude as something to catch up on, is moved to today by the rollover and
+   then stripped of its date -- with all of it written back to the calendar it
+   came from. A worked shift is not an outstanding job. */
+group('isSlippedTask — a worked shift is not an overdue task');
+const stMod = loaded['../js/state.js'] || {};
+if (stMod.isSlippedTask) {
+  const T = '2026-09-02';
+  const slipped = (over) => stMod.isSlippedTask({ kind: 'task', date: '2026-09-01', ...over }, T);
+
+  check('an ordinary late task has slipped', () => slipped({ title: 'Book MOT' }) === true);
+  check('a day shift has not', () => slipped({ title: 'Day Shift' }) === false);
+  check('nor a night shift', () => slipped({ title: 'Night Shift (N)' }) === false);
+  check('nor a training day', () => slipped({ title: 'Training Day (TD)' }) === false);
+  check('nor an on-call day', () => slipped({ title: 'On-Call' }) === false);
+  // Someone else's rota is not his shift, but it is still not a job he owes.
+  check('a task merely CONTAINING a shift word still slips',
+    () => slipped({ title: 'Book the day shift handover room' }) === true);
+
+  check('today is not late', () => stMod.isSlippedTask({ kind: 'task', title: 'x', date: T }, T) === false);
+  check('tomorrow is not late', () => stMod.isSlippedTask({ kind: 'task', title: 'x', date: '2026-09-03' }, T) === false);
+  check('a finished task has not slipped', () => slipped({ title: 'x', done: true }) === false);
+  check('a binned task has not slipped', () => slipped({ title: 'x', deleted: true }) === false);
+  check('an event is not a task', () => slipped({ title: 'x', kind: 'event' }) === false);
+  check('an undated task cannot be late', () => stMod.isSlippedTask({ kind: 'task', title: 'x', date: null }, T) === false);
+  check('nothing at all does not throw', () => stMod.isSlippedTask(null, T) === false);
+}
+
 group('reminders — None means none, and survives a sync');
 const gcal = loaded['../js/google.js'] || {};
 const stateMod = loaded['../js/state.js'] || {};
