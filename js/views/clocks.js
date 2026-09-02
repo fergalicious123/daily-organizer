@@ -12,6 +12,9 @@
 
 import { el, icon } from '../ui.js';
 import { settings, updateSettings } from '../state.js';
+import {
+  partsInZone, offsetMinutes, instantForZonedTime, timeInZone, describeGap,
+} from '../zones.js';
 
 const DEFAULT_HOME = { tz: 'Europe/London', label: 'UK' };
 const DEFAULT_AWAY = { tz: 'Asia/Manila', label: 'PH' };
@@ -19,48 +22,8 @@ const DEFAULT_AWAY = { tz: 'Asia/Manila', label: 'PH' };
 /* ------------------------------------------------------------------ */
 /* Zone maths                                                          */
 /* ------------------------------------------------------------------ */
-
-/** The wall-clock fields an instant shows in a given zone. */
-function partsInZone(date, timeZone) {
-  const dtf = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-  const p = Object.fromEntries(dtf.formatToParts(date).map((x) => [x.type, x.value]));
-  return {
-    year: +p.year, month: +p.month, day: +p.day,
-    hour: +p.hour, minute: +p.minute, second: +p.second,
-  };
-}
-
-/** How far ahead of UTC a zone is, in minutes, at a given instant. */
-function offsetMinutes(date, timeZone) {
-  const p = partsInZone(date, timeZone);
-  const asIfUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-  const whole = date.getTime() - date.getMilliseconds();
-  return (asIfUTC - whole) / 60000;
-}
-
-/**
- * The instant at which `timeZone` reads the given wall-clock time.
- * Resolved twice because the offset used to make the first guess may itself
- * be the wrong side of a DST boundary.
- */
-function instantForZonedTime(year, month, day, hour, minute, timeZone) {
-  const naive = Date.UTC(year, month - 1, day, hour, minute);
-  let offset = offsetMinutes(new Date(naive), timeZone);
-  let instant = naive - offset * 60000;
-  offset = offsetMinutes(new Date(instant), timeZone);
-  return new Date(naive - offset * 60000);
-}
-
-/** 'HH:MM' in the given zone. */
-export function timeInZone(date, timeZone) {
-  const p = partsInZone(date, timeZone);
-  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
-}
+/* The arithmetic itself now lives in js/zones.js, shared with the
+   both-free calculation. Only the bit unique to this widget stays here. */
 
 /** How many calendar days `away` is ahead of (or behind) `home`. */
 function dayShift(date, homeTz, awayTz) {
@@ -71,17 +34,7 @@ function dayShift(date, homeTz, awayTz) {
   );
 }
 
-/** "7h ahead" / "3h 30m behind" / "same time". */
-export function describeGap(date, homeTz, awayTz) {
-  const diff = offsetMinutes(date, awayTz) - offsetMinutes(date, homeTz);
-  if (diff === 0) return 'same time';
-  const abs = Math.abs(diff);
-  const h = Math.floor(abs / 60);
-  const m = abs % 60;
-  const span = m ? `${h}h ${m}m` : `${h}h`;
-  return `${span} ${diff > 0 ? 'ahead' : 'behind'}`;
-}
-
+/** Which two zones this shows, and what to call them. */
 function zoneConfig() {
   const cfg = settings();
   return {

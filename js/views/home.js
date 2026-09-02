@@ -18,6 +18,8 @@ import {
   shiftOnDay, crewOnDay, liveItems, SHIFT,
 } from '../state.js';
 import { itemCountdowns } from '../countdown.js';
+import { partnerName, nextWindows, describeWindow } from '../together.js';
+import { zoneConfig } from './clocks.js';
 import * as usage from '../usage.js';
 
 /** Only stated where they are known rather than inferred. Same table as the
@@ -181,6 +183,57 @@ function briefCard() {
   );
 }
 
+/**
+ * When you are both free.
+ *
+ * Only appears when there IS a second rota in the calendar -- three or more
+ * name-prefixed shift entries -- so for anyone without one it is not a card
+ * that sits there empty, it is a card that does not exist.
+ *
+ * Says the time in both zones, always. A window is only useful if you can see
+ * what hour it is at her end, and the gap is seven hours or eight depending
+ * on the month, which is exactly the sum nobody should be doing by hand.
+ */
+function togetherCard(onNavigate) {
+  const items = liveItems();
+  const name = partnerName(items);
+  if (!name) return null;
+
+  const zones = zoneConfig();
+  const opts = {
+    itemsOnDay,
+    addDays,
+    name,
+    homeTz: zones.home.tz,
+    awayTz: zones.away.tz,
+  };
+
+  const found = nextWindows(todayKey(), opts, 14, 3);
+  if (!found.length) return null;
+
+  const rows = found.map(({ day, window }) => el('button.together-row', {
+    onclick: () => onNavigate({ view: 'day', anchor: day }),
+    title: `Open ${formatDayLong(day)}`,
+  },
+    el('span.together-when', day === todayKey() ? 'Today' : formatRelativeDay(day)),
+    el('span.together-hours', describeWindow(window, zones.home.tz)),
+    el('span.together-theirs', `${describeWindow(window, zones.away.tz)} ${zones.away.label}`),
+  ));
+
+  const assumed = [...new Set(found.flatMap((f) => f.assumed))];
+
+  return el('section.together-card',
+    el('div.task-group-label', `Both free \u00b7 ${name}`),
+    ...rows,
+    // The model guesses at sleep, so it says which guesses it leaned on. A
+    // suggestion you cannot audit is one you stop trusting the first time it
+    // is wrong.
+    assumed.length
+      ? el('p.field-hint.together-note', `Assumes ${assumed.join(', and ')}.`)
+      : null,
+  );
+}
+
 export function homeView({ onNavigate }) {
   const cfg = settings();
   const today = todayKey();
@@ -229,6 +282,13 @@ export function homeView({ onNavigate }) {
      point is what the day is asking of Ben; this is the part he chose. */
   const routine = routineCard(today);
   if (routine) root.appendChild(routine);
+
+  /* ---- when you are both free ----
+     Directly under what is happening today, because it is the same kind of
+     question -- what can I actually do with the hours I have -- and because
+     the answer changes with the rota, which is the thing above it. */
+  const together = togetherCard(onNavigate);
+  if (together) root.appendChild(together);
 
   /* ---- what you are counting down to ----
      Sits under the ritual because the two say the same kind of thing: the
