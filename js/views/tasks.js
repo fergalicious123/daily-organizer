@@ -7,7 +7,7 @@ import { makeTouchDraggable, registerDropZone } from '../dragdrop.js';
 import {
   store, PRIORITY, getList, getItem, addItem, updateItem, removeItem,
   toggleDone, toggleSubtask, addSubtask, removeSubtask, settings, liveItems,
-  byUrgency, eventColorSlot, itemLog, addNote, removeNote, NOTE_SOURCE,
+  byUrgency, eventColorSlot, titleCount, itemLog, addNote, removeNote, NOTE_SOURCE,
 } from '../state.js';
 import {
   todayKey, formatRelativeDay, formatTime, addDays, toKey, isPast,
@@ -131,21 +131,31 @@ function recurLabel(recur) {
  * `onChange` is called after any mutation so the caller can re-render.
  */
 export function taskRow(item, {
-  showDate = true, showList = true, draggable = true, urgency = 0,
+  showDate = true, showList = true, draggable = true,
 } = {}) {
+  // Twice or more in the document: the hue is identifying something. Once: it
+  // is a colour for its own sake.
+  const recurringTitle = titleCount(item.title) >= 2;
+  const listColour = getList(item.listId)?.color || '';
+
   const row = el('div.task', {
     // Two colour channels, deliberately kept on different parts of the row.
     //
     // `u-N` drives the left edge stripe: an ordinal ramp, darkest/brightest at
     // rank 1. Only unfinished tasks carry it — a finished row wants no shout.
     //
-    // `ev-N` is the kind colour, the same slot the calendar uses, so a row and
-    // its chip on the month grid are recognisably the same thing. It sits on
-    // the row so both the dot and the background wash read from one `--ev`.
+    /* `ev-N` is the kind colour, the same slot the calendar uses, so a row and
+       its chip on the month grid are recognisably the same thing.
+       ONLY WHERE THE TITLE COMES ROUND AGAIN. A colour shared by four cells is
+       how a block of nights reads as one thing; a colour given to "Book MOT",
+       which will never share it with anything, is decoration. A list of five
+       one-off jobs was five unrelated hues plus five dots plus a list chip:
+       three coloured marks a row, two of them saying nothing you could act on.
+       A one-off takes its LIST's colour instead, set below — so a list is at
+       most three colours and each of them answers a real question. */
     class: [
       item.done ? 'is-done' : '',
-      (!item.done && item.kind === 'task' && urgency) ? `u-${Math.min(urgency, 5)}` : '',
-      `ev-${eventColorSlot(item.title) + 1}`,
+      recurringTitle ? `ev-${eventColorSlot(item.title) + 1}` : '',
     ].filter(Boolean).join(' '),
     dataset: { id: item.id },
     draggable: draggable ? 'true' : null,
@@ -154,6 +164,11 @@ export function taskRow(item, {
       openItemEditor(item.id);
     },
   });
+
+  /* Through setProperty, not el()'s `style` option -- that uses Object.assign,
+     which drops custom properties without a word. The routine card's stagger
+     was silently flat for the same reason. */
+  if (!recurringTitle && listColour) row.style.setProperty('--ev', listColour);
 
   if (draggable) {
     row.addEventListener('dragstart', (e) => {
@@ -174,11 +189,12 @@ export function taskRow(item, {
     }),
     el('div.task-main',
       el('div.task-title',
-        // Every row carries the dot, task or event. Gating it on `kind` looked
-        // principled and was wrong in practice: imported shifts arrive as
-        // tasks, so the one thing that most needed a shared colour was the one
-        // thing that never got one.
-        el('span.chip-dot.row-dot'),
+        // The dot and the left edge are the same colour, so on a one-off they
+        // were the same nothing said twice. It stays where the colour is
+        // identifying something that recurs -- which, note, includes imported
+        // shifts: those arrive as TASKS, so gating this on `kind` looked
+        // principled and dropped the colour from the rows that most needed it.
+        recurringTitle ? el('span.chip-dot.row-dot') : null,
         item.title || 'Untitled'),
       (() => {
         const chips = metaChips(item, { showDate, showList });
@@ -255,14 +271,11 @@ export function taskList(items, {
   const overdue = open.filter((i) => i.date && i.date < today);
   const rest = open.filter((i) => !overdue.includes(i));
 
-  // Rank ALWAYS comes from urgency, never from position — otherwise a list
-  // shown in clock order (the day view) would shade by where a row happens to
-  // sit, which is worse than no shading at all. Ranking spans every open item
-  // rather than each group, so the scale reads as one gradient down the page
-  // instead of restarting under each heading.
-  const ranked = new Map();
-  byUrgency(open, today).forEach((item, i) => ranked.set(item.id, i + 1));
-  const withRank = (item) => ({ ...rowOpts, urgency: ranked.get(item.id) || 0 });
+  /* The per-row urgency RANK is gone, and with it a second full sort of every
+     open item on every render. It fed one thing: a `u-N` class carrying an
+     ordinal red ramp that no rule in styles.css ever painted — the work was
+     done, the class was stamped, and nothing appeared. byUrgency still ORDERS
+     the list below; that half was always real. */
 
   // Grouping replaces the default overdue/rest split — under "group by due"
   // an Overdue heading would appear twice, and under the others the split
@@ -282,7 +295,7 @@ export function taskList(items, {
         label === 'Overdue' ? icon('warning', 'icon') : null,
         members.length ? `${label} · ${members.length}` : label);
       frag.appendChild(makeGroupTarget(head, patch, label));
-      for (const item of members) frag.appendChild(taskRow(item, withRank(item)));
+      for (const item of members) frag.appendChild(taskRow(item, rowOpts));
     }
     if (groupDone && done.length) {
       frag.appendChild(el('div.task-group-label', `Completed · ${done.length}`));
@@ -297,10 +310,10 @@ export function taskList(items, {
   if (orderedOverdue.length) {
     frag.appendChild(el('div.task-group-label.is-overdue',
       icon('warning', 'icon'), `Overdue · ${orderedOverdue.length}`));
-    for (const item of orderedOverdue) frag.appendChild(taskRow(item, withRank(item)));
+    for (const item of orderedOverdue) frag.appendChild(taskRow(item, rowOpts));
   }
 
-  for (const item of orderedRest) frag.appendChild(taskRow(item, withRank(item)));
+  for (const item of orderedRest) frag.appendChild(taskRow(item, rowOpts));
 
   if (groupDone && done.length) {
     frag.appendChild(el('div.task-group-label', `Completed · ${done.length}`));

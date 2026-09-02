@@ -20,6 +20,13 @@ import {
 import { itemCountdowns } from '../countdown.js';
 import * as usage from '../usage.js';
 
+/** Only stated where they are known rather than inferred. Same table as the
+    brief's, which is the other place the hours are said out loud. */
+const SHIFT_HOURS = {
+  [SHIFT.DAY]: '0630-1830',
+  [SHIFT.NIGHT]: '1830-0630',
+};
+
 /** Said as a statement, because this is an answer, not a label. */
 const SHIFT_LABEL = {
   [SHIFT.NIGHT]: 'You are on NIGHTS today',
@@ -33,7 +40,7 @@ import {
   todayKey, formatDayLong, formatTime, timeToMinutes, addDays, formatRelativeDay,
 } from '../dates.js';
 import { taskList, quickAdd } from './tasks.js';
-import { progressRing, sparkline } from '../chart.js';
+import { sparkline } from '../chart.js';
 import { parseCommand } from '../voice.js';
 
 function greeting(hour) {
@@ -137,15 +144,40 @@ function briefCard() {
     }, 'Reword'));
   }
 
+  /* FOLDED BY DEFAULT.
+     The brief is a message to be SENT, not a page to be read, and it is built
+     out of the things already on this screen -- the ritual, the shift, what is
+     on the clock. Open, it ran to about two screens and said all of that a
+     second time in WhatsApp markup, which made the home screen exactly the
+     thing its own note warns against: one that takes reading, so you skip past
+     it. Folded, it is a row with the button on it; the text is one press away
+     for the times you want to check what you are about to send. */
+  const text = el('div.brief-text-wrap', { hidden: true }, body, actions);
+
+  const toggle = el('button.brief-peek', {
+    type: 'button',
+    'aria-expanded': 'false',
+    onclick: (e) => {
+      const open = text.hidden;
+      text.hidden = !open;
+      e.currentTarget.setAttribute('aria-expanded', String(open));
+      e.currentTarget.textContent = open ? 'Hide' : 'Read it';
+    },
+  }, 'Read it');
+
+  const quickSend = el('button.btn.btn-primary.brief-send-small', {
+    onclick: () => send.click(),
+  }, icon('send', 'icon'), 'Send');
+
   return el('section.brief-card',
     el('div.brief-head',
       el('span.brief-title', 'Morning brief'),
       el('span.brief-sub', brief.counts.overdue
         ? `${brief.counts.overdue} overdue`
         : `${brief.counts.timed + brief.counts.tasks} to do`),
+      el('div.brief-head-actions', toggle, quickSend),
     ),
-    body,
-    actions,
+    text,
   );
 }
 
@@ -182,6 +214,10 @@ export function homeView({ onNavigate }) {
       onclick: () => onNavigate({ view: 'day', anchor: today }),
     },
       el('span.home-shift-kind', SHIFT_LABEL[shift] || 'On shift'),
+      // The hours are the half of this that changes what you do with the
+      // evening, and the banner knew them and did not say them -- you had to
+      // read the brief further down the page to find out.
+      SHIFT_HOURS[shift] ? el('span.home-shift-hours', SHIFT_HOURS[shift]) : null,
       crew.length
         ? el('span.home-shift-crew', `With ${crew.join(', ')}`)
         : null,
@@ -259,36 +295,36 @@ export function homeView({ onNavigate }) {
     ));
   }
 
-  /* ---- tiles ---- */
-  const tiles = el('div.home-tiles');
-
-  tiles.appendChild(el('div.home-tile',
-    el('h3', 'Today'),
-    progressRing(progress, { size: 116, label: 'Today' }),
-    el('p.stat-sub', { style: { textAlign: 'center', margin: 0 } },
-      progress.total ? `${progress.done} of ${progress.total} done` : 'No tasks yet'),
+  /* ---- the numbers, as a strip rather than three cards ----
+     The day view learned this already and Home never got the lesson: a 116px
+     donut is the largest, most saturated thing on the page and first thing in
+     the morning it reads 0%, so the loudest element on the screen is there to
+     tell you that you have not started yet. A bar says the same in a tenth of
+     the space, and gives the room back to the things you came to read.
+     The three numbers stay, and both halves still go where they went. */
+  const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+  root.appendChild(el('div.home-strip',
+    el('div.home-strip-cell',
+      el('span.home-strip-label', 'Today'),
+      el('span.home-strip-value',
+        progress.total ? `${progress.done}/${progress.total}` : '\u2014'),
+      el('div.home-strip-bar', el('span', { style: { width: `${pct}%` } })),
+    ),
+    el('button.home-strip-cell.is-clickable', {
+      onclick: () => onNavigate({ view: 'stats' }),
+    },
+      el('span.home-strip-label', 'Streak'),
+      el('span.home-strip-value', String(streak)),
+      sparkline(history.map((h) => h.count)),
+    ),
+    el('button.home-strip-cell.is-clickable', {
+      onclick: () => onNavigate({ view: 'tasks', listId: null }),
+    },
+      el('span.home-strip-label', 'Unscheduled'),
+      el('span.home-strip-value', String(unscheduled.length)),
+      el('span.home-strip-note', unscheduled.length ? 'waiting for a date' : 'nothing waiting'),
+    ),
   ));
-
-  tiles.appendChild(el('button.home-tile.is-clickable', {
-    onclick: () => onNavigate({ view: 'stats' }),
-  },
-    el('h3', 'Streak'),
-    el('div.stat-big', String(streak)),
-    el('p.stat-sub', { style: { margin: 0 } },
-      streak === 0 ? 'Finish one today' : `day${streak === 1 ? '' : 's'} running`),
-    sparkline(history.map((h) => h.count)),
-  ));
-
-  tiles.appendChild(el('button.home-tile.is-clickable', {
-    onclick: () => onNavigate({ view: 'tasks', listId: null }),
-  },
-    el('h3', 'Unscheduled'),
-    el('div.stat-big', String(unscheduled.length)),
-    el('p.stat-sub', { style: { margin: 0 } },
-      unscheduled.length ? 'waiting for a date' : 'nothing waiting'),
-  ));
-
-  root.appendChild(tiles);
 
   /* ---- today's list ---- */
   const list = el('section.home-list',

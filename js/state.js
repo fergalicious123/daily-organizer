@@ -1100,6 +1100,37 @@ export function crewFrom(items) {
   return [...seen.values()];
 }
 
+/**
+ * How many live items share a title's colour key.
+ *
+ * The event palette hands a hue to every distinct title, which is exactly
+ * right on a calendar — seeing the same colour on four cells is how a block
+ * of nights reads as one thing — and close to meaningless in a list, where
+ * "Book MOT" gets a hue it will never share with anything.
+ *
+ * So the question a list should ask is not "is this an event" (imported
+ * shifts arrive as tasks, which is why gating on kind failed) but "does this
+ * title come round again". A colour that repeats is doing work; a colour that
+ * appears once is decoration.
+ *
+ * Memoised against the document's own updatedAt, because the alternative is a
+ * full scan per row and lists are the longest thing this app draws.
+ */
+let titleCounts = { stamp: null, map: null };
+export function titleCount(title) {
+  const stamp = store.state.updatedAt;
+  if (titleCounts.stamp !== stamp) {
+    const map = new Map();
+    for (const item of liveItems()) {
+      const key = colorKeyFor(item.title);
+      if (key) map.set(key, (map.get(key) || 0) + 1);
+    }
+    titleCounts = { stamp, map };
+  }
+  const key = colorKeyFor(title);
+  return key ? (titleCounts.map.get(key) || 0) : 0;
+}
+
 /** Incomplete, dated before today — the stuff quietly rotting. */
 export function overdueTasks() {
   const today = todayKey();

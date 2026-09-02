@@ -1858,35 +1858,14 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
     --shift-off: #5eead4; --shift-other: #94a3b8;
 }
 
-/* Urgency ramp — an ORDINAL scale, so one hue with monotone lightness steps
-   rather than assorted colours. Validated in OKLCH: every adjacent step clears
-   a 0.06 lightness gap, hue holds at ~29 degrees throughout, and the faintest
-   step still reads 2.3:1 against the surface so it does not vanish.
-   Light mode anchors dark = most urgent; dark mode flips it, because on a dark
-   surface prominence comes from brightness. */
-:root {
-  --u1: #8f1d11;
-  --u2: #b8291a;
-  --u3: #d1483a;
-  --u4: #df6d5e;
-  --u5: #e89588;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --u1: #ff9b8c; --u2: #f4796a; --u3: #e05a4c; --u4: #c04739; --u5: #9c3a2f;
-  }
-}
-:root[data-theme="dark"] {
-  --u1: #ff9b8c; --u2: #f4796a; --u3: #e05a4c; --u4: #c04739; --u5: #9c3a2f;
-}
 
-/* A row reads with the same two cues as a month chip: a dot in the kind
-   colour, and a wash of that same hue behind it. The wash is far lighter than
-   the chip's 12% because a chip is a label and a row is a whole band — at chip
-   strength a list of eight hues turns into stripes of wallpaper.
-
-   The left edge stays urgency's. Edge answers *when*, fill answers *what*, and
-   keeping them on separate parts of the row is what lets both be read at once. */
+/* The left edge is the row's one colour.
+   It carries the kind hue where a title recurs -- four cells of the same green
+   is how a block of nights reads as one thing -- and the row's LIST colour
+   where it does not, so a page of one-off jobs is two or three meaningful
+   colours instead of eight arbitrary ones. See titleCount() in state.js.
+   It used to be urgency's, in an ordinal red ramp that was carefully built and
+   never wired to a rule; the ramp is gone rather than left looking intentional. */
 .task::after {
   content: '';
   position: absolute;
@@ -2734,29 +2713,55 @@ h5.md-h, h6.md-h {
   text-decoration: underline; text-underline-offset: 2px;
 }
 
-.home-tiles {
+/* ---- the numbers, as one strip ----
+   Three cards, one of them holding a 116px donut, used a third of the home
+   screen to carry three small numbers. This is the same information at the
+   height of a single row. */
+.home-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
-.home-tile {
+.home-strip-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 13px;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  align-items: flex-start;
   text-align: left;
+  transition: border-color .12s var(--ease);
 }
-.home-tile h3 {
-  margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--text-muted);
+.home-strip-cell.is-clickable:hover { border-color: var(--accent); }
+.home-strip-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-faint);
 }
-.home-tile .ring-wrap { align-self: center; }
-.home-tile.is-clickable { transition: border-color .12s var(--ease); }
-.home-tile.is-clickable:hover { border-color: var(--accent); }
+.home-strip-value {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 21px; font-weight: 700; line-height: 1;
+  color: var(--text);
+}
+.home-strip-note {
+  font-size: 11px; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.home-strip-bar {
+  height: 4px; border-radius: 2px;
+  background: var(--surface-sunk);
+  overflow: hidden;
+  margin-top: 2px;
+}
+.home-strip-bar > span {
+  display: block; height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .3s var(--ease);
+}
+.home-strip-cell .spark { width: 100%; height: 18px; }
 
 .home-list { display: flex; flex-direction: column; }
 .home-list .task-group-label { margin-top: 0; }
@@ -2764,7 +2769,10 @@ h5.md-h, h6.md-h {
 @media (max-width: 760px) {
   .home { padding: 14px 12px 20px; gap: 14px; }
   .home-greeting { font-size: 21px; }
-  .home-tiles { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 9px; }
+  /* Three across still fits at 375px once the cards are a row high. */
+  .home-strip { gap: 7px; }
+  .home-strip-cell { padding: 9px 10px; }
+  .home-strip-value { font-size: 18px; }
   .home-focus-title { font-size: 16px; }
 }
 
@@ -3200,6 +3208,20 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
    Quiet on purpose. The shift banner above it is the thing that must be read
    at a glance; this is the thing that gets SENT, so its job is to show the
    message exactly as it will arrive rather than to compete for attention. */
+/* ---- the brief, folded ----
+   It is a message to be sent, not a page to be read, and every line of it is
+   built from something already on this screen. Open by default it ran to two
+   screens of WhatsApp markup restating the day. */
+.brief-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.brief-peek {
+  font-size: 12px; color: var(--text-muted);
+  padding: 6px 10px; border-radius: var(--radius-sm);
+}
+.brief-peek:hover { background: var(--surface-sunk); color: var(--text); }
+.brief-text-wrap { display: flex; flex-direction: column; gap: 10px; margin-top: 11px; }
+.brief-text-wrap[hidden] { display: none; }
+.brief-send-small { padding: 7px 12px; font-size: 12.5px; }
+
 .brief-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
