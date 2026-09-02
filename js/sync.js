@@ -200,8 +200,22 @@ class SyncEngine extends EventTarget {
       this.syncNow({ quiet: true });
     };
     this._onOnline = () => this.syncNow({ quiet: true });
+    /*
+     * Say it the moment the signal goes, not the next time a sync happens to
+     * fail.
+     *
+     * Without this the chip kept reading "Connected" until the five-minute
+     * timer came round, so a task typed in a hangar with no bars looked
+     * saved-and-synced when it was only saved. It IS only saved, and that is
+     * fine — the document is on the device and the queue carries the calendar
+     * writes — but the difference is exactly what the chip is there to show.
+     */
+    this._onOffline = () => {
+      this.setState(SyncState.OFFLINE, 'Offline — changes are queued');
+    };
     document.addEventListener('visibilitychange', this._onFocus);
     window.addEventListener('online', this._onOnline);
+    window.addEventListener('offline', this._onOffline);
 
     // Push local edits promptly. Waiting up to five minutes for a task you
     // just typed to reach your phone reads as "it didn't work" — and that is
@@ -220,6 +234,7 @@ class SyncEngine extends EventTarget {
     clearTimeout(this._pushTimer);
     if (this._onFocus) document.removeEventListener('visibilitychange', this._onFocus);
     if (this._onOnline) window.removeEventListener('online', this._onOnline);
+    if (this._onOffline) window.removeEventListener('offline', this._onOffline);
     this._unsubscribe?.();
     this._unsubscribe = null;
   }

@@ -90,7 +90,7 @@ group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
   'brief', 'quotes', 'ai', 'reflect', 'daylog', 'triage', 'plan', 'dragdrop', 'shortcuts',
-  'countdown', 'usage', 'markdown', 'paste', 'together', 'zones',
+  'countdown', 'usage', 'markdown', 'paste', 'together', 'zones', 'search',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
     'clocks', 'shortcutsPanel', 'planpanel', 'datepicker'].map((n) => `../js/views/${n}.js`),
@@ -443,6 +443,69 @@ if (paste.sourceFromClipboard) {
     () => paste.sourceFromClipboard(fake('SourceURL:file:///C:/secrets.txt')) === '');
   check('no html flavour means no source', () => paste.sourceFromClipboard(fake('')) === '');
   check('a broken clipboard does not throw', () => paste.sourceFromClipboard(null) === '');
+}
+
+/* ------------------------------------------------------------------ */
+/* Find                                                                */
+/* ------------------------------------------------------------------ */
+/* Everything this app holds is filed by day, which is right for "what am I
+   doing today" and useless for "where is that thing about the heater". The
+   search has to reach the places a thing can hide: a title, the notes field,
+   the comment written afterwards, a note dictated onto it, a diary entry, and
+   a line caught in the note app. */
+group('search - reaches every place something can hide');
+const finder = loaded['../js/search.js'] || {};
+if (finder.search) {
+  const doc = {
+    items: [
+      { id: 'a', kind: 'task', title: 'Work with Glbo on the heater', notes: '', comment: '', log: [] },
+      { id: 'b', kind: 'task', title: 'PARA 10 prep', notes: '16kg, aim for sub 2h', comment: '', log: [] },
+      { id: 'c', kind: 'task', title: 'Serialised kit check', notes: '', comment: 'took longer than planned', log: [] },
+      { id: 'd', kind: 'task', title: 'Chase stores', notes: '', comment: '', log: [{ id: 'n1', text: 'needs a new element' }] },
+      { id: 'e', kind: 'task', title: 'Old binned thing about heaters', deleted: true, log: [] },
+      { id: 'f', kind: 'task', title: 'Book MOT', done: true, notes: '', comment: '', log: [] },
+    ],
+    journal: { '2026-09-01': { text: 'Chased the heater again.' } },
+    captures: [
+      { id: 'c1', text: 'order new boots before para 10', at: '2026-09-02T10:00:00.000Z' },
+      { id: 'c2', text: 'binned line', deleted: true, at: '2026-09-02T10:00:00.000Z' },
+    ],
+  };
+  const find = (q) => finder.search(q, doc);
+  const ids = (q) => find(q).map((h) => h.id).sort().join(',');
+
+  check('finds a title', () => find('Glbo').some((h) => h.id === 'a'));
+  check('finds the notes field', () => find('16kg').some((h) => h.id === 'b' && h.where === 'note'));
+  check('finds a comment written afterwards', () => find('longer').some((h) => h.id === 'c' && h.where === 'comment'));
+  check('finds a note dictated onto a task', () => find('element').some((h) => h.id === 'd' && h.where === 'log'));
+  check('finds a diary entry', () => find('chased').some((h) => h.kind === 'entry'));
+  check('finds a caught line', () => find('boots').some((h) => h.kind === 'capture'));
+  check('finds something already done', () => find('MOT').some((h) => h.id === 'f'));
+
+  // Deleted things are deleted.
+  check('a binned task is not found', () => !find('binned thing').some((h) => h.id === 'e'));
+  check('a binned capture is not found', () => !find('binned line').length);
+
+  // Every term must appear, or two words returns everything containing either
+  // -- the behaviour that makes people stop using a search box.
+  check('every term must match', () => ids('heater glbo') === 'a');
+  check('a term matching nothing rules the result out', () => find('glbo zzzz').length === 0);
+  // ...though the terms may match different fields of the same item.
+  check('terms may match different fields', () => find('chase element').some((h) => h.id === 'd'));
+
+  check('a title beats a note', () => {
+    const r = find('heater');
+    return r[0].kind === 'task' && r[0].where === 'title';
+  });
+  check('one letter is not a search', () => find('a').length === 0);
+  check('an empty query finds nothing', () => find('   ').length === 0);
+  check('case does not matter', () => find('GLBO').some((h) => h.id === 'a'));
+  check('an empty document does not throw', () => finder.search('heater', {}).length === 0);
+}
+if (finder.snippet) {
+  check('a snippet centres on the hit', () => finder.snippet('the quick brown fox jumps over the lazy dog and keeps going for a while yet', 'lazy').includes('lazy'));
+  check('a short text is returned whole', () => finder.snippet('short one', 'short') === 'short one');
+  check('an empty text gives an empty snippet', () => finder.snippet('', 'x') === '');
 }
 
 /* ------------------------------------------------------------------ */

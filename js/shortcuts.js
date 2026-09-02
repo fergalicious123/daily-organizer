@@ -35,6 +35,7 @@ export const SHORTCUTS = [
   { group: 'Moving around', key: 'ArrowRight', display: ['→'], label: 'Forward one period' },
 
   { group: 'Doing things', key: 'n', display: ['N'], label: 'New item' },
+  { group: 'Doing things', key: '/', display: ['/'], label: 'Find anything you have written down' },
   { group: 'Doing things', key: null, display: ['Ctrl', 'Z'], label: 'Undo' },
   { group: 'Doing things', key: null, display: ['Ctrl', 'Shift', 'Z'], label: 'Redo' },
   {

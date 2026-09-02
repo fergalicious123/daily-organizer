@@ -108,6 +108,7 @@ const ICONS = {
   drag: '<circle cx="9.25" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="18" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="18" r="1.35" fill="currentColor" stroke="none"/>',
   warning: '<path d="M10.6 4.1 2.85 17.6A1.6 1.6 0 0 0 4.24 20h15.52a1.6 1.6 0 0 0 1.39-2.4L13.4 4.1a1.6 1.6 0 0 0-2.8 0Z"/><path d="M12 9.5v4.25M12 17.35h.01"/>',
   mic: '<rect x="9.25" y="2.75" width="5.5" height="11" rx="2.75"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v3.75M8.75 21.25h6.5"/>',
+  search: '<circle cx="11" cy="11" r="6.75"/><path d="m20.75 20.75-4.9-4.9"/>',
   /* A handset. Marks a day you and she are both free — the point of that
      marker is "you could ring her", so the mark is a phone. */
   phone: '<path d="M7.5 3.75h-2A2.25 2.25 0 0 0 3.25 6c0 8.15 6.6 14.75 14.75 14.75A2.25 2.25 0 0 0 20.25 18.5v-2l-4.5-1.75-2 2.5a14.5 14.5 0 0 1-6-6l2.5-2Z"/>',
@@ -187,7 +188,11 @@ export function openModal({ title, render, footer = null, onClose = null, width 
     onclick: (e) => { if (e.target === overlay) close(); },
   });
   const modal = el('div.modal', { role: 'dialog', 'aria-modal': 'true', 'aria-label': title });
-  if (width) modal.style.width = width;
+  /* Never wider than the screen. The default rule is `min(520px, 100%)`, and
+     a caller passing a plain "560px" replaced that outright — which on a
+     375px phone put a third of the dialog off the right-hand edge. Callers
+     ask for a width; this decides what is possible. */
+  if (width) modal.style.width = `min(${width}, 100%)`;
 
   const body = el('div.modal-body');
   const head = el('div.modal-head',

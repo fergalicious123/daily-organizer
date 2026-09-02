@@ -2500,6 +2500,54 @@ h5.md-h, h6.md-h {
 @media (max-width: 760px) {
   .usage-row { grid-template-columns: minmax(0, 1fr) 56px 30px; gap: 8px; }
 }
+/* ---- find ----
+   A dialog, because searching is something you do FROM somewhere and want to
+   end up somewhere else. Results are drawn straight from memory as you type;
+   there is nothing to wait for, so there is no spinner and no debounce. */
+.search-box {
+  width: 100%;
+  padding: 11px 13px;
+  font-size: 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.search-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search-summary { margin: 0; }
+.search-results { display: flex; flex-direction: column; gap: 3px; max-height: 52vh; overflow-y: auto; }
+.search-hit {
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  text-align: left;
+}
+.search-hit:hover, .search-hit:focus-visible { background: var(--surface-2); border-color: var(--border); }
+.search-hit-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.search-hit-title {
+  font-size: 13.5px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-hit-title.is-done { color: var(--text-muted); text-decoration: line-through; }
+.search-hit-snippet {
+  font-size: 11.5px; color: var(--text-muted); line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-hit-meta {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 7px;
+  font-size: 10.5px; color: var(--text-faint);
+}
+.search-hit-kind {
+  font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+@media (max-width: 760px) {
+  .search-hit { padding: 11px; min-height: 52px; }
+  .search-hit-meta { flex-direction: column; align-items: flex-end; gap: 2px; }
+}
+
 .editor-more-toggle { align-self: flex-start; }
 /* "When" leads the dialog with the title, so its pills read as a choice being
    asked for rather than a row of shortcuts tucked under a field. */

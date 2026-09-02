@@ -491,6 +491,16 @@ function daySummary(dateKey) {
  */
 let focusDay = null;
 
+/**
+ * Open the diary on a particular day.
+ *
+ * Exported so a search result can land on the entry it matched rather than on
+ * the diary's front page, leaving you to find the day again yourself.
+ */
+export function openDiaryOn(key) {
+  focusDay = key || null;
+}
+
 /** Repaint without routing it through the store: this is where you are looking,
     not something to save and sync. */
 function refocus(key) {

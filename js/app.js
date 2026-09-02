@@ -6,7 +6,9 @@
  * bugs for a fraction of the complexity a diffing layer would cost.
  */
 
-import { el, clear, icon, toast, openModal, confirmDialog, isMobile, isTablet, $ } from './ui.js';
+import {
+  el, clear, icon, toast, openModal, closeModal, confirmDialog, isMobile, isTablet, $,
+} from './ui.js';
 import {
   store, settings, updateSettings, device, updateDevice,
   addList, removeList, renameList,
@@ -16,11 +18,13 @@ import {
   routineSteps, setRoutineTarget,
 } from './state.js';
 import { daysUntil } from './countdown.js';
+import { search } from './search.js';
+import { openDiaryOn } from './views/journal.js';
 import * as usage from './usage.js';
 import {
   todayKey, addDays, addMonths, weekDays, fromKey,
   formatMonthLong, formatMonthShort, formatWeekRange, formatDayLong, formatDayShort,
-  formatDayHeader,
+  formatDayHeader, formatRelativeDay,
   isoWeekNumber, DAY_ABBR, monthGrid, isToday, isPast, sameMonth,
 } from './dates.js';
 import {
@@ -250,6 +254,7 @@ function renderSidebar() {
     syncStatusButton(),
     el('div.nav',
       navItem(cfg.theme === 'dark' ? 'moon' : 'sun', 'Theme', null, false, cycleTheme),
+      navItem('search', 'Find', null, false, openSearch),
       navItem('settings', 'Settings', null, false, openSettings),
     ),
   ));
@@ -961,6 +966,102 @@ function listContextMenu(list) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Search                                                              */
+/* ------------------------------------------------------------------ */
+
+const WHERE_LABEL = {
+  title: '',
+  note: 'in the notes',
+  comment: 'in the comment',
+  log: 'in a note on it',
+  entry: 'in the diary',
+  capture: 'caught',
+};
+
+/**
+ * Find anything you have written down.
+ *
+ * A dialog rather than a view, because searching is something you do FROM
+ * somewhere and want to end up somewhere else -- putting it on the nav would
+ * mean leaving wherever you were to look, then navigating back.
+ *
+ * Results are drawn as you type, straight from memory. There is no debounce
+ * because there is nothing to wait for: the whole document is a few hundred
+ * kilobytes and a pass over it costs well under a millisecond.
+ */
+function openSearch() {
+  usage.record('SEARCH');
+  let query = '';
+
+  openModal({
+    title: 'Find',
+    width: '560px',
+    render: () => {
+      const results = el('div.search-results');
+      const summary = el('p.field-hint.search-summary');
+
+      const draw = () => {
+        clear(results);
+        const hits = search(query, {
+          items: store.state.items,
+          journal: store.state.journal,
+          captures: store.state.captures,
+        });
+
+        if (!query.trim()) {
+          summary.textContent = 'Tasks, events, notes on them, diary entries and caught lines.';
+          return;
+        }
+        if (!hits.length) {
+          summary.textContent = `Nothing matches \u201c${query.trim()}\u201d.`;
+          return;
+        }
+        summary.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
+
+        for (const hit of hits) {
+          results.appendChild(el('button.search-hit', {
+            onclick: () => {
+              closeModal();
+              // Straight to the thing, not to a view containing the thing.
+              if (hit.kind === 'entry') { openDiaryOn(hit.id); navigate({ view: 'journal' }); }
+              else if (hit.kind === 'capture') window.location.href = './capture/';
+              else openItemEditor(hit.id);
+            },
+          },
+            el('div.search-hit-main',
+              el('span.search-hit-title', { class: hit.done ? 'is-done' : '' }, hit.title),
+              hit.snippet ? el('span.search-hit-snippet', hit.snippet) : null,
+            ),
+            el('div.search-hit-meta',
+              el('span.search-hit-kind', hit.kind === 'entry' ? 'diary'
+                : hit.kind === 'capture' ? 'caught' : hit.kind),
+              WHERE_LABEL[hit.where] ? el('span.search-hit-where', WHERE_LABEL[hit.where]) : null,
+              hit.date ? el('span.search-hit-date', formatRelativeDay(hit.date)) : null,
+            ),
+          ));
+        }
+      };
+
+      const box = el('input.search-box', {
+        type: 'search',
+        placeholder: 'heater, para 10, SCA\u2026',
+        autocomplete: 'off',
+        oninput: (e) => { query = e.target.value; draw(); },
+        onkeydown: (e) => {
+          e.stopPropagation();
+          // Enter opens the first result, so a search can be done without
+          // ever leaving the keyboard.
+          if (e.key === 'Enter') results.querySelector('.search-hit')?.click();
+        },
+      });
+
+      draw();
+      return [box, summary, results];
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Settings                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -1483,6 +1584,7 @@ const KEY_ACTIONS = {
   t: () => navigate({ view: 'day', anchor: todayKey() }),
   r: () => navigate({ view: 'review' }),
   n: () => openItemEditor(null, defaultsForRoute()),
+  '/': () => openSearch(),
   ArrowLeft: () => navigate({ anchor: stepAnchor(-1) }),
   ArrowRight: () => navigate({ anchor: stepAnchor(1) }),
   Escape: () => closeDrawers(),

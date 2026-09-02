@@ -33,6 +33,8 @@
 // build stamp, read straight out of CacheStorage, so "has my phone got the new
 // version?" is answerable by looking rather than guessing.
 //
+// v45: Find — search every task, note, diary entry and caught line; the sync
+// chip says so the moment the signal goes.
 // v44: both-free windows on the calendar and on a day, and a window can be
 // turned into a real call with a reminder in one press.
 // v43: when you are both free — your rota against Sheila's, across the
@@ -120,7 +122,7 @@
 // covered two deploys, so a device holding the first of them showed the right
 // build number while running the wrong code — the stamp said v3 and so did the
 // server, and there was no way to tell them apart by looking.
-const CACHE_VERSION = 'organizer-v44';
+const CACHE_VERSION = 'organizer-v45';
 
 // Every module the app loads. Keeping this complete matters more now than it
 // used to: since the shell became cache-first, a file missing from here is not
@@ -151,6 +153,7 @@ const SHELL = [
   './js/plan.js',
   './js/daylog.js',
   './js/countdown.js',
+  './js/search.js',
   './js/together.js',
   './js/zones.js',
   './js/usage.js',

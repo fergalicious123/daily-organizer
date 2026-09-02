@@ -45,6 +45,7 @@ export const FEATURES = {
   EDITOR_MORE: 'Open the editor\u2019s extra fields',
   DRAG_SCHEDULE: 'Drag onto a day',
   DATE_PICKER: 'Pick a date from the grid',
+  SEARCH: 'Find something',
 
   // Getting things done
   ITEM_DONE: 'Tick something off',

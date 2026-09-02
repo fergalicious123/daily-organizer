@@ -609,6 +609,9 @@ export function weekView(anchorKey, { onSelectDay }) {
   const weekStart = settings().weekStart;
   const days = weekDays(anchorKey, weekStart);
   const root = el('div.week.view-anim');
+  // The month grid and the day both mark these; the week was the gap between
+  // them, and it is the view you actually plan a block in.
+  const together = togetherDays(days);
 
   for (const dayKey of days) {
     const items = itemsOnDay(dayKey);
@@ -666,6 +669,10 @@ export function weekView(anchorKey, { onSelectDay }) {
       hasJournal(dayKey)
         ? el('span.day-diary', { title: 'There is a diary entry for this day' },
             icon('book', 'icon'))
+        : null,
+      together?.has(dayKey)
+        ? el('span.day-together', { title: 'You are both free at some point today' },
+            icon('phone', 'icon'))
         : null,
     ));
 
