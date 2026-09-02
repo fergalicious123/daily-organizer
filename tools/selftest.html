@@ -446,6 +446,41 @@ if (paste.sourceFromClipboard) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Zones                                                               */
+/* ------------------------------------------------------------------ */
+/* instantAt() takes a fast path -- one offset for the whole day, then plain
+   arithmetic -- and falls back to asking Intl properly on a day whose offset
+   changes. That is a 23x speed-up and exactly the kind of shortcut that is
+   right for 361 days a year and wrong on the four that matter. So the two
+   paths are compared directly, on and around both UK clock changes. */
+group('zones - the fast path agrees with the exact one');
+const zones = loaded['../js/zones.js'] || {};
+if (zones.instantAt && zones.instantForZonedTime) {
+  const UK = 'Europe/London';
+  const exact = (key, min) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return zones.instantForZonedTime(y, m, d, 0, min, UK).getTime();
+  };
+  const agrees = (key) => [0, 60, 90, 120, 150, 300, 720, 1439]
+    .every((min) => zones.instantAt(key, min, UK).getTime() === exact(key, min));
+
+  check('an ordinary day agrees', () => agrees('2026-09-02'));
+  // Clocks go back 25 Oct 2026 and forward 29 Mar 2026.
+  check('the day the clocks go back agrees', () => agrees('2026-10-25'));
+  check('the day either side of it agrees', () => agrees('2026-10-24') && agrees('2026-10-26'));
+  check('the day the clocks go forward agrees', () => agrees('2026-03-29'));
+  check('and either side of that', () => agrees('2026-03-28') && agrees('2026-03-30'));
+  // Past midnight the offset belongs to a different day, so that must not
+  // take the shortcut.
+  check('an overnight minute count agrees', () => zones.instantAt('2026-10-24', 1800, UK).getTime() === exact('2026-10-24', 1800));
+
+  // The gap to Manila really does change, which is the whole reason none of
+  // this stores an offset.
+  check('Manila is 7h ahead in summer', () => zones.describeGap(new Date('2026-09-02T12:00:00Z'), UK, 'Asia/Manila') === '7h ahead');
+  check('and 8h ahead in winter', () => zones.describeGap(new Date('2026-12-02T12:00:00Z'), UK, 'Asia/Manila') === '8h ahead');
+}
+
+/* ------------------------------------------------------------------ */
 /* Both free                                                           */
 /* ------------------------------------------------------------------ */
 /* Two rotas, seven or eight hours apart depending on the month. The whole

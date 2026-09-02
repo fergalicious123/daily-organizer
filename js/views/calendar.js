@@ -6,6 +6,9 @@
 
 import { el, icon, isMobile, toast } from '../ui.js';
 import * as usage from '../usage.js';
+import { partnerName, windowsOn, describeWindow } from '../together.js';
+import { timeInZone } from '../zones.js';
+import { zoneConfig } from './clocks.js';
 import {
   monthGrid, weekDays, isoWeekNumber, sameMonth, isToday, isWeekend, isPast,
   fromKey, formatHourLabel, formatTime, timeToMinutes, DAY_ABBR,
@@ -221,6 +224,91 @@ export function layoutDayEvents(items, defaultDurationMin = 60) {
  * Weeks are rows, and a row is the click target — that is the first step of
  * the drill-down. Individual day cells drill straight to the day.
  */
+/**
+ * The both-free window on one day, with a way to make it an actual call.
+ *
+ * He already creates these by hand -- his calendar has a "Call Sheila" event
+ * with an hour on it and a reminder -- so the button does exactly that, from
+ * a window the app worked out rather than one he did. The reminder is the
+ * point: a window you have to remember is a window you miss.
+ */
+function togetherPanel(dayKey) {
+  const name = partnerName(liveItems());
+  if (!name) return null;
+
+  const zones = zoneConfig();
+  const { windows, assumed } = windowsOn(dayKey, {
+    itemsOnDay, addDays, name, homeTz: zones.home.tz, awayTz: zones.away.tz,
+  });
+  if (!windows.length) return null;
+
+  const title = `Call ${name}`;
+  const already = itemsOnDay(dayKey).some(
+    (i) => !i.deleted && i.title.trim().toLowerCase() === title.toLowerCase(),
+  );
+
+  const rows = windows.map((w) => {
+    const [start, end] = w;
+    const mine = timeInZone(new Date(start), zones.home.tz);
+    const theirs = describeWindow(w, zones.away.tz);
+    const lengthMin = Math.round((end - start) / 60000);
+
+    return el('div.together-day-row',
+      el('span.together-hours', describeWindow(w, zones.home.tz)),
+      el('span.together-theirs', `${theirs} ${zones.away.label}`),
+      already
+        ? el('span.together-booked', 'in the diary')
+        : el('button.btn.btn-quiet.together-book', {
+          onclick: () => {
+            addItem({
+              kind: 'event',
+              title,
+              date: dayKey,
+              time: mine,
+              // An hour, or the window if it is shorter than one.
+              durationMin: Math.min(60, lengthMin),
+              remindMin: 10,
+            });
+            toast(`${title} at ${mine}`, { action: 'Undo', onAction: () => store.undo() });
+            document.dispatchEvent(new CustomEvent('organizer:rerender'));
+          },
+        }, icon('phone', 'icon'), 'Put it in'),
+    );
+  });
+
+  return el('div.together-panel',
+    el('div.together-panel-head', icon('phone', 'icon'), `Both free \u00b7 ${name}`),
+    ...rows,
+    assumed.length ? el('p.field-hint', `Assumes ${assumed.join(', and ')}.`) : null,
+  );
+}
+
+/*
+ * Which of these days you and she are both free on.
+ *
+ * Computed once for a whole grid rather than per cell, and returned as a Set
+ * so a cell only has to ask whether it is in it. Costs about 4ms for a month
+ * at his data size; see the fast path in zones.js, without which it was 96.
+ *
+ * Null, not an empty Set, when there is no second rota in the calendar. The
+ * caller has to be able to tell "nobody to be free with" from "no windows
+ * this month", because the first should draw nothing at all.
+ */
+function togetherDays(days) {
+  const name = partnerName(liveItems());
+  if (!name) return null;
+  const zones = zoneConfig();
+  const opts = {
+    itemsOnDay, addDays, name, homeTz: zones.home.tz, awayTz: zones.away.tz,
+  };
+  const set = new Set();
+  for (const day of days) {
+    const { windows } = windowsOn(day, opts);
+    if (windows.length) set.add(day);
+  }
+  return set;
+}
+
 export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
   const weekStart = settings().weekStart;
   const grid = monthGrid(anchorKey, weekStart);
@@ -234,6 +322,7 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
   ));
 
   const weeksHost = el('div.month-weeks');
+  const together = togetherDays(grid.flat());
 
   for (const week of grid) {
     const row = el('div.week-row', {
@@ -260,7 +349,7 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
     }
 
     week.forEach((dayKey, i) => {
-      const cell = monthDayCell(dayKey, anchorKey, onSelectDay);
+      const cell = monthDayCell(dayKey, anchorKey, onSelectDay, together);
       // Pin every cell to its own column. Without this the cells are
       // auto-placed, so a bar claiming columns 4-7 pushed them along the row
       // and the grid came apart: two 40px cells, a 191px hole where the bar
@@ -285,7 +374,7 @@ export function monthView(anchorKey, { onSelectWeek, onSelectDay }) {
   return root;
 }
 
-function monthDayCell(dayKey, anchorKey, onSelectDay) {
+function monthDayCell(dayKey, anchorKey, onSelectDay, together) {
   const all = itemsOnDay(dayKey);
   // Spanning items are drawn once as a bar across the row, so a chip here as
   // well would show the same thing twice. A shift is the exception: it is
@@ -346,6 +435,12 @@ function monthDayCell(dayKey, anchorKey, onSelectDay) {
     hasJournal(dayKey)
       ? el('span.day-diary', { title: 'There is a diary entry for this day' },
           icon('book', 'icon'))
+      : null,
+    // A day you could actually speak to her on. Small, because it is a
+    // possibility rather than a commitment -- nothing is booked.
+    together?.has(dayKey)
+      ? el('span.day-together', { title: 'You are both free at some point today' },
+          icon('phone', 'icon'))
       : null,
     items.length
       ? el('span.month-count', {
@@ -930,6 +1025,8 @@ export function dayView(dayKey, { onOpenItem } = {}) {
   const items = itemsOnDay(dayKey);
   const dayShift = shiftOnDay(dayKey);
   const dayCrew = crewOnDay(dayKey);
+  const together = togetherPanel(dayKey);
+
   const side = el('div.day-side',
     /* Said outright, above everything.
        Ben opened a day, went to put a task on it, and only just caught that
@@ -957,6 +1054,8 @@ export function dayView(dayKey, { onOpenItem } = {}) {
         ? el('span.shift-card-crew', `With ${dayCrew.join(', ')}`)
         : el('span.shift-card-crew.is-empty', 'No crew recorded'),
     ) : null,
+    // Under the shift, because it is a consequence of it.
+    together,
     /* What is next, and how far through you are — in one strip rather than a
        116px ring. The ring was the largest and most saturated thing on the
        page and, first thing in the morning, it always read 0%. A bar says the

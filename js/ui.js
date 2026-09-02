@@ -108,6 +108,9 @@ const ICONS = {
   drag: '<circle cx="9.25" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="9.25" cy="18" r="1.35" fill="currentColor" stroke="none"/><circle cx="14.75" cy="18" r="1.35" fill="currentColor" stroke="none"/>',
   warning: '<path d="M10.6 4.1 2.85 17.6A1.6 1.6 0 0 0 4.24 20h15.52a1.6 1.6 0 0 0 1.39-2.4L13.4 4.1a1.6 1.6 0 0 0-2.8 0Z"/><path d="M12 9.5v4.25M12 17.35h.01"/>',
   mic: '<rect x="9.25" y="2.75" width="5.5" height="11" rx="2.75"/><path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0M12 17.5v3.75M8.75 21.25h6.5"/>',
+  /* A handset. Marks a day you and she are both free — the point of that
+     marker is "you could ring her", so the mark is a phone. */
+  phone: '<path d="M7.5 3.75h-2A2.25 2.25 0 0 0 3.25 6c0 8.15 6.6 14.75 14.75 14.75A2.25 2.25 0 0 0 20.25 18.5v-2l-4.5-1.75-2 2.5a14.5 14.5 0 0 1-6-6l2.5-2Z"/>',
   book: '<path d="M4.25 4.5a1.5 1.5 0 0 1 1.5-1.5H17.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 0-1.5-1.5H5.75a1.5 1.5 0 0 1-1.5-1.5Z"/><path d="M19 18v3H5.75a1.5 1.5 0 0 1-1.5-1.5"/><path d="M8 7.5h7M8 11h7"/>',
   send: '<path d="M20.5 3.5 10.75 13.25"/><path d="M20.5 3.5 14.25 20.5l-3.5-7.25L3.5 9.75 20.5 3.5Z"/>',
   clipboard: '<path d="M9.5 4.25H7.75a2 2 0 0 0-2 2v12.5a2 2 0 0 0 2 2h8.5a2 2 0 0 0 2-2V6.25a2 2 0 0 0-2-2H14.5"/><rect x="9.5" y="2.75" width="5" height="3" rx="1"/>',

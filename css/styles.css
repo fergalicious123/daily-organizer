@@ -2417,6 +2417,12 @@ h5.md-h, h6.md-h {
 /* ---- a day you wrote about ----
    Small and quiet. It answers "did I write anything that day", which is a
    question you ask while scanning, not one you need shouted at you. */
+.day-together { color: var(--accent); display: inline-flex; }
+.day-together .icon { width: 12px; height: 12px; }
+/* Both marks sit at the end of the number row; whichever comes first takes
+   the auto margin, so they stay together rather than pushing each other. */
+.month-day-num .day-together { margin-left: 4px; }
+.month-day-num .day-diary + .day-together { margin-left: 4px; }
 .day-diary { margin-left: auto; color: var(--text-faint); display: inline-flex; }
 .day-diary .icon { width: 12px; height: 12px; }
 .week-col-head .day-diary { margin: 4px 0 0; }
@@ -2814,6 +2820,31 @@ h5.md-h, h6.md-h {
   white-space: nowrap;
 }
 .together-note { margin: 4px 2px 0; }
+
+/* The same thing on a single day, where there is room to offer the booking. */
+.together-panel {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.together-panel-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--accent);
+}
+.together-panel-head .icon { width: 13px; height: 13px; }
+.together-day-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.together-day-row .together-hours { flex: 0 0 auto; }
+.together-day-row .together-theirs { flex: 1 1 auto; }
+.together-book { flex: 0 0 auto; padding: 5px 10px; font-size: 12px; min-height: 36px; }
+.together-booked {
+  flex: 0 0 auto;
+  font-size: 11px; color: var(--success);
+  font-weight: 600;
+}
+@media (max-width: 760px) { .together-book { min-height: 44px; } }
 
 @media (max-width: 760px) {
   /* Her hours drop under his rather than squeezing three columns into 375px. */

@@ -12,15 +12,33 @@
  * ask it every time.
  */
 
+/*
+ * One formatter per zone, kept.
+ *
+ * Constructing an Intl.DateTimeFormat is expensive — far more so than using
+ * one — and this is called several times per free interval, per person, per
+ * day. Building a fresh one each time was fine for a clock that ticks once a
+ * second and would not be for a month grid asking the same question of forty-
+ * two days. There are two zones; caching them costs nothing.
+ */
+const formatters = new Map();
+function formatterFor(timeZone) {
+  let f = formatters.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    formatters.set(timeZone, f);
+  }
+  return f;
+}
+
 /** The wall-clock fields an instant shows in a given zone. */
 export function partsInZone(date, timeZone) {
-  const dtf = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-  const p = Object.fromEntries(dtf.formatToParts(date).map((x) => [x.type, x.value]));
+  const p = Object.fromEntries(formatterFor(timeZone).formatToParts(date).map((x) => [x.type, x.value]));
   return {
     year: +p.year, month: +p.month, day: +p.day,
     hour: +p.hour, minute: +p.minute, second: +p.second,
@@ -54,15 +72,49 @@ export function timeInZone(date, timeZone) {
   return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
 }
 
+/*
+ * A zone's offset for one whole day, worked out once.
+ *
+ * The exact path asks Intl twice per conversion, and a month of both-free
+ * windows asks for hundreds of conversions — 96ms for forty-two days, which is
+ * a visibly slow calendar. But a zone's offset only changes on the handful of
+ * days a year it changes, and on every other day one number covers the lot.
+ *
+ * So: measure the offset at the start and end of the day. If they agree, the
+ * day is flat and every conversion on it is plain arithmetic. If they do not,
+ * this is a clock-change day and every conversion falls back to asking Intl
+ * properly. Fast where it is safe, exact where it is not.
+ */
+const dayOffsets = new Map();
+function offsetForDay(dateKey, timeZone) {
+  const key = `${timeZone}|${dateKey}`;
+  let cached = dayOffsets.get(key);
+  if (!cached) {
+    const [y, m, d] = String(dateKey).split('-').map(Number);
+    const first = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 0, 0)), timeZone);
+    const last = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 23, 59)), timeZone);
+    cached = { offset: first, flat: first === last };
+    dayOffsets.set(key, cached);
+  }
+  return cached;
+}
+
 /**
  * The instant at which a zone reads `minutes` past midnight on `dateKey`.
  *
  * Minutes may run past 1440, which is how an overnight shift is expressed —
  * 06:30 the next morning is simply 1830. Date.UTC normalises the overflow, so
- * there is no special case for crossing midnight, month end or new year.
+ * there is no special case for crossing midnight, month end or new year. That
+ * overflow is also why the fast path below is limited to a single day: past
+ * midnight the offset in question belongs to a different day, which may not be
+ * the same one.
  */
 export function instantAt(dateKey, minutes, timeZone) {
   const [y, m, d] = String(dateKey).split('-').map(Number);
+  const { offset, flat } = offsetForDay(dateKey, timeZone);
+  if (flat && minutes >= 0 && minutes <= 1440) {
+    return new Date(Date.UTC(y, m - 1, d, 0, minutes) - offset * 60000);
+  }
   return instantForZonedTime(y, m, d, 0, minutes, timeZone);
 }
 
