@@ -289,8 +289,50 @@ if (cd.itemCountdowns) {
 
    These call the real makeItem against the real store, which is safe: it
    builds an object and returns it, and nothing here is ever pushed. */
-group('makeItem — saying nothing and saying undefined are not the same');
+/* A tombstone exists so a delete travels to the other device; nothing ever
+   removed them, so every task deleted since June was still in the document.
+   Ninety days, and the edges are what matter: a live item must never be
+   caught by it, and a tombstone with no date must be kept rather than
+   guessed at. */
+group('purgeTombstones — old deletions go, nothing else does');
 const state = loaded['../js/state.js'] || {};
+if (state.purgeTombstones) {
+  const day = 86400000;
+  const now = Date.parse('2026-09-02T12:00:00.000Z');
+  const at = (d) => new Date(now - d * day).toISOString();
+  const doc = () => ({
+    items: [
+      { id: 'live', title: 'still here' },
+      { id: 'liveOld', title: 'old but alive', updatedAt: at(500) },
+      { id: 'freshBin', deleted: true, updatedAt: at(10) },
+      { id: 'oldBin', deleted: true, updatedAt: at(200) },
+      { id: 'edgeInside', deleted: true, updatedAt: at(89) },
+      { id: 'edgeOutside', deleted: true, updatedAt: at(91) },
+      { id: 'undated', deleted: true },
+    ],
+    captures: [
+      { id: 'c1', text: 'kept', at: at(200) },
+      { id: 'c2', text: 'binned recently', deleted: true, at: at(5) },
+      { id: 'c3', text: 'binned long ago', deleted: true, at: at(200) },
+    ],
+  });
+  const ids = () => state.purgeTombstones(doc(), now).items.map((i) => i.id);
+  const capIds = () => state.purgeTombstones(doc(), now).captures.map((c) => c.id);
+
+  check('a live item is never touched', () => ids().includes('live'));
+  check('a very old LIVE item is never touched', () => ids().includes('liveOld'));
+  check('a recent deletion is kept, so it still travels', () => ids().includes('freshBin'));
+  check('a long-dead deletion goes', () => !ids().includes('oldBin'));
+  check('89 days is inside the window', () => ids().includes('edgeInside'));
+  check('91 days is outside it', () => !ids().includes('edgeOutside'));
+  // Guessing that an undated tombstone is old enough is the one way this
+  // loses something that still matters on another device.
+  check('an undated tombstone is kept, not guessed at', () => ids().includes('undated'));
+  check('captures follow the same rule', () => capIds().includes('c1') && capIds().includes('c2') && !capIds().includes('c3'));
+  check('a document with neither array does not throw', () => Boolean(state.purgeTombstones({}, now)));
+}
+
+group('makeItem — saying nothing and saying undefined are not the same');
 if (state.makeItem) {
   check('an omitted id is generated', () => Boolean(state.makeItem({}).id));
   check('an explicitly undefined id is still generated', () => Boolean(state.makeItem({ id: undefined }).id));

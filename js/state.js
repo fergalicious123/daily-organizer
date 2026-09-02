@@ -209,6 +209,45 @@ function repairIds(state) {
   return state;
 }
 
+/*
+ * How long a deletion has to keep announcing itself.
+ *
+ * A tombstone exists so a delete travels: without one, the next sync sees an
+ * item on Drive that is missing locally and helpfully puts it back. But it
+ * only has to outlive the chance of another device still holding the live
+ * copy, and nothing ever removed them -- so every task Ben has deleted since
+ * June is still in the document, still syncing, still parsed on every open,
+ * for ever.
+ *
+ * Ninety days. A device that has not synced in three months will resurrect a
+ * handful of long-deleted items on its next connection, which is a small,
+ * one-off annoyance; the alternative is a file that only grows. Nothing shows
+ * tombstones to anyone -- the bin is a drop target, not a recycle bin, and the
+ * safety net is the undo toast -- so there is no view to break.
+ */
+const TOMBSTONE_DAYS = 90;
+
+/**
+ * Drop deletions old enough to have reached everywhere.
+ *
+ * Runs inside _migrate, which is deliberate: that is called on load AND on
+ * every sync result, so a tombstone the remote still holds is purged again
+ * from the merged document rather than travelling back and forth for ever.
+ */
+export function purgeTombstones(state, now = Date.now()) {
+  const cutoff = now - TOMBSTONE_DAYS * 86400000;
+  const stale = (x) => {
+    if (!x?.deleted) return false;
+    const at = Date.parse(x.updatedAt || x.at || '');
+    // An undated tombstone is kept: guessing it is old enough to drop is the
+    // one way this can lose something that still matters somewhere.
+    return Number.isFinite(at) && at < cutoff;
+  };
+  if (Array.isArray(state.items)) state.items = state.items.filter((i) => !stale(i));
+  if (Array.isArray(state.captures)) state.captures = state.captures.filter((c) => !stale(c));
+  return state;
+}
+
 function defaultState() {
   return {
     version: 1,
@@ -462,6 +501,7 @@ class Store {
     // to be repaired. Deduping is idempotent; on clean data it does nothing.
     repairLists(merged, { restructure: data.listsVersion !== 2 });
     repairIds(merged);
+    purgeTombstones(merged);
     migrateRoutine(merged, data);
     return merged;
   }
@@ -500,8 +540,27 @@ class Store {
     this._saveTimer = null;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      this._saveFailed = false;
     } catch (err) {
+      /*
+       * A failed save was a console line and nothing else.
+       *
+       * That is the worst shape a failure can have: everything keeps working,
+       * the app stays exactly as responsive, and nothing written from that
+       * point on survives a reload. Whoever is using it finds out the next
+       * morning. It has to reach the screen.
+       *
+       * Announced ONCE per run of failures, not per save — saves are debounced
+       * to every 250ms while typing, and a toast per keystroke would bury the
+       * message it is trying to deliver.
+       */
       console.error('Could not save. Storage may be full.', err);
+      if (!this._saveFailed) {
+        this._saveFailed = true;
+        document.dispatchEvent(new CustomEvent('organizer:save-failed', {
+          detail: { message: String(err?.name || err) },
+        }));
+      }
     }
   }
 

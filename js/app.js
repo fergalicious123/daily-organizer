@@ -1771,6 +1771,18 @@ function boot() {
   // open, whether the all-day strip is expanded — ask for a redraw this way.
   // Nothing about the data changed, so routing it through store.mutate would
   // mean a pointless write to disk and a pointless push to Drive.
+  /* A save that failed is the one failure the app cannot shrug off: everything
+     keeps working and nothing survives a reload. Long duration and no action,
+     because there is nothing this can do about it — the point is that the
+     person finds out now rather than tomorrow. */
+  document.addEventListener('organizer:save-failed', (e) => {
+    toast(
+      `Could not save to this device (${e.detail?.message || 'storage error'}). `
+      + 'Recent changes may not survive a reload.',
+      { error: true, duration: 15000 },
+    );
+  });
+
   document.addEventListener('organizer:rerender', () => render());
   sync.addEventListener('change', () => {
     // Only the sync chip changes, so avoid a full redraw on every tick.
