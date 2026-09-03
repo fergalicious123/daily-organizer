@@ -75,6 +75,14 @@
   --accent-hover:  #194f6d;
   --accent-soft:   #e2eef5;
   --accent-text:   #ffffff;
+  /* Ink for text sitting ON a saturated fill -- a shift badge, a span bar
+     across a week, the now-marker. It is a token because the fills INVERT
+     between themes: light mode's rota colours are deep and take white, dark
+     mode's are pastels and take dark ink. Hardcoding #fff meant the dark
+     theme was running white on a pale amber chip at 2.02:1, and on the teal
+     "off" chip at 1.48:1, against a 4.5 requirement. Those are the badges
+     read most often in the app. */
+  --on-fill:       #ffffff;
 
   --danger:        #b23a2b;
   --danger-soft:   #fae9e6;
@@ -212,6 +220,9 @@
     --accent-hover:  #aeddf0;
     --accent-soft:   #182a33;
     --accent-text:   #1e1e1c;
+    /* Dark, because every fill in this theme is a pastel. The light
+       theme's is white; see the note on the token at :root. */
+    --on-fill:       #1e1e1c;
 
     --danger:        #ef8a78;
     --danger-soft:   #3a201c;
@@ -241,6 +252,7 @@
   --border: #3a3a36; --border-strong: #7e7d77;
   --text: #f0efe9; --text-muted: #adaba1; --text-faint: #93918a;
   --accent: #9ad2ea; --accent-hover: #aeddf0; --accent-soft: #182a33; --accent-text: #1e1e1c;
+  --on-fill: #1e1e1c;
   --danger: #ef8a78; --danger-soft: #3a201c; --success: #8fd0a8; --success-soft: #1c2f24;
   --warning: #e3b45c; --warning-soft: #33280f;
   --p-high: #ef8a78; --p-medium: #e3b45c; --p-low: #8fd0cb;
@@ -1006,7 +1018,7 @@ button {
   padding: 0 8px;
   border-radius: var(--radius-xs);
   background: var(--ev, var(--accent));
-  color: #fff;
+  color: var(--on-fill);
   font-size: var(--fs-xs);
   font-weight: 600;
   text-align: left;
@@ -1195,7 +1207,7 @@ button {
 }
 .month-shift-label {
   background: var(--shift, var(--accent));
-  color: #fff;
+  color: var(--on-fill);
   font-size: var(--fs-2xs);
   font-weight: 800;
   letter-spacing: .08em;
@@ -1328,7 +1340,16 @@ button {
  * grid and the Home card entirely in the accent colour for a while. Consumers
  * write `var(--ev, var(--accent))` instead, which cannot collide. */
 .ev-1 { --ev: var(--ev-1); }
-.ev-2 { --ev: var(--ev-2); }
+/* Slot 2 carries its own ink.
+   Light orange #ef6c00 is 3.08:1 with white -- the one fill in either
+   theme that white cannot sit on. The obvious fix, darkening the hue,
+   walks it into slot 3's red and costs the colour-blind separation the
+   slot ORDER was chosen for (see the note above the palette). Flipping
+   the ink instead costs nothing: 5.42:1 here, 7.12:1 on the dark
+   theme's amber, and the fill stays exactly the orange it was.
+   #1e1e1c rather than black because it is the ink the dark theme
+   already uses -- one more colour for one chip is not worth it. */
+.ev-2 { --ev: var(--ev-2); --on-fill: #1e1e1c; }
 .ev-3 { --ev: var(--ev-3); }
 .ev-4 { --ev: var(--ev-4); }
 .ev-5 { --ev: var(--ev-5); }
@@ -1758,7 +1779,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   padding: 2px 4px;
   border-radius: var(--radius-xs);
   background: var(--danger);
-  color: #fff;
+  color: var(--on-fill);
   white-space: nowrap;
 }
 
@@ -1878,7 +1899,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
      on-call amber because it is neither one thing nor the other, off green
      because it is the good one. */
   --shift-night: #3f51b5;
-  --shift-day: #d97706;
+  --shift-day: #b45309;   /* 5.02:1 with white; #d97706 was 3.19 */
   --shift-oncall: #7c3aed;
   --shift-training: #15803d;
   --shift-off: #0f766e;
@@ -1904,7 +1925,7 @@ body.is-touch-dragging .day-lanes > *:not(.is-dragging) { pointer-events: none; 
   --dot-ring: transparent;
   --shift-night: #7986cb; --shift-day: #f0a842;
   --shift-oncall: #b18aeb; --shift-training: #4ade80;
-    --shift-off: #5eead4; --shift-other: #94a3b8;
+  --shift-off: #5eead4; --shift-other: #94a3b8;
 }
 
 
@@ -2885,6 +2906,77 @@ h5.md-h, h6.md-h {
    Three columns: the day, his hours, hers. Hers is quieter but always there,
    because a window is only useful if you can see what hour it is at her end
    without doing the sum. */
+/* ---- alarms to set ----------------------------------------------------
+   A row is a hand-off, not a setting: tapping it leaves the app for the Clock
+   app. So it is shaped like the together-row it sits beside -- same card, same
+   corner, same hit area -- and the only thing marking it out is the bell,
+   which is the promise of what the tap does.
+
+   Two lines per row rather than one. The time and the day answer "what am I
+   setting"; the reason answers "why would I", and on the 12:00 that is the
+   whole argument. Squeezing both onto one line meant truncating the half that
+   changes behaviour. */
+.alarm-card { display: flex; flex-direction: column; gap: 4px; }
+.alarm-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+button.alarm-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
+button.alarm-row:active { transform: translateY(1px); }
+
+/* Time and day stack into one column so the 375px phone does not have to fit
+   four things across. Fixed width, tabular figures: a list of times you are
+   scanning down should have its colons in a line. */
+.alarm-clock { flex: 0 0 auto; min-width: 58px; display: flex; flex-direction: column; gap: 1px; }
+.alarm-time {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-md); font-weight: 700;
+  color: var(--text);
+}
+.alarm-what { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.alarm-label { font-size: var(--fs-base); color: var(--text); }
+/* The reason wraps rather than truncating. It is two lines on a phone and that
+   is fine -- it is the part that stops you sleeping through to 14:30. */
+.alarm-why { font-size: var(--fs-xs); color: var(--text-muted); }
+.alarm-when {
+  font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* Level with the label rather than centred: the reason below it runs to three
+   lines on a phone, and a bell floating halfway down them pointed at nothing. */
+.alarm-go { flex: 0 0 auto; margin-top: 2px; color: var(--text-muted); }
+button.alarm-row:hover .alarm-go { color: var(--accent); }
+
+/* The anchor alarm after a run of nights. The one row in the app that is worth
+   a colour: every other alarm here is a shift you would have set anyway, and
+   this is the one you would not have thought of, on the morning you are least
+   able to think of it. */
+.alarm-row.is-urgent { border-color: var(--accent); background: var(--accent-soft); }
+.alarm-row.is-urgent .alarm-time { color: var(--accent); }
+.alarm-row.is-urgent .alarm-go { color: var(--accent); }
+
+.alarm-fallback {
+  align-self: flex-start;
+  padding: 4px 2px;
+  min-height: 32px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none; border: 0;
+}
+.alarm-fallback:hover { color: var(--text); }
+.alarm-note { margin: 2px 0 0; }
+
 .together-card { display: flex; flex-direction: column; gap: 4px; }
 .together-row {
   display: flex; align-items: baseline; gap: 10px;

@@ -29,13 +29,27 @@ AA_LARGE = 3.0
 
 
 def parse_block(css: str, selector: str) -> dict:
-    """Pull `--name: value` pairs out of the first matching rule."""
-    # Non-greedy to the first closing brace: the token blocks contain no nested
-    # rules, so this is sufficient and avoids needing a real parser.
-    match = re.search(re.escape(selector) + r"\s*\{(.*?)\n\}", css, re.S)
-    if not match:
+    """Pull `--name: value` pairs out of EVERY matching rule, in file order.
+
+    Every, not the first. The stylesheet declares a selector more than once on
+    purpose -- the greys and the semantic colours are set at the top, the rota
+    and event palettes several hundred lines further down next to the rules
+    that use them -- and the browser applies both. Reading only the first
+    silently resolved fifteen pairs against the light theme's values and
+    reported them as "token missing", which reads like a typo in the checker
+    rather than fifteen colours nobody was checking.
+
+    Later wins, matching the cascade for equal specificity.
+    """
+    # Non-greedy to a closing brace at the start of a line: the token blocks
+    # contain no nested rules, so this is sufficient and avoids a real parser.
+    found = re.findall(re.escape(selector) + r"\s*\{(.*?)\n\s*\}", css, re.S)
+    if not found:
         raise SystemExit(f"Could not find the {selector} block in {CSS.name}")
-    return dict(re.findall(r"(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;", match.group(1)))
+    tokens = {}
+    for body in found:
+        tokens.update(re.findall(r"(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;", body))
+    return tokens
 
 
 def srgb_to_linear(channel: float) -> float:
@@ -73,6 +87,35 @@ PAIRS = [
     ("muted text on card",           "--text-muted",   "--surface",      AA_TEXT),
     ("muted text on raised card",    "--text-muted",   "--surface-2",    AA_TEXT),
     ("muted text on sunk panel",     "--text-muted",   "--surface-sunk", AA_TEXT),
+
+    # Text sitting ON a saturated fill.
+    #
+    # This whole group was missing, and it was the group that failed. The
+    # fills INVERT between themes -- light mode's rota colours are deep and
+    # take white ink, dark mode's are pastels and take dark ink -- and the
+    # badges hardcoded #fff for both. In dark mode that put the "off" chip at
+    # 1.48:1 and the days chip at 2.02:1, on the labels read most often in the
+    # app, while this tool reported 52 green pairs. A check is only worth what
+    # it covers.
+    ("badge ink on a night chip",    "--on-fill",      "--shift-night",  AA_TEXT),
+    ("badge ink on a days chip",     "--on-fill",      "--shift-day",    AA_TEXT),
+    ("badge ink on an on-call chip", "--on-fill",      "--shift-oncall", AA_TEXT),
+    ("badge ink on a training chip", "--on-fill",      "--shift-training", AA_TEXT),
+    ("badge ink on an off chip",     "--on-fill",      "--shift-off",    AA_TEXT),
+    ("badge ink on a other chip",    "--on-fill",      "--shift-other",  AA_TEXT),
+    ("span-bar ink on slot 1",       "--on-fill",      "--ev-1",         AA_TEXT),
+    # Slot 2 sets its own --on-fill in the stylesheet, so it is checked
+    # against that rather than the theme default. The two-value tuple
+    # would otherwise keep reporting the failure this exists to record
+    # as fixed.
+    ("span-bar ink on slot 2",       "#1e1e1c",        "--ev-2",         AA_TEXT),
+    ("span-bar ink on slot 3",       "--on-fill",      "--ev-3",         AA_TEXT),
+    ("span-bar ink on slot 4",       "--on-fill",      "--ev-4",         AA_TEXT),
+    ("span-bar ink on slot 5",       "--on-fill",      "--ev-5",         AA_TEXT),
+    ("span-bar ink on slot 6",       "--on-fill",      "--ev-6",         AA_TEXT),
+    ("span-bar ink on slot 7",       "--on-fill",      "--ev-7",         AA_TEXT),
+    ("span-bar ink on slot 8",       "--on-fill",      "--ev-8",         AA_TEXT),
+    ("now-marker ink",               "--on-fill",      "--danger",       AA_TEXT),
 
     # Accent
     ("accent link on card",          "--accent",       "--surface",      AA_TEXT),
@@ -144,12 +187,20 @@ def main() -> int:
 
     failures, warnings = [], []
 
+    # A pair may name a literal instead of a token. One rule in the stylesheet
+    # overrides an ink for a single slot, and there is no token standing for
+    # that value -- inventing one so the checker could see it would put a
+    # colour in the palette that nothing else uses.
+    def resolve(tokens, name):
+        return name if name.startswith("#") else tokens.get(name)
+
     for theme, tokens in themes.items():
         for label, fg, bg, threshold in PAIRS + sorted(KNOWN_BAD):
-            if fg not in tokens or bg not in tokens:
+            fg_hex, bg_hex = resolve(tokens, fg), resolve(tokens, bg)
+            if fg_hex is None or bg_hex is None:
                 warnings.append(f"{theme:5}  {label}: token missing ({fg} or {bg})")
                 continue
-            value = ratio(tokens[fg], tokens[bg])
+            value = ratio(fg_hex, bg_hex)
             known = (label, fg, bg, threshold) in KNOWN_BAD
             ok = value >= threshold
             mark = "ok  " if ok else ("known" if known else "FAIL")

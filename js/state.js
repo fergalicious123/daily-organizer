@@ -319,6 +319,15 @@ function defaultState() {
       dayStart: 7,           // first hour shown in the day grid
       dayEnd: 22,
       defaultRemindMin: 10,
+      // How long before a shift starts you need to be awake, which is the
+      // only figure the alarm hand-off cannot read off the rota -- it is a
+      // commute and a shower, not a shift pattern. 90 puts a 06:30 start at
+      // an 05:00 alarm.
+      alarmLeadMin: 90,
+      // Create the alarm outright rather than opening the Clock app with it
+      // filled in. One tap instead of two, where the Clock app honours it --
+      // and the panel offers the other way when it does not.
+      alarmSkipUi: true,
       defaultDurationMin: 60,
       googleClientId: DEFAULT_CLIENT_ID,
       googleCalendarId: 'primary',

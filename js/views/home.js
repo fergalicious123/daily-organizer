@@ -15,10 +15,13 @@ import { aiConfigured, polishBrief } from '../ai.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
   currentStreak, completionHistory, settings, device, eventColorSlot,
-  shiftOnDay, crewOnDay, liveItems, SHIFT,
+  shiftOnDay, crewOnDay, liveItems, SHIFT, updateSettings,
 } from '../state.js';
 import { itemCountdowns } from '../countdown.js';
 import { partnerName, nextWindows, describeWindow } from '../together.js';
+import {
+  pendingAlarms, canSetAlarms, setAlarm, DEFAULT_LEAD_MIN,
+} from '../alarms.js';
 import { zoneConfig } from './clocks.js';
 import * as usage from '../usage.js';
 
@@ -234,6 +237,84 @@ function togetherCard(onNavigate) {
   );
 }
 
+/**
+ * Set the alarms the rota calls for.
+ *
+ * The app cannot BE the alarm -- see alarms.js for why not -- so this is a
+ * hand-off to the Clock app, one tap per alarm. It is on Home rather than in
+ * Settings because the moment you need it is the moment you are looking at
+ * Home: 07:00, off the last night, deciding whether to set anything before you
+ * get your head down.
+ *
+ * Absent on an ordinary day off, which is most of the days it could appear on.
+ * A panel offering to wake you up when nothing is asking you to be anywhere is
+ * how a panel gets ignored, and then how the one that matters gets ignored too.
+ */
+function alarmCard() {
+  const cfg = settings();
+  const now = new Date();
+  const pending = pendingAlarms(now, shiftOnDay, {
+    leadMin: cfg.alarmLeadMin ?? DEFAULT_LEAD_MIN,
+  });
+  if (!pending.length) return null;
+
+  const android = canSetAlarms();
+  const skipUi = cfg.alarmSkipUi !== false;
+  const today = todayKey();
+
+  const rows = pending.map((alarm) => {
+    const body = [
+      // Time over day, as one column. They answer the same question and a
+      // three-line reason beside them left the day floating in the middle of
+      // the wrap with nothing to line up against.
+      el('span.alarm-clock',
+        el('span.alarm-time', alarm.time),
+        el('span.alarm-when', alarm.date === today ? 'Today' : 'Tomorrow')),
+      el('span.alarm-what',
+        el('span.alarm-label', alarm.label),
+        el('span.alarm-why', alarm.why)),
+    ];
+
+    // Off Android there is no intent to fire, so the same rows render as a
+    // list you read and act on yourself. Still worth showing: knowing the
+    // 12:00 is what you want is most of the value, and Ben plans on a desktop.
+    if (!android) {
+      return el('div.alarm-row', { class: alarm.urgent ? 'is-urgent' : '' }, ...body);
+    }
+
+    return el('button.alarm-row', {
+      class: alarm.urgent ? 'is-urgent' : '',
+      onclick: () => {
+        usage.record('ALARM_SET');
+        // Said before the navigation, because firing an intent takes the tab
+        // out from under us and nothing after it is guaranteed to run.
+        toast(`${alarm.time} \u2014 handing to the Clock app`);
+        setAlarm(alarm, { skipUi });
+      },
+    }, ...body, icon('bell', 'icon alarm-go'));
+  });
+
+  return el('section.alarm-card',
+    el('div.task-group-label', 'Alarms to set'),
+    ...rows,
+    android
+      // The fallback is offered rather than explained, because the failure it
+      // covers is silent: a Clock app that ignores SKIP_UI does nothing at all
+      // and looks identical to a tap that did not register.
+      ? el('button.alarm-fallback', {
+        onclick: () => {
+          updateSettings({ alarmSkipUi: !skipUi });
+          toast(skipUi
+            ? 'Alarms will open the Clock app to confirm.'
+            : 'Alarms will be set in one tap.');
+        },
+      }, skipUi ? 'Nothing happening? Open the Clock app instead' : 'Set in one tap instead')
+      : el('p.field-hint.alarm-note',
+        'One-tap setting works on Android. Set these on your phone yourself.'),
+  );
+}
+
+
 export function homeView({ onNavigate }) {
   const cfg = settings();
   const today = todayKey();
@@ -276,6 +357,15 @@ export function homeView({ onNavigate }) {
         : null,
     ));
   }
+
+  /* ---- the alarms the rota calls for ----
+     Directly under the shift banner: the banner says what you are on, and
+     this says the one thing that follows from it which the phone cannot
+     work out on its own. On the morning off the last night there is no
+     banner at all -- the rota says nothing about a day off -- and this is
+     the only thing on the page telling you to set the 12:00. */
+  const alarms = alarmCard();
+  if (alarms) root.appendChild(alarms);
 
   /* ---- the ritual, before anything the day imposes on you ----
      Above the calendar and above the list on purpose. Everything below this

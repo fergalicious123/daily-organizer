@@ -65,6 +65,7 @@ export const FEATURES = {
   CAPTURE_ADD: 'Catch a note',
   CAPTURE_SEND: 'Send a caught note to the organizer',
   COUNTDOWN_SET: 'Set a countdown',
+  ALARM_SET: 'Hand an alarm to the phone',
 
   // Where the time goes
   VIEW_HOME: 'Home',

@@ -90,7 +90,7 @@ group('Modules parse');
 const MODULES = [
   'state', 'dates', 'ui', 'chart', 'voice', 'google', 'sync', 'notify',
   'brief', 'quotes', 'ai', 'reflect', 'daylog', 'triage', 'plan', 'dragdrop', 'shortcuts',
-  'countdown', 'usage', 'markdown', 'paste', 'together', 'zones', 'search',
+  'countdown', 'usage', 'markdown', 'paste', 'together', 'zones', 'search', 'alarms',
 ].map((n) => `../js/${n}.js`).concat(
   ['calendar', 'tasks', 'home', 'done', 'journal', 'routine', 'bin', 'review',
     'clocks', 'shortcutsPanel', 'planpanel', 'datepicker'].map((n) => `../js/views/${n}.js`),
@@ -648,6 +648,117 @@ if (zones.instantAt && zones.instantForZonedTime) {
   // this stores an offset.
   check('Manila is 7h ahead in summer', () => zones.describeGap(new Date('2026-09-02T12:00:00Z'), UK, 'Asia/Manila') === '7h ahead');
   check('and 8h ahead in winter', () => zones.describeGap(new Date('2026-12-02T12:00:00Z'), UK, 'Asia/Manila') === '8h ahead');
+}
+
+/* ------------------------------------------------------------------ */
+/* Alarms                                                              */
+/* ------------------------------------------------------------------ */
+/* The app cannot be an alarm, so it hands one to the Clock app. Two things
+   can go wrong silently and both are pinned here: offering the wrong TIME,
+   and offering a right time the Clock app will put on the wrong DAY. */
+group('alarms - what the rota calls for');
+const al = loaded['../js/alarms.js'] || {};
+const SH = (loaded['../js/state.js'] || {}).SHIFT || {};
+
+if (al.alarmsFor && SH.NIGHT) {
+  // A rota as a plain map, so the cases read as the days they are.
+  const rota = (map) => (key) => map[key] || null;
+
+  const D = '2026-09-12';   // his first night, per the calendar
+  const first = al.alarmsFor(D, rota({ '2026-09-11': SH.TRAINING, '2026-09-12': SH.NIGHT }));
+  check('first night gets a nap alarm', () => first.length === 1 && first[0].id === al.ALARM.NAP_WAKE);
+  check('and it is 90 minutes before 18:30', () => first[0].time === '17:00');
+
+  const mid = al.alarmsFor('2026-09-14', rota({ '2026-09-13': SH.NIGHT, '2026-09-14': SH.NIGHT }));
+  check('a middle night wakes at 14:30', () => mid.length === 1 && mid[0].time === '14:30');
+  check('and it is the night-wake, not the nap', () => mid[0].id === al.ALARM.NIGHT_WAKE);
+
+  // The morning off the last night. The whole reason the feature exists.
+  const off = al.alarmsFor('2026-09-16', rota({ '2026-09-15': SH.NIGHT }));
+  check('the morning after nights is the anchor', () => off.length === 1 && off[0].id === al.ALARM.ANCHOR);
+  check('anchor is 12:00, not 14:30', () => off[0].time === '12:00');
+  check('and it is the one marked urgent', () => off[0].urgent === true);
+
+  const day = al.alarmsFor('2026-09-04', rota({ '2026-09-04': SH.DAY }));
+  check('a day shift wakes at 05:00', () => day.length === 1 && day[0].time === '05:00');
+  check('a training day is worked like one', () => al.alarmsFor('2026-09-03', rota({ '2026-09-03': SH.TRAINING }))[0].time === '05:00');
+  check('the lead is adjustable', () => al.alarmsFor('2026-09-04', rota({ '2026-09-04': SH.DAY }), { leadMin: 60 })[0].time === '05:30');
+
+  // The two silences that matter. An app that offers to wake you on a day off
+  // gets switched off, and one that guesses at a shift whose hours the roster
+  // does not state wakes you at 05:00 for a late.
+  check('an ordinary day off gets nothing', () => al.alarmsFor('2026-09-18', rota({})).length === 0);
+  check('OFF is not a shift to wake for', () => al.alarmsFor('2026-09-18', rota({ '2026-09-18': SH.OFF })).length === 0);
+  check('an unknown shift is not guessed at', () => al.alarmsFor('2026-09-18', rota({ '2026-09-18': SH.OTHER })).length === 0);
+  check('on-call has no stated start either', () => al.alarmsFor('2026-09-11', rota({ '2026-09-11': SH.ONCALL })).length === 0);
+  // Coming off a night outranks whatever today is: a 05:00 on the morning you
+  // finished at 06:30 is not a thing anyone wants.
+  check('the anchor wins over a day-start', () => {
+    const both = al.alarmsFor('2026-09-16', rota({ '2026-09-15': SH.NIGHT, '2026-09-16': SH.DAY }));
+    return both.length === 1 && both[0].id === al.ALARM.ANCHOR;
+  });
+}
+
+if (al.whenItWouldRing) {
+  // SET_ALARM takes an hour and a minute and NO date, so it lands on the next
+  // occurrence. Every offer is checked against this before it is shown.
+  const at = (iso) => new Date(iso);
+  check('12:00 seen at 07:00 rings today', () => al.ringsRight(at('2026-09-16T07:00:00'), '2026-09-16', '12:00'));
+  check('12:00 seen at 13:00 does NOT ring today', () => !al.ringsRight(at('2026-09-16T13:00:00'), '2026-09-16', '12:00'));
+  check('and rings tomorrow instead', () => al.ringsRight(at('2026-09-16T13:00:00'), '2026-09-17', '12:00'));
+  check('05:00 seen the evening before rings tomorrow', () => al.ringsRight(at('2026-09-03T20:00:00'), '2026-09-04', '05:00'));
+  // The failure this stops: a button for Wednesday, tapped on Monday, quietly
+  // setting one for Tuesday.
+  check('two days out cannot be set at all', () => !al.ringsRight(at('2026-09-14T20:00:00'), '2026-09-16', '12:00'));
+}
+
+if (al.pendingAlarms && SH.NIGHT) {
+  const rota = (map) => (key) => map[key] || null;
+  const nights = rota({ '2026-09-15': SH.NIGHT, '2026-09-16': null });
+  const got = al.pendingAlarms(new Date('2026-09-16T07:05:00'), nights);
+  check('07:05 off the last night offers the anchor', () => got.length === 1 && got[0].id === al.ALARM.ANCHOR);
+  check('and says which day it lands on', () => got[0].date === '2026-09-16');
+  // Tomorrow's 05:00 is reachable; the day after's is not, and must not appear.
+  const runIn = al.pendingAlarms(new Date('2026-09-03T20:00:00'), rota({
+    '2026-09-04': SH.DAY, '2026-09-05': SH.DAY,
+  }));
+  check('the evening before days offers exactly one 05:00', () => runIn.length === 1 && runIn[0].time === '05:00');
+  check('for tomorrow, not the day after', () => runIn[0].date === '2026-09-04');
+}
+
+if (al.alarmUrl) {
+  const u = al.alarmUrl({ hour: 12, minute: 0, message: 'Get up' });
+  check('an intent url names SET_ALARM', () => u.includes('action=android.intent.action.SET_ALARM'));
+  check('hour and minute go in as ints', () => u.includes('i.android.intent.extra.alarm.HOUR=12') && u.includes('i.android.intent.extra.alarm.MINUTES=0'));
+  check('it starts intent: and ends ;end', () => u.startsWith('intent:#Intent;') && u.endsWith(';end'));
+  // The fragment is parsed on ; and = -- a label carrying either would end the
+  // intent early and set an alarm for something other than what was asked.
+  check('a label cannot break out of the fragment', () => {
+    const bad = al.alarmUrl({ hour: 6, minute: 5, message: 'a;b=c end' });
+    return !bad.slice('intent:#Intent;'.length, -';end'.length).includes(';b=c');
+  });
+  check('a bad hour is refused, not clamped', () => {
+    try { al.alarmUrl({ hour: 24, minute: 0 }); return false; } catch { return true; }
+  });
+  check('so is a bad minute', () => {
+    try { al.alarmUrl({ hour: 6, minute: 60 }); return false; } catch { return true; }
+  });
+  check('skipUi false is spelled out, not omitted', () => al.alarmUrl({ hour: 6, minute: 0, skipUi: false }).includes('SKIP_UI=false'));
+  check('an alarm round-trips to a url', () => al.urlForAlarm({ time: '05:00', label: 'Up' }).includes('HOUR=5'));
+}
+
+if (al.canSetAlarms) {
+  const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36';
+  check('Chrome on Android can fire an intent', () => al.canSetAlarms(CHROME_ANDROID));
+  check('an iPhone cannot', () => !al.canSetAlarms('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605 Safari/604'));
+  check('a desktop cannot', () => !al.canSetAlarms('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126 Safari/537.36'));
+  check('Firefox on Android cannot', () => !al.canSetAlarms('Mozilla/5.0 (Android 14; Mobile; rv:126.0) Gecko/126.0 Firefox/126.0'));
+}
+
+if (al.hhmm) {
+  check('minutes format with a leading zero', () => al.hhmm(5 * 60) === '05:00' && al.hhmm(14 * 60 + 30) === '14:30');
+  check('past midnight wraps rather than overflowing', () => al.hhmm(25 * 60) === '01:00');
+  check('and so does a negative', () => al.hhmm(-30) === '23:30');
 }
 
 /* ------------------------------------------------------------------ */
