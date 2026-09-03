@@ -831,7 +831,16 @@ if (tog.windowsOn && dates.addDays) {
     '2026-09-03': ['Night Shift', 'Sheila: Morning (7-3)'],
   }));
   check('the afternoon before nights is a window', () => nights.windows.length >= 1);
-  check('and it says what it assumed', () => nights.assumed.some((a) => /mid-afternoon/.test(a)));
+  check('and it says what it assumed', () => nights.assumed.some((a) => /nap 15:00-17:00/.test(a)));
+  // The nap is the thing the old model gave away. Nothing offered may sit
+  // inside it, whatever the arithmetic says about her end.
+  check('nothing is offered inside the nap', () => {
+    const nap = nights.windows.filter(([s, e]) => {
+      const h = (t) => Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: UK }).format(new Date(t)));
+      return h(s) < 17 && h(e) > 15;
+    });
+    return nap.length === 0;
+  });
 
   // Silence about a day nobody has filled in, rather than good news.
   const blank = tog.windowsOn(D, opts({ '2026-09-02': ['Day Shift'] }));

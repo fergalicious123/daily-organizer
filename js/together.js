@@ -35,11 +35,40 @@ const HIS_HOURS = {
 /** Ordinary sleep, when the night before was an ordinary night. */
 const SLEEP = [23 * 60, 7 * 60];
 
-/** After a night shift: bed on getting home, up mid-afternoon. */
+/** BETWEEN nights: bed on getting home at 07:00, up mid-afternoon. */
 const SLEEP_AFTER_NIGHTS = [7 * 60, 14 * 60];
 
-/** Before a night shift, he is up from here. Same figure, the other way. */
-const AWAKE_BEFORE_NIGHTS = 14 * 60;
+/**
+ * After the LAST night, which is a different morning from the other three.
+ *
+ * Four and a half hours, not seven. The length of the first sleep after a
+ * block decides how many days off it costs: sleep through to 14:30 and you
+ * will not be tired at 23:00, so that night goes too and you are not straight
+ * until the day after. This was the same figure as the mid-block sleep, so the
+ * app offered a call at 14:00 on the morning he should have been up at 12:00 —
+ * two hours late, on the one day of the cycle the timing actually matters.
+ */
+const SLEEP_AFTER_LAST_NIGHT = [7 * 60, 12 * 60];
+
+/**
+ * On the day nights START he is up from here.
+ *
+ * 10:00, not 14:00. He went to bed at about 01:30 — the point of the day
+ * before nights is to go late, not to lie in — so by 14:00 he has been up four
+ * hours. The old figure threw away her whole evening: 10:00 here is 17:00 in
+ * Manila, and the app was calling it busy.
+ */
+const AWAKE_BEFORE_NIGHTS = 10 * 60;
+
+/**
+ * The nap before the first night, which is not optional and is not free time.
+ *
+ * It is the single highest-value hour of the cycle — what stops the 03:00
+ * trough on the first night flattening him — and it sat in the middle of the
+ * window the app was most confident about. A suggestion to ring the
+ * Philippines at 16:00 that day is a suggestion to skip it.
+ */
+const NAP_BEFORE_NIGHTS = [15 * 60, 17 * 60];
 
 /** Shorter than this is not a phone call, it is a text. */
 export const MIN_WINDOW_MIN = 30;
@@ -122,18 +151,29 @@ export function hisBusy(shiftToday, shiftYesterday, shiftTomorrow) {
   }
 
   if (shiftYesterday === SHIFT.NIGHT) {
-    // Yesterday's night runs into this morning, and then he sleeps.
+    // Yesterday's night runs into this morning, and then he sleeps. How long
+    // for depends on whether there is another one tonight, which is the whole
+    // difference between the fourth morning and the other three.
     busy.push([0, 6 * 60 + 30]);
-    busy.push(SLEEP_AFTER_NIGHTS);
-    assumed.push('you sleep until mid-afternoon after nights');
+    if (shiftToday === SHIFT.NIGHT) {
+      busy.push(SLEEP_AFTER_NIGHTS);
+      assumed.push('you sleep until mid-afternoon between nights');
+    } else {
+      busy.push(SLEEP_AFTER_LAST_NIGHT);
+      assumed.push('you take a short sleep after the last night, not a full one');
+    }
   } else {
     busy.push([0, SLEEP[1]]);
   }
 
   if (shiftToday === SHIFT.NIGHT) {
-    // Up in the afternoon before it, rather than at breakfast.
-    busy.push([0, AWAKE_BEFORE_NIGHTS]);
-    assumed.push('you are up from mid-afternoon before nights');
+    // Only on the FIRST night. On a middle one the sleep above already says
+    // where the morning went, and saying it twice would bury the nap.
+    if (shiftYesterday !== SHIFT.NIGHT) {
+      busy.push([0, AWAKE_BEFORE_NIGHTS]);
+      busy.push(NAP_BEFORE_NIGHTS);
+      assumed.push('you are up late and nap 15:00-17:00 before the first night');
+    }
   } else if (shiftTomorrow !== SHIFT.NIGHT) {
     busy.push([SLEEP[0], 1440]);
   }
