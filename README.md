@@ -296,6 +296,20 @@ ampersands or "and". On a phone the fine print is hidden — two initials and an
 ellipsis is not information — but the shift colour still shows and tapping the
 day gives the names in full.
 
+### Building a section roster
+
+`tools/section-roster.html` is a page of its own — open it directly, it is not
+part of the app. It lays out who is on which stag across a set of shifts and
+gives you an A4 PDF, a printable file, or a PNG to send to the group.
+
+Say who is on and tick who can take Gd Cdr and R3; it fills in the rest. The
+RAF pair alternate on the Main Gate, CG and OG stay single-manned, and the
+vehicles go to Ptes and LCpls only, read from the rank in front of the name.
+**Build roster** reshuffles who lands where — everything else updates the sheet
+as you type without disturbing the layout, so fixing a name does not cost you
+the roster you liked. What you have set up is kept in the browser, so the sheet
+is still there next time you open it.
+
 ### Sending a year's roster
 
 Send it in whatever form you have it and I will convert it. What I need to know:
@@ -466,6 +480,7 @@ sw.js                   offline shell (cache-first; network-first on localhost)
 tools/make_icons.py     regenerates the PWA icons
 tools/contrast.py       checks every token pair meets WCAG AA, both themes
 tools/selftest.html     runs the pure logic in a browser; no build step
+tools/section-roster.html  the section roster sheet builder, standalone
 ```
 
 ---

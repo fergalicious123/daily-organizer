@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section Roster Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#14171a;
+    --rule:#14171a;
+    --band:#1f3a52;
+    --band-ink:#ffffff;
+    --paper:#ffffff;
+    --panel:#eef1f4;
+    --panel-line:#c3ccd4;
+    --flag:#8a5a00;
+    --cond:"Arial Narrow","Helvetica Neue",Arial,sans-serif;
+    --data:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--panel); color:var(--ink);
+    font-family:var(--cond); font-size:15px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+
+  h1{
+    font-size:26px; letter-spacing:.06em; text-transform:uppercase;
+    margin:0 0 2px; font-weight:700;
+  }
+  .sub{font-family:var(--data);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-bottom:18px}
+
+  /* ---- control panel ---- */
+  .panel{
+    background:var(--paper); border:1px solid var(--panel-line);
+    padding:16px; margin-bottom:22px;
+  }
+  .panel h2{
+    font-family:var(--data); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    margin:0 0 12px; font-weight:600; padding-bottom:6px; border-bottom:2px solid var(--rule);
+  }
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:16px}
+  label{display:block;font-family:var(--data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;margin-bottom:4px}
+  input[type=text],input[type=date],input[type=number],select{
+    font-family:var(--cond); font-size:15px; padding:6px 8px;
+    border:1px solid var(--panel-line); background:var(--paper); color:var(--ink);
+  }
+  input[type=text]{min-width:150px}
+
+  /* A six-column form table has a floor below which it stops being usable.
+     On a phone it scrolls sideways instead of crushing every field to nothing. */
+  .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  table.people{border-collapse:collapse;width:100%}
+  table.people th{
+    font-family:var(--data);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);font-weight:600;
+  }
+  table.people td{padding:3px 6px;border-bottom:1px solid #e3e8ec;vertical-align:middle}
+  table.people input[type=text]{width:100%;min-width:0}
+  table.people .cs input{width:64px}
+  .mgsel{font-size:13px;padding:4px 6px}
+  .del{border:none;background:none;cursor:pointer;font-size:16px;line-height:1;opacity:.45;padding:2px 6px}
+  .del:hover{opacity:1;color:#a01}
+
+  button.act{
+    font-family:var(--data);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 16px;border:1px solid var(--rule);background:var(--ink);color:#fff;cursor:pointer;
+  }
+  button.act.ghost{background:transparent;color:var(--ink)}
+  button.act:hover{background:var(--band);color:#fff;border-color:var(--band)}
+  button.act:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--band);outline-offset:2px}
+
+  .note{font-family:var(--data);font-size:11px;line-height:1.6;opacity:.75;margin-top:10px}
+  .warn{color:var(--flag);font-family:var(--data);font-size:12px;margin-top:10px}
+  .warn ul{margin:0;padding:0 0 0 17px}
+  .warn li{margin:0 0 4px;line-height:1.45}
+
+  /* ---- the roster sheet ---- */
+  .sheet{background:var(--paper);border:1px solid var(--panel-line);padding:26px 22px}
+  .sheet-title{
+    text-align:center;font-size:30px;font-weight:700;letter-spacing:.01em;
+    border-bottom:3px solid var(--rule);display:inline-block;padding:0 10px 2px;
+  }
+  .sheet-range{
+    font-family:var(--data); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    margin-top:6px; opacity:.75;
+  }
+  .sheet-head{text-align:center;margin-bottom:20px}
+
+  .day-block{margin:0 0 22px;padding:0 0 2px;border-bottom:1px dashed var(--panel-line)}
+  .day-block:last-child{border-bottom:none;margin-bottom:0}
+  table.roster{border-collapse:collapse;width:100%;margin-bottom:0;table-layout:fixed}
+  table.roster td,table.roster th{
+    border:1px solid var(--rule); padding:3px 5px; font-size:13px; text-align:center;
+    font-family:var(--data); word-break:break-word;
+  }
+  table.roster th{
+    background:var(--band); color:var(--band-ink);
+    font-size:11px; letter-spacing:.05em; font-weight:600;
+  }
+  table.roster td.name{text-align:left;font-family:var(--cond);font-size:14px;font-weight:600}
+  table.roster td.task{font-family:var(--cond);font-size:13px}
+  th.daycell{
+    text-align:left; font-family:var(--cond); font-size:15px; letter-spacing:.02em; font-weight:700;
+  }
+  tr.site td{
+    text-align:left; background:#dfe6ec; font-family:var(--cond); font-weight:700;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase; padding:4px 7px;
+  }
+  td.r3{font-weight:700}
+  [contenteditable]:focus{outline:2px solid var(--band);outline-offset:-2px;background:#fffbe8}
+
+  @media (max-width:720px){
+    .sheet{padding:14px 8px}
+    table.roster td,table.roster th{font-size:10px;padding:2px}
+    table.roster td.name{font-size:11px}
+  }
+  @media (max-width:640px){
+    .wrap{padding:14px 10px 60px}
+    input[type=text]{min-width:0}
+    #title{width:100%}
+    .row > div{flex:1 1 140px}
+
+    .tscroll{overflow:visible}
+    table.people thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    table.people,table.people tbody,table.people tr,table.people td{display:block}
+    table.people tr{
+      border:1px solid var(--panel-line); padding:9px 32px 10px 10px; margin:0 0 10px; position:relative;
+    }
+    table.people td{border:none;padding:3px 0}
+    table.people td[data-label]::before{
+      content:attr(data-label);
+      font-family:var(--data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+      opacity:.7;display:block;margin-bottom:3px;
+    }
+    table.people .cs input{width:92px}
+    table.people select.p-mg{width:100%}
+    table.people td.tick{display:inline-block;width:49%;vertical-align:top}
+    table.people td.del-cell{position:absolute;top:5px;right:2px;padding:0}
+    table.people td.del-cell::before{content:none}
+    .del{font-size:20px;padding:4px 8px;opacity:.6}
+  }
+
+  body.previewing .noprint{display:none}
+  body.previewing .sheet{border:none}
+  #backbtn{display:none;position:fixed;bottom:16px;right:16px;z-index:30;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  body.previewing #backbtn{display:block}
+
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .noprint{display:none !important}
+    #backbtn{display:none !important}
+    .sheet{border:none;padding:0}
+    .day-block{page-break-inside:avoid;margin-bottom:22px;border-bottom:none}
+    table.roster{page-break-inside:avoid}
+    table.roster th{background:#1f3a52 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tr.site td{background:#dfe6ec !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{size:A4 portrait;margin:12mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="noprint">
+    <h1>Section Roster Builder</h1>
+    <div class="sub">Nights &amp; days · rotating guard commander · fixed R3 · MG pairing</div>
+
+    <div class="panel" id="panel">
+      <h2>Shift details</h2>
+      <div class="row">
+        <div>
+          <label for="title">Sheet title</label>
+          <input type="text" id="title" value="4 Section days" style="min-width:220px">
+        </div>
+        <div>
+          <label for="start">First date on the sheet</label>
+          <input type="date" id="start" value="2026-08-03">
+        </div>
+        <div>
+          <label for="days">Shifts</label>
+          <input type="number" id="days" value="4" min="1" max="10" style="width:70px">
+        </div>
+        <div>
+          <label for="shift">Timings</label>
+          <select id="shift">
+            <option value="nights">Nights 1830&ndash;0630</option>
+            <option value="days" selected>Days 0630&ndash;1830</option>
+          </select>
+        </div>
+        <div>
+          <label for="fitone">PDF layout</label>
+          <select id="fitone" class="mgsel">
+            <option value="one" selected>Fit all on one page</option>
+            <option value="many">One day per block, multi-page</option>
+          </select>
+        </div>
+      </div>
+
+      <h2>Who&rsquo;s on</h2>
+      <div class="tscroll">
+        <table class="people">
+          <thead>
+            <tr>
+              <th style="width:30%">Rank &amp; name</th>
+              <th style="width:11%">C/S</th>
+              <th style="width:15%">Gd Cdr</th>
+              <th style="width:13%">R3</th>
+              <th style="width:25%">Role</th>
+              <th style="width:6%"><span class="sr">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody id="people"></tbody>
+        </table>
+      </div>
+      <h2>R3 by shift</h2>
+      <div class="row" id="ovr"></div>
+
+      <div class="row" style="margin:12px 0 0">
+        <button type="button" class="act ghost" id="add">+ Add person</button>
+        <button type="button" class="act" id="build">Build roster</button>
+        <button type="button" class="act ghost" id="preview">Preview sheet</button>
+        <button type="button" class="act ghost" id="pdf">Save as PDF</button>
+        <button type="button" class="act ghost" id="save">Download sheet</button>
+        <button type="button" class="act ghost" id="img">Save as image</button>
+        <button type="button" class="act ghost" id="reset">Start again</button>
+      </div>
+      <div id="imgout"></div>
+      <div class="note">
+        <strong>RAF</strong> &mdash; the RAF pair take it in turns on the Main Gate. Whoever isn&rsquo;t on the gate
+        works Ops on OG and QRF only, never CG, and holds no vehicle.<br>
+        <strong>Fixed on MG</strong> is on the Main Gate every shift alongside them. Everyone left fills
+        AB115, VEH 1 and VEH 2.<br>
+        <strong>MPGS &mdash; no weapon</strong> works Ops on OG and QRF only, same as the RAF, but still counts
+        for Gd Cdr and R3 if you tick those.<br>
+        <strong>VEH 1 and VEH 2</strong> go to Ptes and LCpls only. It reads the rank in front of the name,
+        so keep writing them as &ldquo;LCpl Jewitt&rdquo;, &ldquo;Pte Thuku&rdquo; and so on. Cpls and above take AB115.<br>
+        <strong>R3 by shift</strong> &mdash; leave on Auto to spread it round, or pin a name to a particular shift.
+        A man pinned to R3 is passed over for Gd Cdr that shift, so both settings hold at once.<br>
+        <strong>Build roster</strong> reshuffles who lands where, but never breaks the rules above.
+        Press it until you get a spread you&rsquo;re happy with. Everything else on this panel updates the
+        sheet as you type and keeps the same layout, so fixing a name doesn&rsquo;t cost you the roster.<br>
+        <strong>Save as PDF</strong> builds a proper A4 file with one day per block and never splits a table
+        across pages. <strong>Download sheet</strong> saves a standalone file you can print from your browser,
+        and <strong>Save as image</strong> gives you a PNG you can long-press to share.<br>
+        Every cell on the sheet below can be typed over before you save. What you type stays put while you
+        change things up here; <strong>Build roster</strong> clears it, because the duties underneath it moved.<br>
+        The whole sheet is kept on this device, so it is still here next time you open the page.
+        <strong>Start again</strong> throws it away and puts the example section back.
+      </div>
+      <div class="warn" id="warn"></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="sheet"></div>
+</div>
+<button type="button" class="act" id="backbtn">Back to setup</button>
+
+<script>
+const TIMES = {
+  nights: ["1830-2030","2030-2230","2230-0030","0030-0230","0230-0430","0430-0630"],
+  days:   ["0630-0830","0830-1030","1030-1230","1230-1430","1430-1630","1630-1830"]
+};
+
+// Duty patterns, by row position. Six two-hour stags.
+const PATTERNS = {
+  gdcdr:  ["Desk","Desk","Desk","Desk","Desk","Desk"],
+  mgA:    ["MG","QRF","MG","QRF","MG","QRF"],
+  mgB:    ["QRF","MG","QRF","MG","QRF","MG"],
+  patrol: [
+    ["CG","OG","QRF","CG","OG","QRF"],
+    ["QRF","CG","OG","QRF","CG","OG"],
+    ["OG","QRF","CG","OG","QRF","CG"]
+  ],
+  // Used when a no-weapon man is on the gate: one CG and one OG per stag, rest QRF
+  patrolAlt: [
+    ["CG","QRF","OG","CG","QRF","QRF"],
+    ["OG","CG","QRF","QRF","CG","QRF"],
+    ["QRF","QRF","CG","QRF","OG","CG"]
+  ],
+  r3:     ["R3","R3","R3","R3","R3","R3"],
+  noWeap: ["QRF","OG","QRF","OG","QRF","OG"],
+  qrfOnly:["QRF","QRF","QRF","QRF","QRF","QRF"]
+};
+const PATROL_TASKS = ["AB115","VEH 1","VEH 2"];
+
+const DEFAULT_PEOPLE = [
+  {id:"p1", name:"Sgt Smith",   cs:"10A", gc:true,  r3:false, mg:"none"},
+  {id:"p2", name:"Cpl Brown",   cs:"20",  gc:true,  r3:false, mg:"none"},
+  {id:"p3", name:"LCpl Jewitt", cs:"10C", gc:true,  r3:true,  mg:"none"},
+  {id:"p4", name:"LCpl Wilson", cs:"10E", gc:true,  r3:true,  mg:"none"},
+  {id:"p5", name:"Pte Thuku",   cs:"10F", gc:false, r3:true,  mg:"none"},
+  {id:"p6", name:"LCpl Walker", cs:"30C", gc:false, r3:true,  mg:"fixed"},
+  {id:"p7", name:"Cpl Morrow",  cs:"41",  gc:false, r3:false, mg:"raf"},
+  {id:"p8", name:"AS1 Firth",   cs:"42",  gc:false, r3:false, mg:"raf"}
+];
+// Pinned R3 by shift, keyed on the man rather than his name, so renaming
+// someone does not quietly unpin him. Anything unlisted is worked out here.
+const DEFAULT_PINS = {0:"p4", 1:"p4"};
+
+const $ = s => document.querySelector(s);
+const peopleBody = $("#people");
+
+// Names, call signs and the sheet title are typed by hand and then dropped into
+// markup. Without this, an ampersand or a stray angle bracket silently eats the
+// rest of a cell.
+const ESCAPES = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ESCAPES[c]);
+
+let nextId = 1;
+function freshId(){
+  let id;
+  do { id = "p" + (nextId++); } while(document.querySelector('[data-id="' + id + '"]'));
+  return id;
+}
+
+function personRow(p){
+  const tr = document.createElement("tr");
+  tr.dataset.id = p.id || freshId();
+  tr.innerHTML = `
+    <td data-label="Rank & name"><input type="text" class="p-name" value="${esc(p.name)}" aria-label="Rank and name"></td>
+    <td class="cs" data-label="C/S"><input type="text" class="p-cs" value="${esc(p.cs)}" aria-label="Call sign"></td>
+    <td class="tick" data-label="Gd Cdr"><label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px;opacity:1">
+      <input type="checkbox" class="p-gc" ${p.gc?"checked":""}> eligible</label></td>
+    <td class="tick" data-label="R3"><label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px;opacity:1">
+      <input type="checkbox" class="p-r3" ${p.r3?"checked":""}> eligible</label></td>
+    <td data-label="Role"><select class="p-mg mgsel" aria-label="Role">
+      <option value="none">MPGS &mdash; full duties</option>
+      <option value="noweap">MPGS &mdash; no weapon</option>
+      <option value="fixed">MPGS &mdash; fixed on MG</option>
+      <option value="raf">RAF &mdash; no weapon</option>
+    </select></td>
+    <td class="del-cell"><button type="button" class="del" title="Remove" aria-label="Remove ${esc(p.name) || "this person"}">&times;</button></td>`;
+  tr.querySelector(".p-mg").value = p.mg;
+  tr.querySelector(".del").onclick = () => { tr.remove(); scheduleRefresh(); };
+  return tr;
+}
+
+// Every row, blank ones included, so an empty line you are part way through
+// typing survives a save. build() works from the named ones only.
+function allRows(){
+  return [...peopleBody.querySelectorAll("tr")].map(tr => ({
+    id:   tr.dataset.id,
+    name: tr.querySelector(".p-name").value.trim(),
+    cs:   tr.querySelector(".p-cs").value.trim(),
+    gc:   tr.querySelector(".p-gc").checked,
+    r3:   tr.querySelector(".p-r3").checked,
+    mg:   tr.querySelector(".p-mg").value
+  }));
+}
+const readPeople = () => allRows().filter(p => p.name);
+
+const MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MON_FULL  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function ordinal(n){
+  if(n>3 && n<21) return n+"th";
+  return n + ({1:"st",2:"nd",3:"rd"}[n%10] || "th");
+}
+function dayLabel(d){
+  const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+  return `${wd} ${ordinal(d.getDate())} ${MON_SHORT[d.getMonth()]}`;
+}
+function rangeLabel(a, b){
+  if(a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear())
+    return `${MON_FULL[a.getMonth()]} ${ordinal(a.getDate())}-${ordinal(b.getDate())}`;
+  return `${ordinal(a.getDate())} ${MON_SHORT[a.getMonth()]} - ${ordinal(b.getDate())} ${MON_SHORT[b.getMonth()]}`;
+}
+
+// VEH 1 and VEH 2 are held by junior ranks only, worked out from the rank in front of the name.
+const JUNIOR_RANK = /^(lcpl|l\s*\/?\s*cpl|pte|pvt|gdsm|rfn|tpr|spr|sig|cfn|kgn|rgr|fus|gnr|dvr|sac|as1)\b/i;
+const isJunior = p => JUNIOR_RANK.test(p.name.trim());
+
+// Seeded shuffle: the layout only changes when you press Build, so editing an
+// R3 pin — or fixing a typo — doesn't scramble everything else.
+let seed = (Math.floor(Math.random() * 1e9) + 1) >>> 0;
+let _s = seed;
+function rnd(){ _s = (Math.imul(_s, 1664525) + 1013904223) >>> 0; return _s / 4294967296; }
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let r3Override = Object.assign({}, DEFAULT_PINS);
+
+// Cells typed over by hand, keyed on the shift and the man rather than the row
+// number, so they follow him when the panel changes above. Build clears them:
+// the duties they were written over have moved.
+let edits = {};
+
+let ovrSig = "";
+function renderOverrides(people, nights, start){
+  const box = $("#ovr");
+  const sig = nights + "|" + start.getTime() + "|" + people.map(p => p.id + ":" + p.name).join(",");
+  if(sig === ovrSig){
+    // Same shifts and same people — just resync the values, don't tear the
+    // dropdowns down while one of them is mid-change.
+    [...box.querySelectorAll("select")].forEach(s => { s.value = r3Override[s.dataset.day] || ""; });
+    return;
+  }
+  ovrSig = sig;
+  box.innerHTML = "";
+  for(let d = 0; d < nights; d++){
+    const date = new Date(start); date.setDate(start.getDate() + d);
+    const div = document.createElement("div");
+    div.innerHTML = `<label for="ovr${d}">${esc(dayLabel(date))}</label>
+      <select class="mgsel" id="ovr${d}" data-day="${d}">
+        <option value="">Auto</option>
+        ${people.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}
+      </select>`;
+    const sel = div.querySelector("select");
+    sel.value = r3Override[d] || "";
+    // The change bubbles to the panel, which schedules the rebuild.
+    sel.onchange = e => { r3Override[d] = e.target.value; };
+    box.appendChild(div);
+  }
+}
+
+function build(){
+  const people = readPeople();
+  const warn = [];
+  const byId = new Map(people.map(p => [p.id, p]));
+
+  // A pin on someone who has since been deleted, or had his name cleared, is
+  // not a pin any more. Drop it rather than warning about a man who is gone.
+  Object.keys(r3Override).forEach(d => { if(!byId.has(r3Override[d])) delete r3Override[d]; });
+
+  const fixedMG = people.filter(p => p.mg === "fixed");
+  const raf     = people.filter(p => p.mg === "raf");
+  const rest    = people.filter(p => p.mg === "none" || p.mg === "noweap");
+  const gcPool  = rest.filter(p => p.gc);
+
+  if(!people.length) warn.push("Nobody is on the sheet yet — add a name.");
+  else if(!gcPool.length) warn.push("No one is marked eligible for Gd Cdr — tick at least one.");
+  const csClash = people.filter(p => ["41","42"].includes(p.cs) && p.mg !== "raf");
+  if(csClash.length) warn.push("C/S 41 and 42 are RAF only — check " + csClash.map(p => p.name).join(" and ") + ".");
+  if(people.length && !raf.length && !fixedMG.length) warn.push("No one is set on the Main Gate — those rows will be empty.");
+
+  // A number field still takes anything you type into it, so the cap the
+  // spinner shows has to be applied here too.
+  const daysBox = $("#days");
+  const capN = +daysBox.max || 10;
+  let nights = Math.floor(+daysBox.value);
+  if(!isFinite(nights) || nights < 1) nights = 4;
+  if(nights > capN){
+    warn.push("A sheet holds " + capN + " shifts, so only the first " + capN + " are drawn.");
+    nights = capN;
+  }
+
+  const times = TIMES[$("#shift").value];
+  let start = new Date($("#start").value + "T12:00:00");
+  if(isNaN(start.getTime())){
+    start = new Date(); start.setHours(12, 0, 0, 0);
+    warn.push("No first date set, so the sheet starts today. Pick one to fix the dates.");
+  }
+
+  const r3Count = {};
+  people.forEach(p => r3Count[p.id] = 0);
+
+  _s = seed;
+  const rafOrder = shuffle(raf);
+
+  // Gd Cdr rotates through everyone eligible before anyone repeats, and steps
+  // over whoever is pinned to R3 that shift so the two settings can both hold.
+  const gcByDay = [];
+  let queue = [];
+  for(let d = 0; d < nights; d++){
+    if(!queue.length) queue = shuffle(gcPool);
+    if(!queue.length){ gcByDay.push(null); continue; }
+    const pin = r3Override[d];
+    let idx = queue.findIndex(p => p.id !== pin);
+    if(idx === -1){
+      // The last man left in this round is the one pinned to R3. Deal the next
+      // round in front of him instead of handing him both jobs.
+      const others = shuffle(gcPool).filter(p => p.id !== pin);
+      if(others.length){ queue = others.concat(queue); idx = 0; }
+      else idx = 0;   // he really is the only man ticked for it
+    }
+    gcByDay.push(queue.splice(idx, 1)[0]);
+  }
+
+  const out = [];
+  for(let d = 0; d < nights; d++){
+    const date = new Date(start); date.setDate(start.getDate() + d);
+    const gc   = gcByDay[d];
+    const mgA  = rafOrder.length ? rafOrder[d % rafOrder.length] : null;   // RAF man on the Main Gate
+    const gate = raf.filter(p => p !== mgA);                // RAF at Ops, OG/QRF only
+    const army = rest.filter(p => p !== gc);
+
+    // R3: a pinned man if you set one, otherwise whoever's eligible and has done it least
+    let r3 = null;
+    const pin    = r3Override[d];
+    const pinned = pin ? army.find(p => p.id === pin) : null;
+    if(pin && !pinned){
+      const who = byId.get(pin);
+      const why = gc && gc.id === pin
+          ? "he is the only man ticked for Gd Cdr, so he is on the desk"
+        : who.mg === "fixed" ? "he is fixed on the Main Gate"
+        : who.mg === "raf"   ? "he is RAF, so he is on the gate or at Ops without a weapon"
+        : "he is not at Ops that shift";
+      warn.push(dayLabel(date) + ": " + who.name + " can't take R3 — " + why + ". It went to the next in line.");
+    }
+    if(pinned){
+      r3 = pinned; r3Count[r3.id]++;
+    } else if(army.length){
+      let pool = army.filter(p => p.r3);
+      if(!pool.length){
+        pool = army;
+        warn.push(dayLabel(date) + ": nobody on shift is eligible for R3, so it fell to whoever was left.");
+      }
+      r3 = shuffle(pool).sort((a,b) => r3Count[a.id] - r3Count[b.id])[0];
+      r3Count[r3.id]++;
+    }
+
+    const onGate     = army.filter(p => p !== r3);              // MPGS at Ops
+    const armedList  = shuffle(onGate.filter(p => p.mg === "none"));
+    const noWeapList = onGate.filter(p => p.mg === "noweap");
+    const unarmedAll = noWeapList.concat(gate);                 // everyone at Ops without a weapon
+    const cycle      = unarmedAll.length ? PATTERNS.patrolAlt : PATTERNS.patrol;
+    const noWeapPat  = p => unarmedAll.indexOf(p) === 0 ? PATTERNS.noWeap : PATTERNS.qrfOnly;
+
+    // Every MPGS man at Ops gets a row, then AB115 / VEH 1 / VEH 2 are handed out across them
+    const opsRows = armedList.map((p,i) => ({p, pattern: cycle[i % 3], task:""}))
+      .concat(noWeapList.map(p => ({p, pattern: noWeapPat(p), task:""})));
+
+    const sen = opsRows.filter(r => !isJunior(r.p));
+    const jun = opsRows.filter(r => isJunior(r.p));
+    const taskOrder = sen.slice(0,1).concat(jun, sen.slice(1));  // senior on AB115, juniors on the vehicles
+    PATROL_TASKS.forEach((t,i) => { if(taskOrder[i]) taskOrder[i].task = t; });
+
+    if(people.length && opsRows.length < PATROL_TASKS.length){
+      warn.push(dayLabel(date) + ": only " + opsRows.length + " MPGS at Ops, so "
+        + PATROL_TASKS.slice(opsRows.length).join(" and ") + " went unheld — add someone or move R3.");
+    }
+    const vehSeniors = taskOrder.slice(1,3).filter(r => r && !isJunior(r.p));
+    if(vehSeniors.length){
+      warn.push(dayLabel(date) + ": no junior rank free, so "
+        + vehSeniors.map(r => r.p.name).join(" and ")
+        + " had to take a vehicle. Pin R3 to someone else or change who's Gd Cdr to clear it.");
+    }
+    if(armedList.length > 3) warn.push(dayLabel(date) + ": more than three on the CG/OG/QRF cycle — extra rows reuse the same duties.");
+    if(unarmedAll.length > 1) warn.push(dayLabel(date) + ": more than one man without a weapon at Ops — the extras are on QRF throughout so OG stays single-manned.");
+
+    const gateRows = gate.map(p => ({p, pattern: noWeapPat(p)}));
+
+    out.push({date, gc, mgA, mgB: fixedMG[0] || null, patrolRows: opsRows, r3, gateRows, times});
+  }
+  renderOverrides(people, nights, start);
+
+  render(out, times);
+  showWarnings(warn);
+}
+
+function showWarnings(list){
+  const seen = [...new Set(list)];
+  $("#warn").innerHTML = seen.length
+    ? "<ul>" + seen.map(w => `<li>${esc(w)}</li>`).join("") + "</ul>"
+    : "";
+}
+
+// A cell shows what you typed into it if you typed into it, and the built
+// duty otherwise. data-k is how it finds its way back after a rebuild.
+function cell(key, txt, cls){
+  const v = key in edits ? edits[key] : (txt || "");
+  return `<td class="${cls||""}" contenteditable data-k="${esc(key)}">${esc(v)}</td>`;
+}
+
+function render(nightsData, times){
+  const title = $("#title").value;
+  const d1 = nightsData[0].date, d2 = nightsData[nightsData.length-1].date;
+  const shiftName = $("#shift").value === "days" ? "Days" : "Nights";
+  const span = times[0].split("-")[0] + "–" + times[times.length-1].split("-")[1];
+  const headTitle = "title" in edits ? edits.title : `${title} ${rangeLabel(d1, d2)}`;
+  const headRange = "range" in edits ? edits.range
+    : `${dayLabel(d1)} – ${dayLabel(d2)} ${d2.getFullYear()} · ${shiftName} ${span}`;
+  let html = `<div class="sheet-head">
+    <div class="sheet-title" contenteditable data-k="title">${esc(headTitle)}</div>
+    <div class="sheet-range" contenteditable data-k="range">${esc(headRange)}</div>
+  </div>`;
+
+  nightsData.forEach((n, d) => {
+    const dayHead = ("day" + d) in edits ? edits["day" + d] : dayLabel(n.date);
+    html += `<div class="day-block"><table class="roster"><colgroup>
+      <col style="width:19%"><col style="width:8%"><col style="width:13%">
+      ${times.map(()=>'<col style="width:10%">').join("")}
+    </colgroup><thead><tr>
+      <th class="daycell" scope="col" contenteditable data-k="day${d}">${esc(dayHead)}</th>
+      <th scope="col">C/S</th><th scope="col">Task</th>
+      ${times.map(t => `<th scope="col">${esc(t)}</th>`).join("")}
+    </tr></thead><tbody>`;
+
+    const line = (p, task, pattern, cls) => {
+      if(!p) return "";
+      const k = what => d + "|" + p.id + "|" + what;
+      return `<tr>${cell(k("name"), p.name, "name")}${cell(k("cs"), p.cs)}${cell(k("task"), task, "task")}
+        ${pattern.map((v,i) => cell(k(i), v, cls)).join("")}</tr>`;
+    };
+
+    const band = t => `<tr class="site"><td colspan="${3+times.length}">${esc(t)}</td></tr>`;
+
+    html += band("Main site");
+    html += line(n.gc, "Weapons", PATTERNS.gdcdr);
+    html += line(n.mgA, "", PATTERNS.mgA);
+    html += line(n.mgB, "", PATTERNS.mgB);
+    html += band("Ops site");
+    n.patrolRows.forEach(r => { html += line(r.p, r.task, r.pattern); });
+    html += line(n.r3, "", PATTERNS.r3, "r3");
+    n.gateRows.forEach(r => { html += line(r.p, "", r.pattern); });
+    html += `</tbody></table></div>`;
+  });
+
+  $("#sheet").innerHTML = html;
+}
+
+$("#sheet").addEventListener("input", e => {
+  const k = e.target.dataset && e.target.dataset.k;
+  if(k){ edits[k] = e.target.textContent; save(); }
+});
+
+/* ---- keeping the sheet between visits ---- */
+
+const STORE = "section-roster-v1";
+
+function save(){
+  try{
+    localStorage.setItem(STORE, JSON.stringify({
+      title: $("#title").value, start: $("#start").value, days: $("#days").value,
+      shift: $("#shift").value, fitone: $("#fitone").value,
+      people: allRows(), pins: r3Override, seed, edits
+    }));
+  }catch(e){ /* private browsing, a full quota — the sheet still works */ }
+}
+
+function restore(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(STORE) || "null"); }catch(e){}
+  const people = s && Array.isArray(s.people) ? s.people : DEFAULT_PEOPLE;
+  if(s){
+    if(s.title != null) $("#title").value = s.title;
+    if(s.start) $("#start").value = s.start;
+    if(s.days)  $("#days").value  = s.days;
+    if(s.shift) $("#shift").value = s.shift;
+    if(s.fitone) $("#fitone").value = s.fitone;
+    if(s.pins && typeof s.pins === "object") r3Override = Object.assign({}, s.pins);
+    if(s.edits && typeof s.edits === "object") edits = Object.assign({}, s.edits);
+    // Same seed, same roster: you get back the sheet you left, not a new one.
+    if(s.seed) seed = s.seed >>> 0;
+  }
+  // Ids handed out from here on must not collide with the ones being restored.
+  const used = people.map(p => +String(p.id || "").replace(/\D/g, "")).filter(n => n > 0);
+  nextId = (used.length ? Math.max(...used) : 0) + 1;
+  people.forEach(p => peopleBody.appendChild(personRow(p)));
+}
+
+restore();
+
+$("#add").onclick = () => {
+  peopleBody.appendChild(personRow({name:"",cs:"",gc:true,r3:true,mg:"none"}));
+  save();
+};
+
+/* ---- the panel drives the sheet ---- */
+
+let refreshTimer = 0;
+function scheduleRefresh(){
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { save(); build(); }, 250);
+}
+
+$("#panel").addEventListener("input", e => {
+  // The panel is the truth about the title and the dates. Once you change one
+  // up here, a heading you had typed over below is stale, so it goes.
+  if(e.target.id === "title") delete edits.title;
+  if(["start","days","shift"].includes(e.target.id)){
+    delete edits.range;
+    Object.keys(edits).forEach(k => { if(/^day\d+$/.test(k)) delete edits[k]; });
+  }
+  scheduleRefresh();
+});
+$("#panel").addEventListener("change", scheduleRefresh);
+
+$("#build").onclick = () => {
+  seed = (Math.floor(Math.random() * 1e9) + 1) >>> 0;
+  edits = {};              // the duties these were written over have moved
+  save();
+  build();
+};
+$("#reset").onclick = () => {
+  if(!confirm("Throw away this sheet and put the example section back?")) return;
+  try{ localStorage.removeItem(STORE); }catch(e){}
+  location.reload();
+};
+$("#preview").onclick = () => { document.body.classList.add("previewing"); window.scrollTo(0,0); };
+$("#backbtn").onclick = () => { document.body.classList.remove("previewing"); };
+
+function printableHTML(){
+  const css = document.querySelector("style").textContent;
+  return '<!DOCTYPE html><html lang="en-GB"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    + '<title>' + esc($("#title").value) + '</title><style>' + css
+    + 'body{background:#fff}.wrap{max-width:none;padding:0}.sheet{border:none;padding:0}'
+    + '@page{size:A4 portrait;margin:12mm}</style></head><body><div class="wrap">'
+    + '<div class="sheet">' + $("#sheet").innerHTML + '</div></div></body></html>';
+}
+
+function fileStem(){
+  return ($("#title").value || "roster").replace(/[^\w \-]/g,"").trim() || "roster";
+}
+
+$("#pdf").onclick = async () => {
+  const out = $("#imgout");
+  const JsPDF = window.jspdf && window.jspdf.jsPDF;
+  if(typeof html2canvas !== "function" || !JsPDF){
+    out.innerHTML = '<div class="warn">The PDF tools didn\'t load. Try Download sheet, or Preview and take a screenshot.</div>';
+    return;
+  }
+  out.innerHTML = '<div class="note">Building the PDF&hellip;</div>';
+  try{
+    const M = 10, PW = 210, PH = 297, CW = PW - M*2, CH = PH - M*2;
+    const doc = new JsPDF({orientation:"p", unit:"mm", format:"a4"});
+
+    if($("#fitone").value === "one"){
+      const canvas = await html2canvas($("#sheet"), {backgroundColor:"#ffffff", scale:2});
+      let w = CW, h = CW * canvas.height / canvas.width;
+      if(h > CH){ h = CH; w = CH * canvas.width / canvas.height; }
+      doc.addImage(canvas.toDataURL("image/png"), "PNG", (PW - w)/2, M, w, h);
+    } else {
+      let y = M;
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(15);
+      doc.text($("#title").value || "Roster", PW/2, y + 5, {align:"center"});
+      y += 12;
+      const blocks = [...document.querySelectorAll("#sheet .day-block")];
+      for(const b of blocks){
+        const canvas = await html2canvas(b, {backgroundColor:"#ffffff", scale:2});
+        const h = CW * canvas.height / canvas.width;
+        if(y + h > PH - M){ doc.addPage(); y = M; }
+        doc.addImage(canvas.toDataURL("image/png"), "PNG", M, y, CW, h);
+        y += h + 6;
+      }
+    }
+
+    const name = fileStem() + ".pdf";
+    try{ doc.save(name); }catch(e){}
+
+    const url = doc.output("bloburl");
+    out.innerHTML = '<div class="note">PDF ready. If it didn\'t download on its own, use this link:</div>';
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener"; a.download = name;
+    a.textContent = "Open " + name;
+    a.style.cssText = "display:inline-block;margin-top:6px;font-family:var(--data);font-size:12px";
+    out.appendChild(a);
+  }catch(e){
+    out.innerHTML = '<div class="warn">Couldn\'t build the PDF here. Try Download sheet and print that from your browser, or Save as image.</div>';
+  }
+};
+
+$("#save").onclick = () => {
+  try{
+    const blob = new Blob([printableHTML()], {type:"text/html"});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = fileStem() + ".html";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    showWarnings(["Saved. Open that file in your browser and print it from there to get a PDF."]);
+  }catch(e){
+    showWarnings(["Download is blocked here. Use Save as image, or Preview and take a screenshot."]);
+  }
+};
+
+$("#img").onclick = async () => {
+  const out = $("#imgout");
+  out.innerHTML = '<div class="note">Rendering&hellip;</div>';
+  if(typeof html2canvas !== "function"){
+    out.innerHTML = '<div class="warn">Image tool didn\'t load. Use Preview and take a screenshot instead.</div>';
+    return;
+  }
+  try{
+    const canvas = await html2canvas($("#sheet"), {backgroundColor:"#ffffff", scale:2});
+    out.innerHTML = '<div class="note">Long-press the image to save or share it.</div>';
+    const im = new Image();
+    im.src = canvas.toDataURL("image/png");
+    im.alt = "The roster sheet as a picture";
+    im.style.cssText = "width:100%;margin-top:8px;border:1px solid var(--panel-line)";
+    out.appendChild(im);
+  }catch(e){
+    out.innerHTML = '<div class="warn">Couldn\'t render an image. Use Preview and take a screenshot instead.</div>';
+  }
+};
+build();
+</script>
+</body>
+</html>
