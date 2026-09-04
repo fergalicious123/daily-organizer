@@ -302,13 +302,20 @@ day gives the names in full.
 part of the app. It lays out who is on which stag across a set of shifts and
 gives you an A4 PDF, a printable file, or a PNG to send to the group.
 
-Say who is on and tick who can take Gd Cdr and R3; it fills in the rest. The
-RAF pair alternate on the Main Gate, CG and OG stay single-manned, and the
-vehicles go to Ptes and LCpls only, read from the rank in front of the name.
-**Build roster** reshuffles who lands where — everything else updates the sheet
-as you type without disturbing the layout, so fixing a name does not cost you
-the roster you liked. What you have set up is kept in the browser, so the sheet
-is still there next time you open it.
+It holds the whole platoon — HQ and the four sections, call signs, E numbers,
+and the vacant posts with the call signs nobody holds yet. It **starts blank**:
+tick who is on and only those men reach the sheet, or press **all on** beside a
+section to put the whole section on at once.
+
+From there it fills in the rest. The RAF pair alternate on the Main Gate, CG
+and OG stay single-manned, and the vehicles go to Ptes and LCpls only, read
+from the rank in front of the name. **Build roster** reshuffles who lands where
+— everything else updates the sheet as you type without disturbing the layout,
+so fixing a name does not cost you the roster you liked. What you have set up
+is kept in the browser, so the sheet is still there next time you open it.
+
+The CG/OG/QRF cycle is written for three men at Ops. Put more than three on and
+the extra rows repeat duties already covered; it says so rather than hiding it.
 
 ### Sending a year's roster
 
