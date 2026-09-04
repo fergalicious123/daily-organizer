@@ -1,4 +1,16 @@
-/* First things — the morning ritual.
+/* The ritual, at both ends of the day.
+ *
+ * One card per phase: "First things" in the morning and "Before bed" at
+ * night, built by the same function with `when`. Two cards rather than two
+ * sections in one, because the spine down the left is a SEQUENCE and a single
+ * card would draw one line through both -- implying you study, then train,
+ * then put your phone down, as though bedtime were the third thing you do
+ * after breakfast.
+ *
+ * The evening card does not exist unless there is an evening step, so nobody
+ * gets an empty panel headed "Before bed".
+ *
+ * What follows is about the morning half, which came first and set the shape.
  *
  * Ben's rule is that the day starts with self-improvement before anything
  * else: study English, then the gym. So this is drawn as a SEQUENCE, not a
@@ -23,7 +35,7 @@
 
 import { el, icon, haptic } from '../ui.js';
 import {
-  routineSteps, routineStepDone, routineProgress, toggleRoutineStep, linkedTask,
+  routineSteps, routineStepDone, routineProgress, toggleRoutineStep, linkedTask, PHASE,
 } from '../state.js';
 import { quoteFor } from '../quotes.js';
 import { todayKey } from '../dates.js';
@@ -93,11 +105,32 @@ function quoteBlock(quote, step) {
   );
 }
 
-export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
-  const steps = routineSteps();
-  if (!steps.length) return null;
+/**
+ * What each end of the day is called, and what it says when it is finished.
+ *
+ * The done-note is per phase because they are not the same claim. "Downhill"
+ * is a thing you say at 07:00 with the day in front of you; at 22:00 the
+ * useful thing to say is that you are finished.
+ */
+const PHASES = {
+  [PHASE.MORNING]: {
+    title: 'First things',
+    done: 'All done. The rest of the day is downhill.',
+  },
+  [PHASE.EVENING]: {
+    title: 'Before bed',
+    done: 'Phone down. Goodnight.',
+  },
+};
 
-  const progress = routineProgress(dateKey);
+export function routineCard(dateKey = todayKey(), { onToggle, when = PHASE.MORNING } = {}) {
+  const steps = routineSteps(when);
+  // No card at all rather than an empty one, which is how the evening half
+  // stays invisible for anyone who has not got one.
+  if (!steps.length) return null;
+  const phase = PHASES[when] || PHASES[PHASE.MORNING];
+
+  const progress = routineProgress(dateKey, when);
   const complete = progress.total > 0 && progress.done === progress.total;
 
   const list = el('ol.routine-steps');
@@ -137,6 +170,9 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
     },
       tick,
       quote ? quoteBlock(quote, step) : null,
+      // The argument, for a step that needs one. "Phone down" on its own reads
+      // as nagging; the sentence after it is what makes it a reason.
+      step.note ? el('p.routine-step-note', step.note) : null,
       // Only worth saying when the step is standing in for something real —
       // it explains why ticking here also ticks a task further down the page.
       task ? el('span.routine-linked', task.title) : null,
@@ -150,14 +186,14 @@ export function routineCard(dateKey = todayKey(), { onToggle } = {}) {
     list.appendChild(row);
   });
 
-  return el('section.routine-card', { class: complete ? 'is-complete' : '' },
+  return el('section.routine-card', {
+    class: [complete ? 'is-complete' : '', `is-${when}`].filter(Boolean).join(' '),
+  },
     el('div.routine-head',
-      el('h2.routine-title', 'First things'),
+      el('h2.routine-title', phase.title),
       el('span.routine-count', `${progress.done} of ${progress.total}`),
     ),
     list,
-    complete
-      ? el('p.routine-done-note', 'Both done. The rest of the day is downhill.')
-      : null,
+    complete ? el('p.routine-done-note', phase.done) : null,
   );
 }

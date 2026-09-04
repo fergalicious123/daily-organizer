@@ -155,7 +155,7 @@ const DEFAULT_LIST_ID = 'list-personal';
  * The shape of `routineSteps` this build expects. Bumping it runs the steps
  * below that a saved document has not seen yet.
  */
-const ROUTINE_VERSION = 3;
+const ROUTINE_VERSION = 4;
 
 /**
  * Bring an already-saved routine up to the current shape.
@@ -203,6 +203,25 @@ function migrateRoutine(state, saved) {
       study.target = '2026-09-20';
       study.targetLabel = 'English course';
     }
+  }
+
+  // v4: the ritual gets an evening end. ADDED rather than rewritten, and only
+  // when there is no evening step already -- if one has been put there by
+  // hand, that is the decision and this must not duplicate it.
+  //
+  // Assigned back rather than relying on the push: `steps` is only the same
+  // array as the saved one when the saved one was an array to begin with, and
+  // a document that lost the field would otherwise migrate into nothing.
+  if (version < 4 && !steps.some((s) => s?.when === 'evening')) {
+    steps.push({
+      id: 'winddown',
+      label: 'Phone down, book instead',
+      kind: 'winddown',
+      when: 'evening',
+      match: '',
+      note: 'The screen keeps you up. Read something on paper for the last half hour.',
+    });
+    state.settings.routineSteps = steps;
   }
 
   state.settings.routineVersion = ROUTINE_VERSION;
@@ -362,6 +381,18 @@ function defaultState() {
         // matching loosely on "para" would have latched onto "Sign up for
         // para 10" — ticking a session would have closed the sign-up.
         { id: 'gym', label: 'Para 10 training', kind: 'gym', match: '', target: '2026-09-26', targetLabel: 'Para 10' },
+        /* The other end of the day. `when` is what separates the two cards;
+           `note` is the reason, which for this one is the whole point --
+           "phone down" on its own reads as nagging, and the sentence after it
+           is what makes it an argument. */
+        {
+          id: 'winddown',
+          label: 'Phone down, book instead',
+          kind: 'winddown',
+          when: 'evening',
+          match: '',
+          note: 'The screen keeps you up. Read something on paper for the last half hour.',
+        },
       ],
       routineVersion: ROUTINE_VERSION,
       driveFileId: '',
@@ -1801,9 +1832,47 @@ export function setRoutineTarget(stepId, { target, targetLabel } = {}) {
   return steps;
 }
 
-export function routineSteps() {
+/**
+ * Reword a step.
+ *
+ * Separate from setRoutineTarget because they are different edits with
+ * different rules: a countdown clears its own label when the date goes, and a
+ * label must never clear itself -- a step with no words is a row you cannot
+ * identify and cannot fix. An empty label is therefore ignored rather than
+ * written, and the note is free to be emptied because a step without a reason
+ * is still a step.
+ */
+export function setRoutineText(stepId, { label, note } = {}) {
+  const steps = routineSteps().map((step) => {
+    if (step.id !== stepId) return step;
+    const next = { ...step };
+    const trimmed = String(label ?? '').trim();
+    if (label !== undefined && trimmed) next.label = trimmed;
+    if (note !== undefined) next.note = String(note).trim();
+    return next;
+  });
+  updateSettings({ routineSteps: steps });
+  return steps;
+}
+
+/**
+ * When a step belongs. A step with no `when` is a morning one.
+ *
+ * Defaulted rather than required, because every step saved before this
+ * existed is a morning step and a migration that rewrote them all would touch
+ * labels Ben has edited by hand for no reason.
+ */
+export const PHASE = { MORNING: 'morning', EVENING: 'evening' };
+
+export function stepPhase(step) {
+  return step?.when === PHASE.EVENING ? PHASE.EVENING : PHASE.MORNING;
+}
+
+/** The ritual, all of it or one phase of it. */
+export function routineSteps(when = null) {
   const steps = settings().routineSteps;
-  return Array.isArray(steps) ? steps.filter((s) => s && s.id) : [];
+  const live = Array.isArray(steps) ? steps.filter((s) => s && s.id) : [];
+  return when ? live.filter((s) => stepPhase(s) === when) : live;
 }
 
 /**
@@ -1860,8 +1929,8 @@ export function toggleRoutineStep(step, dateKey) {
 }
 
 /** How much of the ritual is behind you. */
-export function routineProgress(dateKey) {
-  const steps = routineSteps();
+export function routineProgress(dateKey, when = null) {
+  const steps = routineSteps(when);
   const done = steps.filter((s) => routineStepDone(s, dateKey)).length;
   return { done, total: steps.length };
 }

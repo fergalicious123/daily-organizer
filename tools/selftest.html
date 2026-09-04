@@ -651,6 +651,25 @@ if (zones.instantAt && zones.instantForZonedTime) {
 }
 
 /* ------------------------------------------------------------------ */
+/* The ritual, at both ends of the day                                 */
+/* ------------------------------------------------------------------ */
+/* `when` decides which card a step lands on, and the default matters more
+   than the value: every step saved before this existed has no `when` at all
+   and must keep showing up in the morning. */
+group('routine phases - morning by default');
+const routine = loaded['../js/state.js'] || {};
+
+if (routine.stepPhase && routine.PHASE) {
+  const P = routine.PHASE;
+  check('an unmarked step is a morning one', () => routine.stepPhase({ id: 'study' }) === P.MORNING);
+  check('so is one that says so', () => routine.stepPhase({ id: 'x', when: 'morning' }) === P.MORNING);
+  check('evening is the only thing that moves it', () => routine.stepPhase({ id: 'x', when: 'evening' }) === P.EVENING);
+  // A typo in the field must not silently create a third card nobody renders.
+  check('an unknown phase falls back to morning', () => routine.stepPhase({ id: 'x', when: 'afternoon' }) === P.MORNING);
+  check('and so does nothing at all', () => routine.stepPhase(null) === P.MORNING);
+}
+
+/* ------------------------------------------------------------------ */
 /* Alarms                                                              */
 /* ------------------------------------------------------------------ */
 /* The app cannot be an alarm, so it hands one to the Clock app. Two things

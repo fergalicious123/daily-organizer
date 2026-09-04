@@ -15,7 +15,7 @@ import {
   liveItems, itemsOnDay, itemsInRange, unscheduledTasks, overdueTasks,
   tasksInList, progressFor, completionHistory, currentStreak, getList,
   completedItems, rollOverdueTasks, rolloverDue, reviewDue, shiftBlock, openCaptures,
-  routineSteps, setRoutineTarget,
+  routineSteps, setRoutineTarget, setRoutineText, PHASE,
 } from './state.js';
 import { daysUntil } from './countdown.js';
 import { search } from './search.js';
@@ -1319,7 +1319,7 @@ function openSettings(focusSection = null) {
          Label and date only — the order of the steps is the ritual and is not
          something to fiddle with in a settings panel. */
       fields.push(el('div.section-label', { style: { padding: '0' } }, 'First things'));
-      for (const step of routineSteps()) {
+      for (const step of routineSteps(PHASE.MORNING)) {
         const days = daysUntil(step.target);
         const hint = el('p.field-hint');
         const describe = () => {
@@ -1353,6 +1353,35 @@ function openSettings(focusSection = null) {
           ),
           hint,
         ));
+      }
+
+      /* --- Before bed ---
+         The evening half is edited by its WORDS, not by a date. A countdown on
+         "phone down" would be counting to nothing, and the thing most likely
+         to need changing here is the wording -- a reason you wrote yourself is
+         one you argue with less. */
+      const evening = routineSteps(PHASE.EVENING);
+      if (evening.length) {
+        fields.push(el('div.section-label', { style: { padding: '0' } }, 'Before bed'));
+        for (const step of evening) {
+          fields.push(el('div.field',
+            el('label', 'Step'),
+            el('input', {
+              type: 'text',
+              value: step.label || '',
+              'aria-label': 'What the step says',
+              onchange: (e) => { setRoutineText(step.id, { label: e.target.value }); render(); },
+            }),
+            el('input', {
+              type: 'text',
+              placeholder: 'Why (optional)',
+              value: step.note || '',
+              'aria-label': `Why, for ${step.label}`,
+              onchange: (e) => { setRoutineText(step.id, { note: e.target.value }); render(); },
+            }),
+            el('p.field-hint', 'Shows under First things, in its own card.'),
+          ));
+        }
       }
 
       /* --- Preferences --- */

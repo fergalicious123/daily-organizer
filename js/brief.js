@@ -21,7 +21,7 @@
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, settings,
   shiftOnDay, crewOnDay, shiftKindOf, SHIFT,
-  routineSteps, routineStepDone, linkedTask, reviewDue, shiftBlock,
+  routineSteps, routineStepDone, linkedTask, reviewDue, shiftBlock, PHASE,
 } from './state.js';
 import { quoteFor } from './quotes.js';
 
@@ -86,7 +86,7 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
   // its own name — one job, listed twice, which is the fastest way to make a
   // brief look untrustworthy.
   const spokenFor = new Set(
-    routineSteps().map((step) => linkedTask(step, dateKey)?.id).filter(Boolean),
+    routineSteps(PHASE.MORNING).map((step) => linkedTask(step, dateKey)?.id).filter(Boolean),
   );
 
   const skip = (i) => isShiftEntry(i, shift) || spokenFor.has(i.id);
@@ -120,7 +120,9 @@ export function composeBrief(dateKey = todayKey(), { now = new Date() } = {}) {
   // The ritual leads, ahead of anything the day imposes. That ordering is the
   // whole point of it — a brief that opens with a 09:00 meeting has already
   // conceded the morning to someone else's schedule.
-  const ritual = routineSteps();
+  // MORNING steps only. The brief is read at 06:00 in a car park; the
+  // evening half of the ritual has nothing to say to that.
+  const ritual = routineSteps(PHASE.MORNING);
   if (ritual.length) {
     const outstanding = ritual.filter((step) => !routineStepDone(step, dateKey));
     if (outstanding.length) {

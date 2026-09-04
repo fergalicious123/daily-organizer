@@ -3478,6 +3478,17 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
+/* The reason under a step, for the one that needs an argument rather than a
+   quote. Sits where the quote would, indented onto the same spine, so a card
+   with one and a card with the other read as the same kind of thing. */
+.routine-step-note {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.routine-step.is-done .routine-step-note { opacity: .55; }
+
+
 .routine-done-note {
   margin: 0 0 10px;
   font-size: var(--fs-sm);

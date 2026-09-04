@@ -15,7 +15,7 @@ import { aiConfigured, polishBrief } from '../ai.js';
 import {
   itemsOnDay, overdueTasks, unscheduledTasks, progressFor,
   currentStreak, completionHistory, settings, device, eventColorSlot,
-  shiftOnDay, crewOnDay, liveItems, SHIFT, updateSettings,
+  shiftOnDay, crewOnDay, liveItems, SHIFT, updateSettings, PHASE,
 } from '../state.js';
 import { itemCountdowns } from '../countdown.js';
 import { partnerName, nextWindows, describeWindow } from '../together.js';
@@ -372,6 +372,15 @@ export function homeView({ onNavigate }) {
      point is what the day is asking of Ben; this is the part he chose. */
   const routine = routineCard(today);
   if (routine) root.appendChild(routine);
+
+  /* ---- and the other end of it ----
+     Directly under the morning card, so the ritual reads as one thing in the
+     order it is performed. It is not hidden until the evening: on nights his
+     bedtime is 07:30, so there is no hour of the day at which "before bed" is
+     reliably wrong, and guessing would hide it exactly when the rota is
+     strangest. */
+  const winddown = routineCard(today, { when: PHASE.EVENING });
+  if (winddown) root.appendChild(winddown);
 
   /* ---- when you are both free ----
      Directly under what is happening today, because it is the same kind of
