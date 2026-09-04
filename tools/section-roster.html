@@ -41,13 +41,6 @@
     font-family:var(--data); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
     margin:0 0 12px; font-weight:600; padding-bottom:6px; border-bottom:2px solid var(--rule);
   }
-  .panel h2.h2row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-  .count{margin-left:auto;font-weight:400;opacity:.75;letter-spacing:.06em}
-  .lnk{
-    background:none;border:none;cursor:pointer;padding:0;color:var(--band);
-    font-family:var(--data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
-    text-decoration:underline;
-  }
   .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:16px}
   label{display:block;font-family:var(--data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;margin-bottom:4px}
   input[type=text],input[type=date],input[type=number],select{
@@ -66,19 +59,6 @@
     text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);font-weight:600;
   }
   table.people td{padding:3px 6px;border-bottom:1px solid #e3e8ec;vertical-align:middle}
-  table.people tr.grp td{
-    background:var(--panel); border-bottom:1px solid var(--rule); padding:9px 6px 5px;
-    font-family:var(--data); font-size:10px; letter-spacing:.13em; text-transform:uppercase;
-    font-weight:600;
-  }
-  .grp-btn{
-    background:none; border:1px solid var(--panel-line); cursor:pointer; color:var(--ink);
-    font-family:var(--data); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
-    padding:2px 6px; margin-left:6px;
-  }
-  .grp-btn:hover{background:var(--band);color:#fff;border-color:var(--band)}
-  /* A man who is not on is still readable, just plainly not on the sheet. */
-  table.people tr:has(.p-on:not(:checked)) .p-name{opacity:.62}
   table.people .p-name::placeholder{opacity:.5;font-style:italic}
   table.people input[type=text]{width:100%;min-width:0}
   table.people .cs input{width:64px}
@@ -157,15 +137,7 @@
       font-family:var(--data);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
       opacity:.7;display:block;margin-bottom:3px;
     }
-    table.people .cs input{width:100%}
-    table.people td.half{display:inline-block;width:49%;vertical-align:top}
-    table.people td.on-cell{
-      border-bottom:1px solid #e3e8ec; padding:0 0 7px; margin-bottom:5px; font-size:15px;
-    }
-    table.people td.on-cell::before{content:none}
-    table.people td.on-cell input{width:20px;height:20px}
-    table.people tr.grp{border:none;padding:0;margin:16px 0 6px}
-    table.people tr.grp td{padding:6px 0 4px;background:none;border-bottom:1px solid var(--rule)}
+    table.people .cs input{width:92px}
     table.people select.p-mg{width:100%}
     table.people td.tick{display:inline-block;width:49%;vertical-align:top}
     table.people td.del-cell{position:absolute;top:5px;right:2px;padding:0}
@@ -230,20 +202,23 @@
         </div>
       </div>
 
-      <h2 class="h2row">Who&rsquo;s on
-        <span class="count" id="oncount">nobody yet</span>
-        <button type="button" class="lnk" id="clearon">Clear all</button></h2>
+      <h2>Who&rsquo;s on</h2>
+      <div class="row" style="margin-bottom:14px">
+        <div>
+          <label for="pick">Put someone on</label>
+          <select id="pick"><option value="">Choose a name&hellip;</option></select>
+        </div>
+      </div>
+      <datalist id="platoon"></datalist>
       <div class="tscroll">
         <table class="people">
           <thead>
             <tr>
-              <th style="width:6%">On</th>
-              <th style="width:24%">Rank &amp; name</th>
-              <th style="width:7%">C/S</th>
-              <th style="width:7%">E no.</th>
-              <th style="width:11%">Gd Cdr</th>
-              <th style="width:10%">R3</th>
-              <th style="width:29%">Role</th>
+              <th style="width:30%">Rank &amp; name</th>
+              <th style="width:11%">C/S</th>
+              <th style="width:15%">Gd Cdr</th>
+              <th style="width:13%">R3</th>
+              <th style="width:25%">Role</th>
               <th style="width:6%"><span class="sr">Remove</span></th>
             </tr>
           </thead>
@@ -264,10 +239,10 @@
       </div>
       <div id="imgout"></div>
       <div class="note">
-        <strong>Tick who&rsquo;s on</strong> down the left; only those men reach the sheet, so it starts
-        blank. The list is the whole platoon, and <strong>all on</strong> beside a section name puts
-        that section on in one press. A vacant post keeps its call sign and waits &mdash; type a name
-        into it and the Gd Cdr and R3 ticks follow the rank.<br>
+        <strong>Put someone on</strong> &mdash; the sheet starts empty. The whole platoon is in the
+        dropdown, by section, and picking a name adds him with his C/S, E number, role and ticks
+        already filled in. Typing into a name box does the same: the list suggests as you type.
+        <strong>Add person</strong> gives you a blank row for anyone the list has never heard of.<br>
         <strong>RAF</strong> &mdash; the RAF pair take it in turns on the Main Gate. Whoever isn&rsquo;t on the gate
         works Ops on OG and QRF only, never CG, and holds no vehicle.<br>
         <strong>Fixed on MG</strong> is on the Main Gate every shift alongside them. Everyone left fills
@@ -287,7 +262,7 @@
         Every cell on the sheet below can be typed over before you save. What you type stays put while you
         change things up here; <strong>Build roster</strong> clears it, because the duties underneath it moved.<br>
         The whole sheet is kept on this device, so it is still here next time you open the page.
-        <strong>Start again</strong> throws it away and puts the platoon list back as it is here.
+        <strong>Start again</strong> empties the sheet back to nobody on.
       </div>
       <div class="warn" id="warn"></div>
     </div>
@@ -325,10 +300,11 @@ const PATTERNS = {
 };
 const PATROL_TASKS = ["AB115","VEH 1","VEH 2"];
 
-// The whole platoon, by section. Name, C/S, E number, and a role where it is
-// not plain MPGS. A blank name is a vacant post: it keeps its call sign and
-// sits in the list until someone fills it. Nobody is on until you tick them.
-const DEFAULT_ROSTER = [
+// The platoon, by section: name, C/S, E number, and a role where it is not
+// plain MPGS. This is memory, not the sheet — nobody is on until you pick
+// them. A blank name is a vacant post, kept so the establishment is on record
+// and skipped when the list is offered.
+const PLATOON_SECTIONS = [
   ["HQ", [
     ["SSgt McDill",      "33",  "E25"],
     ["Sgt Smith",        "33A", "E35"],
@@ -393,16 +369,22 @@ const DEFAULT_ROSTER = [
 const GD_CDR_RANK = /^(?:ssgt|sgt|cpl|lcpl)\b/i;
 const R3_RANK     = /^(?:lcpl|pte)\b/i;
 
-let idSeq = 0;
-const DEFAULT_PEOPLE = DEFAULT_ROSTER.flatMap(([group, rows]) =>
-  rows.map(([name, cs, e, mg]) => ({
-    id: "p" + (++idSeq), group, name, cs, e: e || "", on: false, mg: mg || "none",
+// Member ids are "m…" and never clash with the "p…" a table row is given, so
+// a man can be looked up long after the row he was put on has moved about.
+let mSeq = 0;
+const PLATOON = PLATOON_SECTIONS.flatMap(([group, rows]) =>
+  rows.filter(([name]) => name).map(([name, cs, e, mg]) => ({
+    id: "m" + (++mSeq), group, name, cs, e: e || "", mg: mg || "none",
     gc: !mg && GD_CDR_RANK.test(name),
     r3: !mg && R3_RANK.test(name)
   }))
 );
+const PLATOON_BY_NAME = new Map(PLATOON.map(m => [m.name.toLowerCase(), m]));
 
-// No R3 pinned to start with — a blank sheet has nobody to pin.
+// The sheet opens blank. Names come off the list above as you pick them.
+const DEFAULT_PEOPLE = [];
+
+// Nothing is pinned to R3 to start with — a blank sheet has nobody to pin.
 const DEFAULT_PINS = {};
 
 const $ = s => document.querySelector(s);
@@ -424,15 +406,14 @@ function freshId(){
 function personRow(p){
   const tr = document.createElement("tr");
   tr.dataset.id = p.id || freshId();
-  tr.dataset.group = p.group || "";
-  // A post nobody holds yet. Once a name goes in, the ticks follow the rank.
+  // Which man off the list this row is, and his E number, both carried
+  // without a column of their own.
+  tr.dataset.member = p.member || "";
+  tr.dataset.e = p.e || "";
   tr.dataset.fresh = p.name ? "" : "1";
   tr.innerHTML = `
-    <td class="on-cell" data-label="On"><label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px;opacity:1">
-      <input type="checkbox" class="p-on" ${p.on?"checked":""}> on</label></td>
-    <td data-label="Rank & name"><input type="text" class="p-name" value="${esc(p.name)}" placeholder="(vacant)" aria-label="Rank and name"></td>
-    <td class="cs half" data-label="C/S"><input type="text" class="p-cs" value="${esc(p.cs)}" aria-label="Call sign"></td>
-    <td class="cs half" data-label="E no."><input type="text" class="p-e" value="${esc(p.e)}" aria-label="E number"></td>
+    <td data-label="Rank & name"><input type="text" class="p-name" list="platoon" value="${esc(p.name)}" placeholder="Rank &amp; name" aria-label="Rank and name"></td>
+    <td class="cs" data-label="C/S"><input type="text" class="p-cs" value="${esc(p.cs)}" aria-label="Call sign"></td>
     <td class="tick" data-label="Gd Cdr"><label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px;opacity:1">
       <input type="checkbox" class="p-gc" ${p.gc?"checked":""}> eligible</label></td>
     <td class="tick" data-label="R3"><label style="margin:0;display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px;opacity:1">
@@ -446,65 +427,72 @@ function personRow(p){
     <td class="del-cell"><button type="button" class="del" title="Remove" aria-label="Remove ${esc(p.name) || "this person"}">&times;</button></td>`;
   tr.querySelector(".p-mg").value = p.mg;
   tr.querySelector(".del").onclick = () => { tr.remove(); scheduleRefresh(); };
+  // Typing a name the list knows fills the rest of the row in, the same as
+  // picking him from the dropdown. Retyping the name he already has changes
+  // nothing, so a role you set by hand is not undone.
   tr.querySelector(".p-name").addEventListener("change", e => {
     const name = e.target.value.trim();
-    if(tr.dataset.fresh !== "1" || !name) return;
+    if(!name) return;
+    const m = PLATOON_BY_NAME.get(name.toLowerCase());
+    if(m && m.id !== tr.dataset.member){
+      fillRow(tr, m);
+    } else if(!m && tr.dataset.fresh === "1"){
+      // Nobody the list has heard of, so the ticks follow the rank.
+      tr.querySelector(".p-gc").checked = GD_CDR_RANK.test(name);
+      tr.querySelector(".p-r3").checked = R3_RANK.test(name);
+    }
     tr.dataset.fresh = "";
-    tr.querySelector(".p-gc").checked = GD_CDR_RANK.test(name);
-    tr.querySelector(".p-r3").checked = R3_RANK.test(name);
   });
   return tr;
 }
 
-// Sections are how the platoon is thought about, so they head the list and
-// carry the two presses that put a whole section on or take it off.
-function groupRow(name){
-  const tr = document.createElement("tr");
-  tr.className = "grp";
-  tr.innerHTML = `<td colspan="8"><span class="grp-name">${esc(name)}</span>
-    <button type="button" class="grp-btn" data-on="1">all on</button>
-    <button type="button" class="grp-btn" data-on="">none</button></td>`;
-  [...tr.querySelectorAll(".grp-btn")].forEach(btn => {
-    btn.onclick = () => {
-      const want = btn.dataset.on === "1";
-      for(let r = tr.nextElementSibling; r && !r.classList.contains("grp"); r = r.nextElementSibling){
-        // A vacancy cannot stand a stag, so it is never ticked on.
-        if(r.querySelector(".p-name").value.trim()) r.querySelector(".p-on").checked = want;
-      }
-      scheduleRefresh();
-    };
-  });
-  return tr;
+function fillRow(tr, m){
+  tr.dataset.member = m.id;
+  tr.dataset.e = m.e;
+  tr.querySelector(".p-cs").value = m.cs;
+  tr.querySelector(".p-gc").checked = m.gc;
+  tr.querySelector(".p-r3").checked = m.r3;
+  tr.querySelector(".p-mg").value = m.mg;
 }
 
-// The list is drawn straight from its order, a section heading appearing
-// wherever the section changes.
-function renderPeople(list){
-  peopleBody.innerHTML = "";
-  let group = null;
-  list.forEach(p => {
-    const g = p.group || "";
-    if(g !== group){ group = g; if(g) peopleBody.appendChild(groupRow(g)); }
-    peopleBody.appendChild(personRow(p));
+// The dropdown offers everyone off the list who is not already on, kept in
+// section order so it reads the way the platoon does.
+const pick = () => document.getElementById("pick");
+let pickSig = "";
+function renderPicker(){
+  const already = new Set(allRows().map(p => p.name.toLowerCase()).filter(Boolean));
+  const left = PLATOON.filter(m => !already.has(m.name.toLowerCase()));
+  const sig = left.map(m => m.id).join(",");
+  if(sig === pickSig) return;   // don't rebuild it under an open dropdown
+  pickSig = sig;
+  let html = '<option value="">Choose a name&hellip;</option>', group = null;
+  left.forEach(m => {
+    if(m.group !== group){
+      if(group !== null) html += "</optgroup>";
+      group = m.group;
+      html += `<optgroup label="${esc(group)}">`;
+    }
+    html += `<option value="${esc(m.id)}">${esc(m.name)} &mdash; ${esc(m.cs)}</option>`;
   });
+  if(group !== null) html += "</optgroup>";
+  pick().innerHTML = html;
 }
 
 // Every row, blank ones included, so an empty line you are part way through
 // typing survives a save. build() works from the named ones only.
 function allRows(){
   return [...peopleBody.querySelectorAll("tr[data-id]")].map(tr => ({
-    id:    tr.dataset.id,
-    group: tr.dataset.group || "",
-    on:    tr.querySelector(".p-on").checked,
+    id:     tr.dataset.id,
+    member: tr.dataset.member || "",
+    e:      tr.dataset.e || "",
     name: tr.querySelector(".p-name").value.trim(),
     cs:   tr.querySelector(".p-cs").value.trim(),
-    e:    tr.querySelector(".p-e").value.trim(),
     gc:   tr.querySelector(".p-gc").checked,
     r3:   tr.querySelector(".p-r3").checked,
     mg:   tr.querySelector(".p-mg").value
   }));
 }
-const readPeople = () => allRows().filter(p => p.on && p.name);
+const readPeople = () => allRows().filter(p => p.name);
 
 const MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MON_FULL  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -591,7 +579,7 @@ function build(){
   const rest    = people.filter(p => p.mg === "none" || p.mg === "noweap");
   const gcPool  = rest.filter(p => p.gc);
 
-  if(!people.length) warn.push("Nobody is on yet — tick the men who are on this block.");
+  if(!people.length) warn.push("Nobody is on yet — pick a name above to put someone on.");
   else if(!gcPool.length) warn.push("No one is marked eligible for Gd Cdr — tick at least one.");
   const csClash = people.filter(p => ["41","42"].includes(p.cs) && p.mg !== "raf");
   if(csClash.length) warn.push("C/S 41 and 42 are RAF only — check " + csClash.map(p => p.name).join(" and ") + ".");
@@ -707,7 +695,7 @@ function build(){
     out.push({date, gc, mgA, mgB: fixedMG[0] || null, patrolRows: opsRows, r3, gateRows, times});
   }
   renderOverrides(people, nights, start);
-  $("#oncount").textContent = people.length ? people.length + " on" : "nobody yet";
+  renderPicker();
 
   render(out, times);
   showWarnings(warn);
@@ -781,7 +769,7 @@ $("#sheet").addEventListener("input", e => {
 
 /* ---- keeping the sheet between visits ---- */
 
-const STORE = "section-roster-v2";
+const STORE = "section-roster-v3";
 
 function todayISO(){
   const d = new Date();
@@ -817,24 +805,26 @@ function restore(){
   // Ids handed out from here on must not collide with the ones being restored.
   const used = people.map(p => +String(p.id || "").replace(/\D/g, "")).filter(n => n > 0);
   nextId = (used.length ? Math.max(...used) : 0) + 1;
-  renderPeople(people);
+  people.forEach(p => peopleBody.appendChild(personRow(p)));
   if(!$("#start").value) $("#start").value = todayISO();
+  $("#platoon").innerHTML = PLATOON.map(m => `<option value="${esc(m.name)}"></option>`).join("");
 }
 
 restore();
 
-$("#add").onclick = () => {
-  const last = [...peopleBody.querySelectorAll("tr[data-id]")].pop();
-  peopleBody.appendChild(personRow({
-    name:"", cs:"", e:"", on:true, gc:false, r3:false, mg:"none",
-    group: last ? last.dataset.group : ""
-  }));
-  save();
+// Picking a name puts him on with everything the list knows about him filled in.
+pick().onchange = e => {
+  const m = PLATOON.find(x => x.id === e.target.value);
+  e.target.value = "";
+  if(!m) return;
+  peopleBody.appendChild(personRow(Object.assign({}, m, {id: freshId(), member: m.id})));
+  scheduleRefresh();
 };
 
-$("#clearon").onclick = () => {
-  [...peopleBody.querySelectorAll(".p-on")].forEach(c => { c.checked = false; });
-  scheduleRefresh();
+// For anyone the list has never heard of.
+$("#add").onclick = () => {
+  peopleBody.appendChild(personRow({name:"",cs:"",e:"",gc:false,r3:false,mg:"none"}));
+  save();
 };
 
 /* ---- the panel drives the sheet ---- */

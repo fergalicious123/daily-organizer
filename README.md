@@ -302,10 +302,11 @@ day gives the names in full.
 part of the app. It lays out who is on which stag across a set of shifts and
 gives you an A4 PDF, a printable file, or a PNG to send to the group.
 
-It holds the whole platoon — HQ and the four sections, call signs, E numbers,
-and the vacant posts with the call signs nobody holds yet. It **starts blank**:
-tick who is on and only those men reach the sheet, or press **all on** beside a
-section to put the whole section on at once.
+It remembers the whole platoon — HQ and the four sections, with call signs and
+E numbers. The sheet **starts blank**: pick a name from the dropdown, grouped by
+section, and he arrives with his call sign, E number, role and eligibility
+already filled in. Typing into a name box does the same, suggesting as you go,
+and **Add person** gives a blank row for anyone the list has never heard of.
 
 From there it fills in the rest. The RAF pair alternate on the Main Gate, CG
 and OG stay single-manned, and the vehicles go to Ptes and LCpls only, read
