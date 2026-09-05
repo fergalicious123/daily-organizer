@@ -651,6 +651,80 @@ if (zones.instantAt && zones.instantForZonedTime) {
 }
 
 /* ------------------------------------------------------------------ */
+/* The voices                                                          */
+/* ------------------------------------------------------------------ */
+/* Two claims in the file header that nothing else enforces: every line
+   carries its attribution and its reading, and the pool sizes are pairwise
+   coprime so the combination shown on a morning does not repeat. Both are
+   easy to break by adding one quote. */
+group('quotes - every line carries its papers');
+const quotes = loaded['../js/quotes.js'] || {};
+
+if (quotes.VOICES) {
+  const kinds = Object.keys(quotes.VOICES);
+  check('there is a voice for each kind of step', () => kinds.length === 3
+    && kinds.includes('study') && kinds.includes('gym') && kinds.includes('winddown'));
+
+  check('every line has text, a name, a reading and a source', () => {
+    for (const [kind, voice] of Object.entries(quotes.VOICES)) {
+      for (const line of voice.lines) {
+        for (const field of ['text', 'who', 'note', 'source']) {
+          if (!line[field] || !String(line[field]).trim()) {
+            throw new Error(`${kind}: "${String(line.text).slice(0, 40)}" has no ${field}`);
+          }
+        }
+      }
+    }
+    return true;
+  });
+
+  // A duplicate inside one pool shortens its cycle without looking like it has.
+  check('no quote appears twice in a pool', () => {
+    for (const [kind, voice] of Object.entries(quotes.VOICES)) {
+      const seen = new Set();
+      for (const line of voice.lines) {
+        const key = line.text.toLowerCase();
+        if (seen.has(key)) throw new Error(`${kind} repeats "${line.text.slice(0, 40)}"`);
+        seen.add(key);
+      }
+    }
+    return true;
+  });
+
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  check('the pool sizes share no factor', () => {
+    const sizes = Object.values(quotes.VOICES).map((v) => v.lines.length);
+    for (let i = 0; i < sizes.length; i++) {
+      for (let j = i + 1; j < sizes.length; j++) {
+        if (gcd(sizes[i], sizes[j]) !== 1) return false;
+      }
+    }
+    return true;
+  });
+}
+
+if (quotes.quoteFor) {
+  // Keyed off the date, so the same day gives the same line -- a quote that
+  // reshuffles on every render is wallpaper.
+  check('the same day gives the same quote', () => quotes.quoteFor('winddown', '2026-09-05').text === quotes.quoteFor('winddown', '2026-09-05').text);
+  check('a different day gives a different one', () => quotes.quoteFor('winddown', '2026-09-05').text !== quotes.quoteFor('winddown', '2026-09-06').text);
+  check('the wind-down voice is set apart', () => quotes.quoteFor('winddown', '2026-09-05').tone === 'still');
+  // A step with no pool must render without one rather than throw: the card
+  // does `quote ? quoteBlock(...) : null` and relies on this.
+  check('an unknown kind gets no quote, not an error', () => quotes.quoteFor('nonsense', '2026-09-05') === null);
+  // The whole pool is reachable. An off-by-one in the index would quietly
+  // strand the last line forever.
+  check('every wind-down line comes round', () => {
+    const seen = new Set();
+    for (let i = 0; i < 23; i++) {
+      const day = new Date(Date.UTC(2026, 8, 5 + i));
+      seen.add(quotes.quoteFor('winddown', day.toISOString().slice(0, 10)).text);
+    }
+    return seen.size === 23;
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* The ritual, at both ends of the day                                 */
 /* ------------------------------------------------------------------ */
 /* `when` decides which card a step lands on, and the default matters more

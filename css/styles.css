@@ -3467,6 +3467,16 @@ button.journal-entry-head:hover .journal-entry-day { color: var(--accent); }
   letter-spacing: -.005em;
   color: var(--text-muted);
 }
+/* The evening voice. Upright serif with the leading opened up -- set like a
+   page rather than like a caption, because it is the one quote in the app
+   asking you to slow down and it should not read at the same speed as the two
+   that are trying to get you out of the door. */
+.tone-still .routine-quote-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: var(--fs-base);
+  line-height: 1.75;
+  color: var(--text-muted);
+}
 
 /* The task this step stands in for, so it is obvious why ticking here also
    ticks something further down the page. */

@@ -1,4 +1,4 @@
-/* The two voices.
+/* The three voices.
  *
  * Ben picked the anchors — Machiavelli before the studying, Goggins before the
  * training — and the pairing is the idea the routine card is built around:
@@ -11,10 +11,18 @@
  * suffered through something physical. Anything that could sit equally well on
  * a motivational poster for a sales team is not in here.
  *
- * SIZES ARE DELIBERATE: 31 and 29, both prime. Each list walks in order, so no
- * quote repeats within its own cycle — a month for one, four weeks for the
- * other — and because the lengths share no factor, the PAIRING of the two
- * quotes shown on a given morning does not repeat for 899 days.
+ * THE THIRD VOICE ARGUES THE OPPOSITE, on purpose. Machiavelli and Goggins
+ * both want more out of you; the evening one wants less. It is the only place
+ * in the app allowed to say stop, and if it sounded like the other two it
+ * would be a third thing shouting at a man who has been awake nineteen hours.
+ * So it is quieter in every respect: upright serif rather than italic or bold,
+ * and people writing about reading, attention and sleep rather than about
+ * effort.
+ *
+ * SIZES ARE DELIBERATE: 31, 29 and 23, all prime. Each list walks in order, so
+ * no quote repeats within its own cycle — a month, four weeks, three weeks —
+ * and because the lengths share no factor, the COMBINATION shown on a given
+ * day does not repeat for 20,677 days.
  *
  * Every line carries three things beyond the text:
  *
@@ -407,14 +415,165 @@ const TRAINING = [
   },
 ];
 
+
+/* ------------------------------------------------------------------ */
+/* Before bed — reading, attention, and knowing when to stop           */
+/* ------------------------------------------------------------------ */
+/* Half of these are about books and half about sleep, because the step is
+   about both: the book is not the point, it is the thing that makes putting
+   the phone down survivable. Nobody stops scrolling for nothing. */
+
+const WINDDOWN = [
+  {
+    text: 'The reading of all good books is like a conversation with the finest minds of past centuries.',
+    who: 'Descartes',
+    note: 'A better offer than whatever the phone is showing you at half ten.',
+    source: 'Discourse on the Method, 1637, in the opening section where he describes his own education.',
+  },
+  {
+    text: 'Read not to contradict, nor to believe, but to weigh and consider.',
+    who: 'Francis Bacon',
+    note: 'Reading to argue is work. Read the other way and it slows you down, which at this hour is the point.',
+    source: 'From the essay Of Studies, 1625. The full line runs "read not to contradict and confute; nor to believe and take for granted".',
+  },
+  {
+    text: 'Reading maketh a full man; conference a ready man; and writing an exact man.',
+    who: 'Francis Bacon',
+    note: 'The course wants the exact man. That one is built out of the other two, and this is where the first of them happens.',
+    source: 'Of Studies again — the best-known sentence in it.',
+  },
+  {
+    text: 'You must linger among a limited number of master thinkers.',
+    who: 'Seneca',
+    note: 'Twenty minutes with one book beats an hour of everything at once, and the phone is only ever everything at once.',
+    source: 'Letter 2 of the Letters to Lucilius, which is entirely about reading too many things badly.',
+  },
+  {
+    text: 'To be everywhere is to be nowhere.',
+    who: 'Seneca',
+    note: 'Written about reading a hundred books at a time. It has aged into something else.',
+    source: 'The same letter as above — nusquam est qui ubique est. He meant scattered reading; the sentence outlived the complaint.',
+  },
+  {
+    text: 'It is not that we have a short time to live, but that we waste a lot of it.',
+    who: 'Seneca',
+    note: 'Not a reason to do more. A reason to notice where the last hour went.',
+    source: 'On the Shortness of Life, written to a man about to retire from running Rome\u2019s grain supply.',
+  },
+  {
+    text: 'Give up your thirst for books, so that you do not die murmuring.',
+    who: 'Marcus Aurelius',
+    note: 'Even the reading has a limit. Shut it when your eyes go; finishing the chapter is not the assignment.',
+    source: 'Meditations, Book II, written on campaign. He was telling himself off, which is what most of that book is.',
+  },
+  {
+    text: 'A good book is the precious life-blood of a master spirit.',
+    who: 'John Milton',
+    note: 'He was arguing against censorship. It works just as well as an argument for what deserves the last half hour.',
+    source: 'Areopagitica, 1644 \u2014 a pamphlet to Parliament against having to get books approved before printing them.',
+  },
+  {
+    text: 'There is no frigate like a book to take us lands away.',
+    who: 'Emily Dickinson',
+    note: 'You are in a block, and a book is the cheapest way out of the room without leaving it.',
+    source: 'Poem 1286, published after her death. She wrote it having barely left her own house in Amherst for years.',
+  },
+  {
+    text: 'He that loves reading has everything within his reach.',
+    who: 'William Godwin',
+    note: 'The course, the promotion boards, the rest of it. All of it is downstream of being someone who reads at night.',
+    source: 'Godwin was a political writer, and Mary Shelley\u2019s father. Widely quoted in this form.',
+  },
+  {
+    text: 'Books are a uniquely portable magic.',
+    who: 'Stephen King',
+    note: 'It fits in a daysack. The phone does too, but it does not stop.',
+    source: 'On Writing, 2000 \u2014 half memoir, half instruction manual.',
+  },
+  {
+    text: 'A room without books is like a body without a soul.',
+    who: 'Cicero',
+    note: 'Applies to a bedside table.',
+    source: 'Universally attributed to Cicero and not found in this form in anything he wrote. A good line with a shaky passport.',
+  },
+  {
+    text: 'The man who does not read has no advantage over the man who cannot read.',
+    who: 'Mark Twain',
+    note: 'The course is not the only reason to read. It is just the one with a date on it.',
+    source: 'Attributed to Twain everywhere and traced to him nowhere. It sounds like him, which is how these things happen.',
+  },
+  {
+    text: 'I have sought rest everywhere, and found it nowhere save in little nooks with little books.',
+    who: 'Thomas \u00e0 Kempis',
+    note: 'He had a monastery and no phone, so this was easier for him. The finding is still true.',
+    source: 'Traditionally attributed to the author of The Imitation of Christ, a fifteenth-century Dutch monk.',
+  },
+  {
+    text: 'It is impossible for a man to learn what he thinks he already knows.',
+    who: 'Epictetus',
+    note: 'Worth reading something you disagree with, on a night you have the patience for it. Not tonight.',
+    source: 'Attributed to Epictetus, who was born a slave in Rome and never wrote anything down; his student did.',
+  },
+  {
+    text: 'Sleep that knits up the ravelled sleave of care.',
+    who: 'Shakespeare',
+    note: 'A sleave is a tangled thread. Four nights leaves you tangled, and this is the only thing that unpicks it.',
+    source: 'Macbeth, Act II \u2014 said by a man who has just murdered his sleep and knows it.',
+  },
+  {
+    text: 'O sleep, O gentle sleep, nature\u2019s soft nurse.',
+    who: 'Shakespeare',
+    note: 'The King cannot sleep and the ship\u2019s boy can. Rank does not help; a dark room does.',
+    source: 'Henry IV Part 2, Act III. The speech goes on to envy a sailor asleep in a storm.',
+  },
+  {
+    text: 'There is a time for many words, and there is also a time for sleep.',
+    who: 'Homer',
+    note: 'You have said enough to the phone today.',
+    source: 'The Odyssey, Book XI \u2014 Odysseus breaking off his own story to go to bed.',
+  },
+  {
+    text: 'Blessings on him who invented sleep, the mantle that covers all human thoughts.',
+    who: 'Cervantes',
+    note: 'Sancho Panza\u2019s view, and Sancho is usually right about the practical things.',
+    source: 'Don Quixote, Part II, chapter 68.',
+  },
+  {
+    text: 'The worst thing in the world is to try to sleep and not to.',
+    who: 'F. Scott Fitzgerald',
+    note: 'Which is what a bright screen at eleven buys you. The book is not a treat, it is the way round this.',
+    source: 'From Sleeping and Waking, an essay for Esquire in 1934 about his own insomnia.',
+  },
+  {
+    text: 'Rest is not idleness.',
+    who: 'John Lubbock',
+    note: 'You are not behind because you stopped. You are behind when you do four nights on five hours.',
+    source: 'The Use of Life, 1894. Lubbock was a banker, an MP and the man who got Britain its bank holidays.',
+  },
+  {
+    text: 'Early to bed and early to rise, makes a man healthy, wealthy and wise.',
+    who: 'Benjamin Franklin',
+    note: 'Half your month starts at 05:00. The first half of the sentence is not optional if the second half is happening.',
+    source: 'Poor Richard\u2019s Almanack, 1735. Franklin printed it; the proverb is older than he is.',
+  },
+  {
+    text: 'Books are the mirrors of the soul.',
+    who: 'Virginia Woolf',
+    note: 'So is a phone, which is the problem.',
+    source: 'Between the Acts, her last novel, finished in 1941.',
+  },
+];
+
 /**
  * Which pool belongs to which kind of step, and how that pool sounds by
  * default. `tone` is what the card styles on — the Florentine end gets a quiet
- * italic serif, the training end a heavier sans. A line may override it.
+ * italic serif, the training end a heavier sans, and the evening an upright
+ * serif that is neither. A line may override it.
  */
 export const VOICES = {
   study: { lines: STUDY, tone: 'considered' },
   gym: { lines: TRAINING, tone: 'blunt' },
+  winddown: { lines: WINDDOWN, tone: 'still' },
 };
 
 /**

@@ -169,10 +169,11 @@ export function routineCard(dateKey = todayKey(), { onToggle, when = PHASE.MORNI
       ].filter(Boolean).join(' '),
     },
       tick,
-      quote ? quoteBlock(quote, step) : null,
-      // The argument, for a step that needs one. "Phone down" on its own reads
-      // as nagging; the sentence after it is what makes it a reason.
+      // The argument, ABOVE the quote. It is the reason the step exists, and
+      // the quote is the flourish on top of it -- underneath the attribution
+      // it read as an afterthought bolted to somebody else's sentence.
       step.note ? el('p.routine-step-note', step.note) : null,
+      quote ? quoteBlock(quote, step) : null,
       // Only worth saying when the step is standing in for something real —
       // it explains why ticking here also ticks a task further down the page.
       task ? el('span.routine-linked', task.title) : null,
